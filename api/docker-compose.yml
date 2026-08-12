@@ -19,11 +19,23 @@ services:
       dockerfile: api/Dockerfile
     environment:
       DATABASE_URL: postgres://postgres:postgres@db:5432/golden_record_api
-      PRODUCT_API_TOKEN: local-product-token
-      STEWARD_API_TOKEN: local-steward-token
+      PRODUCT_API_TOKEN: local-product-token-change-me-000001
+      STEWARD_CREDENTIALS_JSON: '{"sam":{"bearer":["local-sam-token-change-me-000001"],"password":"local-sam-password-change-me"},"alex":{"bearer":["local-alex-token-change-me-000001"],"password":"local-alex-password-change-me"}}'
+      CSRF_SECRET: local-csrf-secret-change-me-000001
       PORT: "4000"
     ports:
       - "4000:4000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:4000/ready >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     depends_on:
       db:
         condition: service_healthy
