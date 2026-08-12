@@ -17,3 +17,9 @@ erl_crash.dump
 .dolt/
 *.db
 .beads-credential-key
+
+# Browser-automation scratch output
+.playwright-mcp/
+
+# Beads local lock
+.beads.gate.lock

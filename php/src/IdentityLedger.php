@@ -155,18 +155,32 @@ final class IdentityLedger
 
             $prior = $original[$key] ?? [];
 
-            // keep_cluster = max_by {has_spine?, intersection size with prior}. Elixir Enum.max_by
-            // keeps the FIRST max on ties, scanning in list order.
-            $keepIdx = 0;
-            $keepScore = self::keepScore($multiple[0][0], $prior);
-            for ($i = 1, $n = count($multiple); $i < $n; ++$i) {
-                $score = self::keepScore($multiple[$i][0], $prior);
+            // Elixir sorts the candidates by code signature and then takes Enum.max_by, which
+            // keeps the FIRST maximum — so equal-ranked clusters resolve to the lowest signature
+            // whatever order they arrived in. Selection is sorted; minting below is NOT, because
+            // Elixir's `into` reduce walks the original order.
+            $ordered = $multiple;
+            usort(
+                $ordered,
+                static fn (array $a, array $b): int => self::codeSignature($a[0]) <=> self::codeSignature($b[0])
+            );
+
+            $keepCluster = $ordered[0][0];
+            $keepScore = self::keepScore($keepCluster, $prior);
+            for ($i = 1, $n = count($ordered); $i < $n; ++$i) {
+                $score = self::keepScore($ordered[$i][0], $prior);
                 if (self::scoreGreater($score, $keepScore)) {
                     $keepScore = $score;
-                    $keepIdx = $i;
+                    $keepCluster = $ordered[$i][0];
                 }
             }
-            $keepCluster = $multiple[$keepIdx][0];
+
+            $keepIdx = null;
+            foreach ($multiple as $idx => [$cluster, $_k]) {
+                if ($keepIdx === null && self::sameSet($cluster, $keepCluster)) {
+                    $keepIdx = $idx;
+                }
+            }
 
             // Mint a new key for every cluster except the kept one, in list order.
             $into = [];
@@ -241,6 +255,7 @@ final class IdentityLedger
             'split' => $split,
             'proposals' => $proposals,
             'conflicts' => $conflicts,
+            'swaps' => self::nationalSwaps($original, $members),
             'retracted' => $retracted,
             'members' => $members,
         ];
@@ -277,6 +292,10 @@ final class IdentityLedger
         foreach ($outcome['conflicts'] as [$code, $carriers]) {
             $candidates = array_map(static fn (array $carrier): array => array_values($carrier), $carriers);
             $events[] = Events::conflictFlagged(['identity_conflict', $code], $candidates, $at);
+        }
+
+        foreach ($outcome['swaps'] ?? [] as [$key, $lost, $now]) {
+            $events[] = Events::conflictFlagged(['identity_swap', $key], [$lost, $now], $at);
         }
 
         foreach ($outcome['retracted'] as $key) {
@@ -413,31 +432,116 @@ final class IdentityLedger
      * @param array<string, array{0: string, 1: string}> $prior
      * @return array{0: bool, 1: int}
      */
+    /**
+     * Which cluster KEEPS the key on a split — mirrors IdentityLedger.keeper_rank/2.
+     *
+     * The old rule was "whichever side holds a GTIN". A barcode is explicitly reassignable
+     * (NHSBSA publishes a GTIN Transfer Tracking Log of codes moving between packs), so that
+     * let a transferred barcode drag the surrogate key to a different product. National codes
+     * are assigned once and never reissued, so they say which cluster CONTINUES the key.
+     *
+     * @param array<string, array{0: string, 1: string}> $cluster
+     * @param array<string, array{0: string, 1: string}> $prior
+     *
+     * @return array{0: int, 1: int, 2: int, 3: int}
+     */
     private static function keepScore(array $cluster, array $prior): array
     {
-        return [self::hasSpine($cluster), Sets::size(Sets::intersection($cluster, $prior))];
+        $shared = Sets::intersection($cluster, $prior);
+
+        return [
+            self::gradeCount($shared, 'national'),
+            self::gradeCount($shared, 'none'),
+            Sets::size($shared),
+            self::gradeCount($cluster, 'national'),
+        ];
     }
 
     /**
-     * @param array{0: bool, 1: int} $a
-     * @param array{0: bool, 1: int} $b
+     * @param array{0: int, 1: int, 2: int, 3: int} $a
+     * @param array{0: int, 1: int, 2: int, 3: int} $b
      */
     private static function scoreGreater(array $a, array $b): bool
     {
-        // Elixir compares tuples: {false,_} < {true,_}; then by the int. Booleans compare false<true.
-        return [$a[0] ? 1 : 0, $a[1]] > [$b[0] ? 1 : 0, $b[1]];
+        // Elixir compares tuples element by element; PHP compares equal-length lists the same way.
+        return $a > $b;
     }
 
-    /** @param array<string, array{0: string, 1: string}> $cluster */
-    private static function hasSpine(array $cluster): bool
+    /**
+     * The cluster's codes as a sorted list — Elixir's `Enum.sort(cluster)` on a MapSet of
+     * {scheme, value} tuples, used only as a total tie-break.
+     *
+     * @param array<string, array{0: string, 1: string}> $cluster
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    private static function codeSignature(array $cluster): array
     {
-        foreach ($cluster as $code) {
-            if ($code[0] === 'gtin') {
-                return true;
+        $codes = array_values($cluster);
+        sort($codes);
+
+        return $codes;
+    }
+
+    /** @param array<string, array{0: string, 1: string}> $codes */
+    private static function gradeCount(array $codes, string $grade): int
+    {
+        $n = 0;
+        foreach ($codes as $code) {
+            if (CodeRegistry::bridgeGrade($code[0]) === $grade) {
+                ++$n;
             }
         }
 
-        return false;
+        return $n;
+    }
+
+    /**
+     * An established key that LOSES a national code has changed what it denotes. Gaining one is
+     * an alias and stays quiet; losing one is the signature of a barcode transfer.
+     *
+     * @param array<string, array<string, array{0: string, 1: string}>> $original
+     * @param array<string, array<string, array{0: string, 1: string}>> $live
+     *
+     * @return list<array{0: string, 1: list<array{0: string, 1: string}>, 2: list<array{0: string, 1: string}>}>
+     */
+    private static function nationalSwaps(array $original, array $live): array
+    {
+        $swaps = [];
+        foreach ($original as $key => $prior) {
+            if (!isset($live[$key])) {
+                continue;
+            }
+            $lost = Sets::difference(self::nationalOnly($prior), self::nationalOnly($live[$key]));
+            if (Sets::size($lost) === 0) {
+                continue;
+            }
+            $now = array_values($live[$key]);
+            $lostCodes = array_values($lost);
+            sort($lostCodes);
+            sort($now);
+            $swaps[] = [$key, $lostCodes, $now];
+        }
+        usort($swaps, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+
+        return $swaps;
+    }
+
+    /**
+     * @param array<string, array{0: string, 1: string}> $codes
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private static function nationalOnly(array $codes): array
+    {
+        $out = [];
+        foreach ($codes as $slot => $code) {
+            if (CodeRegistry::nationalGrade($code[0])) {
+                $out[$slot] = $code;
+            }
+        }
+
+        return $out;
     }
 
     /** The trailing integer of a key ("SK_7" => 7, "SUB_3" => 3). */
