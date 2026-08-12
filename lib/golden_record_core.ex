@@ -611,7 +611,9 @@ defmodule Cluster do
 
   `shared` codes are members but never bridge. By default a bridge is also held when joining its
   two components would put different values of a unique scheme (national ids, ISBNs) into one
-  identity. Pass `guard?: false` only for explicit before/after comparison tooling.
+  identity, or when a REASSIGNABLE code (a GS1 barcode) is the only thing joining two components
+  that each already stand on their own identifier. Pass `guard?: false` only for explicit
+  before/after comparison tooling.
   """
   def variants(live_claims, shared \\ MapSet.new())
   def variants(live_claims, shared), do: variants(live_claims, shared, [])
@@ -627,6 +629,7 @@ defmodule Cluster do
 
     if Keyword.get(opts, :guard?, true) do
       unique_scheme? = Keyword.get(opts, :unique_scheme?, &CodeRegistry.national_grade?/1)
+      barcode_scheme? = Keyword.get(opts, :barcode_scheme?, &CodeRegistry.barcode_grade?/1)
       trusted_sources = Keyword.get(opts, :trusted_sources, MapSet.new([:steward]))
 
       evidence =
@@ -643,15 +646,15 @@ defmodule Cluster do
         for %{data: %{relation: :same, left: left, right: right}} <- evidence,
             do: code_pair(left, right)
 
-      guarded_components(sets, shared, unique_scheme?, distinct_pairs, same_pairs)
+      guarded_components(sets, shared, unique_scheme?, barcode_scheme?, distinct_pairs, same_pairs)
     else
       sets |> connected_components(shared) |> Enum.sort_by(&Enum.min/1)
     end
   end
 
-  defp guarded_components([], _shared, _unique_scheme?, _distinct_pairs, _same_pairs), do: []
+  defp guarded_components([], _shared, _unique, _barcode, _distinct_pairs, _same_pairs), do: []
 
-  defp guarded_components(sets, shared, unique_scheme?, distinct_pairs, same_pairs) do
+  defp guarded_components(sets, shared, unique_scheme?, barcode_scheme?, distinct_pairs, same_pairs) do
     indexed = Enum.with_index(sets)
     parent = Map.new(indexed, fn {_set, index} -> {index, index} end)
     codes = Map.new(indexed, fn {set, index} -> {index, set} end)
@@ -664,17 +667,21 @@ defmodule Cluster do
     {parent, codes} =
       sets
       |> candidate_edges(shared, unique_scheme?, same_pairs)
-      |> Enum.reduce({parent, codes}, fn {_kind, _bridge, left, right, override?}, {parents, by_root} ->
+      |> Enum.reduce({parent, codes}, fn {_kind, bridge, left, right, override?}, {parents, by_root} ->
         left_root = root(parents, left)
         right_root = root(parents, right)
 
         if left_root == right_root do
           {parents, by_root}
         else
-          merged = MapSet.union(Map.fetch!(by_root, left_root), Map.fetch!(by_root, right_root))
+          left_codes = Map.fetch!(by_root, left_root)
+          right_codes = Map.fetch!(by_root, right_root)
+          merged = MapSet.union(left_codes, right_codes)
 
           if distinct_conflict?(merged, distinct_pairs) or
-               (not override? and unique_conflict?(merged, unique_scheme?, allowed_pairs)) do
+               (not override? and
+                  (unique_conflict?(merged, unique_scheme?, allowed_pairs) or
+                     reassignable_bridge?(bridge, left_codes, right_codes, barcode_scheme?))) do
             {parents, by_root}
           else
             keep = min(left_root, right_root)
@@ -729,6 +736,23 @@ defmodule Cluster do
 
     Enum.sort(ordinary ++ explicit_same)
   end
+
+  # A GS1 barcode is reassignable — NHSBSA publishes a log of GTINs that moved between packs — so
+  # it must not be the ONE thing that fuses two components which each already carry an identifier
+  # of their own. When either side has nothing but barcodes, the bridge is still the best evidence
+  # there is and the join stands: refusing it would orphan a listing for no gain.
+  #
+  # The held code stays in both clusters, so IdentityLedger's cluster_conflicts picks it up and
+  # raises the same identity_conflict flag and merge proposal as a national-code clash.
+  defp reassignable_bridge?({scheme, _}, left, right, barcode_scheme?) do
+    barcode_scheme?.(scheme) and stands_alone?(left, barcode_scheme?) and
+      stands_alone?(right, barcode_scheme?)
+  end
+
+  defp reassignable_bridge?(_bridge, _left, _right, _barcode_scheme?), do: false
+
+  defp stands_alone?(codes, barcode_scheme?),
+    do: Enum.any?(codes, fn {scheme, _} -> not barcode_scheme?.(scheme) end)
 
   defp unique_conflict?(codes, unique_scheme?, allowed_pairs) do
     codes

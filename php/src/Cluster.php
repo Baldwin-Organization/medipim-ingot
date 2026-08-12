@@ -25,6 +25,7 @@ final class Cluster
         bool $guard = true,
         ?callable $uniqueScheme = null,
         array $trustedSources = ['steward'],
+        ?callable $barcodeScheme = null,
     ): array
     {
         $sets = [];
@@ -66,6 +67,7 @@ final class Cluster
                 $sets,
                 $shared,
                 $uniqueScheme ?? CodeRegistry::nationalGrade(...),
+                $barcodeScheme ?? CodeRegistry::barcodeGrade(...),
                 $distinctPairs,
                 $samePairs,
             );
@@ -93,6 +95,7 @@ final class Cluster
         array $sets,
         array $shared,
         callable $uniqueScheme,
+        callable $barcodeScheme,
         array $distinctPairs,
         array $samePairs,
     ): array
@@ -114,7 +117,7 @@ final class Cluster
 
         foreach (
             self::candidateEdges($sets, $shared, $uniqueScheme, $samePairs)
-            as [$_kind, $_bridge, $left, $right, $override]
+            as [$_kind, $bridge, $left, $right, $override]
         ) {
             $leftRoot = self::root($parent, $left);
             $rightRoot = self::root($parent, $right);
@@ -122,10 +125,15 @@ final class Cluster
                 continue;
             }
 
-            $merged = Sets::union($codes[$leftRoot], $codes[$rightRoot]);
+            $leftCodes = $codes[$leftRoot];
+            $rightCodes = $codes[$rightRoot];
+            $merged = Sets::union($leftCodes, $rightCodes);
             if (
                 self::distinctConflict($merged, $distinctPairs)
-                || (!$override && self::uniqueConflict($merged, $uniqueScheme, $allowedPairs))
+                || (!$override && (
+                    self::uniqueConflict($merged, $uniqueScheme, $allowedPairs)
+                    || self::reassignableBridge($bridge, $leftCodes, $rightCodes, $barcodeScheme)
+                ))
             ) {
                 continue;
             }
@@ -229,6 +237,43 @@ final class Cluster
     }
 
     /** @param array<string, array{0: string, 1: string}> $codes */
+    /**
+     * A GS1 barcode is reassignable — NHSBSA publishes a log of GTINs that moved between packs —
+     * so it must not be the ONE thing that fuses two components which each already carry an
+     * identifier of their own. When either side has nothing but barcodes, the bridge is still the
+     * best evidence there is and the join stands.
+     *
+     * `$bridge` is a code KEY (not a [scheme, value] tuple): the shared code's key for an ordinary
+     * edge, or a pair key for an explicit `same` edge. Resolving it against the component gives
+     * the tuple back; a pair key resolves to nothing and is not a grade check anyway, since those
+     * edges always carry $override.
+     *
+     * @param array<string, array{0: string, 1: string}> $left
+     * @param array<string, array{0: string, 1: string}> $right
+     */
+    private static function reassignableBridge(string $bridge, array $left, array $right, callable $barcodeScheme): bool
+    {
+        $code = $left[$bridge] ?? $right[$bridge] ?? null;
+
+        if ($code === null || !$barcodeScheme($code[0])) {
+            return false;
+        }
+
+        return self::standsAlone($left, $barcodeScheme) && self::standsAlone($right, $barcodeScheme);
+    }
+
+    /** @param array<string, array{0: string, 1: string}> $codes */
+    private static function standsAlone(array $codes, callable $barcodeScheme): bool
+    {
+        foreach ($codes as $code) {
+            if (!$barcodeScheme($code[0])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static function uniqueConflict(array $codes, callable $uniqueScheme, array $allowedPairs): bool
     {
         $byScheme = [];
