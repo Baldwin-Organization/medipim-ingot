@@ -46,7 +46,7 @@ describe("flatIndex / totalSteps", () => {
 describe("story.json schema", () => {
   const story = data as unknown as StoryData;
 
-  it("has the four scenes with their story beats", () => {
+  it("has the six scenes with their story beats", () => {
     expect(story.oldWay.steps.map((s) => s.id)).toEqual(["two-records", "match", "merge", "import"]);
     expect(story.claims.steps.map((s) => s.id)).toEqual([
       "first-claim",
@@ -61,6 +61,18 @@ describe("story.json schema", () => {
       "manufacturer-weight",
       "color-tie",
       "steward-pick",
+    ]);
+    expect(story.record.steps.map((s) => s.id)).toEqual([
+      "v1-replace",
+      "v2-patch",
+      "v3-withdraw",
+      "v4-reactivate",
+    ]);
+    expect(story.clocks.steps.map((s) => s.id)).toEqual([
+      "ask-january",
+      "before-correction",
+      "after-correction",
+      "window-closed",
     ]);
     expect(story.mistake.steps.map((s) => s.id)).toEqual([
       "two-products",
@@ -96,6 +108,48 @@ describe("story.json schema", () => {
         expect(step.golden.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("the record scene keeps one key across the withdrawal and the re-listing", () => {
+    const byId = Object.fromEntries(story.record.steps.map((s) => [s.id, s]));
+    expect(story.record.steps.every((s) => s.boundKey === "SK_1")).toBe(true);
+
+    // withdrawn: nothing is published, yet the binding is still on screen
+    expect(byId["v3-withdraw"].golden).toEqual([]);
+    expect(byId["v3-withdraw"].revisions.at(-1)?.active).toBe(false);
+
+    // re-listed under entirely different codes — same key, so customers' links survive
+    const back = byId["v4-reactivate"].golden;
+    expect(back).toHaveLength(1);
+    expect(back[0].key).toBe("SK_1");
+    expect(back[0].codes).toEqual(["cnk:1000914", "gtin:05012345679907"]);
+
+    // a patch changes the named fact only
+    const patched = byId["v2-patch"].revisions.at(-1);
+    expect(patched?.operation).toBe("patch");
+    expect(patched?.facts.filter((f) => f.changed).map((f) => f.slot)).toEqual(["attribute:weight_g"]);
+  });
+
+  it("the two-clock beats answer exactly what the narration claims", () => {
+    const answer = (id: string) => {
+      const beat = story.clocks.steps.find((s) => s.id === id)!;
+      return story.clocks.cells.find(
+        (c) => c.knownAt === beat.knownAt && c.effectiveAt === beat.effectiveAt,
+      )!;
+    };
+
+    expect(answer("ask-january").value).toBe("Zinc oxide paste 30 g");
+    // same real-world date, two different knowledge points -> two different answers
+    expect(answer("before-correction").value).toBe("Zinc oxide paste 30 g");
+    expect(answer("after-correction").value).toBe("Zinc oxide paste 50 g — promo pack");
+    // the correction's interval is half-open, so its end date falls back to the original
+    expect(answer("window-closed").value).toBe("Zinc oxide paste 30 g");
+
+    // the grid is complete, and identity never wobbles across the correction
+    expect(story.clocks.cells).toHaveLength(
+      story.clocks.knownAxis.length * story.clocks.effectiveAxis.length,
+    );
+    expect(new Set(story.clocks.cells.map((c) => c.key))).toEqual(new Set(["SK_1"]));
   });
 
   it("the mistake arc's pivotal beats are present in the data", () => {

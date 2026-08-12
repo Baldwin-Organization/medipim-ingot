@@ -12,6 +12,10 @@
 # The story each scene tells (design: docs/plans/2026-06-10-story-demo-design.md):
 #   claims   — sources assert code-anchored claims; a golden record materializes as a fold.
 #   priority — three sources disagree on weight; tiers rank them; a top-tier tie goes to the steward.
+#   record   — one upstream record is revised over time (replace/patch/withdraw/reactivate); the
+#              stable key survives the delisting because the record→key binding is permanent.
+#   clocks   — a late, bounded correction: "what did we know" and "what was true" are two clocks,
+#              so the same question asked before and after the correction answers differently.
 #   mistake  — a steward approves a wrong merge; the contradiction surfaces (evidence was never
 #              destroyed); the steward splits; every attribute and media claim re-homes by code.
 #
@@ -20,11 +24,17 @@
 defmodule DemoExport do
   @out "viz/src/data/story.json"
 
+  # the source-record scenes speak for one upstream record: {source, ref} must be strings
+  @source "supplier"
+  @ref "SUP-88431"
+
   def run do
     data = %{
       oldWay: old_way(),
       claims: claims_scene(),
       priority: priority_scene(),
+      record: record_scene(),
+      clocks: clocks_scene(),
       mistake: mistake_scene()
     }
 
@@ -147,7 +157,131 @@ defmodule DemoExport do
     %{label: "who wins?", tiers: tiers_view(priority), steps: run_beats(beats, priority)}
   end
 
-  # ── chapter 6: the mistake is cheap ───────────────────────────────────────────────────────────────
+  # ── chapter 4: the record keeps changing (source-record lifecycle) ───────────────────────────────
+  # One upstream record, addressed by {source, ref} and revised atomically. The reactivation
+  # deliberately returns with entirely DIFFERENT codes: nothing in the evidence connects it to the
+  # original, so the key can only survive through the permanent record→key binding.
+  defp record_scene do
+    priority = Priority.new(%{}, [[@source]])
+    cnk = {:cnk, "1000001"}
+    gtin = {:gtin, "05012345678900"}
+    new_cnk = {:cnk, "1000914"}
+    new_gtin = {:gtin, "05012345679907"}
+
+    beats = [
+      {"v1-replace",
+       [
+         revision: "1",
+         operation: :replace,
+         valid_from: ~D[2026-01-01],
+         recorded_at: ts(~D[2026-01-10]),
+         claims: [
+           identity(@source, @ref, [cnk, gtin], ~D[2026-01-01]),
+           attribute(@source, cnk, :name, "Zinc oxide paste 30 g", ~D[2026-01-01]),
+           attribute(@source, cnk, :weight_g, 250, ~D[2026-01-01])
+         ]
+       ]},
+      {"v2-patch",
+       [
+         revision: "2",
+         base_revision: "1",
+         operation: :patch,
+         valid_from: ~D[2026-02-14],
+         recorded_at: ts(~D[2026-02-14]),
+         claims: [attribute(@source, cnk, :weight_g, 260, ~D[2026-02-14])]
+       ]},
+      {"v3-withdraw",
+       [
+         revision: "3",
+         base_revision: "2",
+         operation: :withdraw,
+         valid_from: ~D[2026-03-01],
+         recorded_at: ts(~D[2026-03-01])
+       ]},
+      {"v4-reactivate",
+       [
+         revision: "4",
+         base_revision: "3",
+         operation: :reactivate,
+         valid_from: ~D[2026-04-01],
+         recorded_at: ts(~D[2026-04-01]),
+         claims: [
+           identity(@source, @ref, [new_cnk, new_gtin], ~D[2026-04-01]),
+           attribute(@source, new_cnk, :name, "Zinc oxide paste 30 g", ~D[2026-04-01]),
+           attribute(@source, new_cnk, :weight_g, 260, ~D[2026-04-01])
+         ]
+       ]}
+    ]
+
+    %{
+      label: "the record keeps changing",
+      tiers: tiers_view(priority),
+      steps: run_record_beats(beats, priority)
+    }
+  end
+
+  # ── chapter 6: two clocks ─────────────────────────────────────────────────────────────────────────
+  # A bounded correction recorded in April says the pack was different for nine days in February.
+  # Every cell of the grid is the engine's own answer for one (known_at, effective_at) pair.
+  defp clocks_scene do
+    priority = Priority.new(%{}, [[@source]])
+    ref = "SUP-77120"
+    cnk = {:cnk, "1000042"}
+    regular = "Zinc oxide paste 30 g"
+    promo = "Zinc oxide paste 50 g — promo pack"
+
+    first =
+      revise!(nil,
+        ref: ref,
+        revision: "1",
+        operation: :replace,
+        valid_from: ~D[2026-01-01],
+        recorded_at: ts(~D[2026-01-10]),
+        claims: [
+          identity(@source, ref, [cnk], ~D[2026-01-01]),
+          attribute(@source, cnk, :name, regular, ~D[2026-01-01])
+        ]
+      )
+
+    correction =
+      revise!(first,
+        ref: ref,
+        revision: "2",
+        base_revision: "1",
+        operation: :replace,
+        valid_from: ~D[2026-02-01],
+        valid_to: ~D[2026-02-10],
+        recorded_at: ts(~D[2026-04-01]),
+        claims: [
+          identity(@source, ref, [cnk], ~D[2026-02-01]),
+          attribute(@source, cnk, :name, promo, ~D[2026-02-01])
+        ]
+      )
+
+    {[first], order} = stamp([first], 0)
+    {bindings, order} = bind_key([first], first, order)
+    {[correction], _} = stamp([correction], order)
+    log = [first] ++ bindings ++ [correction]
+
+    known_axis = [~D[2026-01-15], ~D[2026-03-01], ~D[2026-04-02]]
+    effective_axis = [~D[2026-01-20], ~D[2026-02-05], ~D[2026-02-10], ~D[2026-04-02]]
+
+    %{
+      label: "two clocks",
+      revisions: revision_views([first, correction]),
+      knownAxis: Enum.map(known_axis, &date_str/1),
+      effectiveAxis: Enum.map(effective_axis, &date_str/1),
+      cells: for(k <- known_axis, e <- effective_axis, do: cell_view(log, k, e, priority)),
+      steps: [
+        %{id: "ask-january", knownAt: date_str(~D[2026-03-01]), effectiveAt: date_str(~D[2026-01-20])},
+        %{id: "before-correction", knownAt: date_str(~D[2026-03-01]), effectiveAt: date_str(~D[2026-02-05])},
+        %{id: "after-correction", knownAt: date_str(~D[2026-04-02]), effectiveAt: date_str(~D[2026-02-05])},
+        %{id: "window-closed", knownAt: date_str(~D[2026-04-02]), effectiveAt: date_str(~D[2026-02-10])}
+      ]
+    }
+  end
+
+  # ── chapter 8: the mistake is cheap ───────────────────────────────────────────────────────────────
   defp mistake_scene do
     # two manufacturers in the SAME weight tier: while the products are distinct there is no
     # conflict (one weight claim each) — the contradiction only becomes visible once fused.
@@ -232,7 +366,9 @@ defmodule DemoExport do
           id: id,
           date: date_str(d),
           log: log |> claims_of() |> Enum.map(&claim_view/1),
-          events: Enum.map(stamped_events, &event_view/1),
+          # a steward decision can also assert a claim (merge evidence) — that belongs in the log
+          events:
+            stamped_events |> Enum.reject(&match?(%Events.ClaimAsserted{}, &1)) |> Enum.map(&event_view/1),
           golden: golden_view(History.now(log, priority)),
           queue: queue_view(ledger.members, log, priority, d)
         }
@@ -242,6 +378,177 @@ defmodule DemoExport do
 
     steps
   end
+
+  # ── the source-record beat engine: revise one record forward, snapshot after each revision ───────
+  defp run_record_beats(beats, priority) do
+    state = %{log: [], order: 0, current: nil, key: nil, revisions: []}
+
+    {steps, _} =
+      Enum.map_reduce(beats, state, fn {id, opts}, st ->
+        revision = revise!(st.current, opts)
+        {[revision], order} = stamp([revision], st.order)
+        log = st.log ++ [revision]
+
+        # Mirrors api/lib/api/writes.ex: bind the record to the key the engine resolved the first
+        # time round and keep that binding forever — it is what carries identity across a delisting.
+        {bindings, order} = if st.key, do: {[], order}, else: bind_key(log, revision, order)
+        log = log ++ bindings
+        key = st.key || bindings |> List.first() |> then(&(&1 && &1.key))
+        revisions = st.revisions ++ [revision]
+
+        step = %{
+          id: id,
+          date: date_str(revision.recorded_at),
+          revisions: revision_views(revisions),
+          current: revision.revision,
+          boundKey: key,
+          golden:
+            golden_view(
+              History.project_bitemporal(
+                log,
+                revision.recorded_at,
+                Bitemporal.effective_date(revision.recorded_at),
+                priority
+              )
+            )
+        }
+
+        {step, %{log: log, order: order, current: revision, key: key, revisions: revisions}}
+      end)
+
+    steps
+  end
+
+  defp revise!(current, opts) do
+    {:ok, revision} = SourceRecords.revise(current, Keyword.merge([source: @source, ref: @ref], opts))
+    revision
+  end
+
+  defp bind_key(log, revision, order) do
+    identity = Enum.find(revision.claims, &(&1.kind == :identity))
+    codes = MapSet.new(identity.data.codes)
+
+    members =
+      History.state_bitemporal(
+        log,
+        revision.recorded_at,
+        Bitemporal.effective_date(revision.valid_from)
+      ).members
+
+    case Enum.find(members, fn {_key, held} -> MapSet.subset?(codes, held) end) do
+      {key, _} ->
+        stamp(
+          [
+            %Events.SourceRecordKeyBound{
+              source: revision.source,
+              ref: revision.ref,
+              lane: :product,
+              key: key,
+              valid_from: revision.valid_from,
+              recorded_at: revision.recorded_at
+            }
+          ],
+          order
+        )
+
+      nil ->
+        {[], order}
+    end
+  end
+
+  # Every revision stores its COMPLETE snapshot, so `changed` is a diff against the previous
+  # snapshot — computed here, never in the browser.
+  defp revision_views(revisions) do
+    {views, _} =
+      Enum.map_reduce(revisions, %{}, fn revision, previous ->
+        view = %{
+          revision: revision.revision,
+          operation: revision.operation,
+          active: revision.active,
+          recordedAt: date_str(revision.recorded_at),
+          validFrom: date_str(revision.valid_from),
+          validTo: revision.valid_to && date_str(revision.valid_to),
+          facts: Enum.map(revision.claims, &fact_view(&1, previous))
+        }
+
+        {view, SourceRecords.claim_map(revision.claims)}
+      end)
+
+    views
+  end
+
+  defp fact_view(claim, previous) do
+    %{slot: slot_str(Substrate.local_slot(claim)), kind: claim.kind, changed: changed?(claim, previous)}
+    |> Map.merge(data_view(claim.kind, claim.data))
+  end
+
+  # "changed" answers what a viewer asks — did this FACT change? — so attributes compare by field
+  # rather than by slot: re-listing under new codes moves every slot without touching a value.
+  defp changed?(_claim, previous) when map_size(previous) == 0, do: false
+
+  defp changed?(%{kind: :attribute, data: %{field: field, value: value}}, previous) do
+    case find_previous(previous, &(&1.kind == :attribute and &1.data.field == field)) do
+      nil -> true
+      was -> was.data.value != value
+    end
+  end
+
+  defp changed?(%{kind: :identity, data: %{codes: codes}}, previous) do
+    case find_previous(previous, &(&1.kind == :identity)) do
+      nil -> true
+      was -> MapSet.new(was.data.codes) != MapSet.new(codes)
+    end
+  end
+
+  defp changed?(claim, previous) do
+    case Map.get(previous, Substrate.local_slot(claim)) do
+      nil -> true
+      was -> was.data != claim.data
+    end
+  end
+
+  defp find_previous(previous, match?), do: Enum.find_value(previous, fn {_slot, c} -> match?.(c) && c end)
+
+  defp slot_str(:identity), do: "identity"
+  defp slot_str({:attr, _code, field}), do: "attribute:#{field}"
+  defp slot_str({:media, asset, _target}), do: "media:#{code_str(asset)}"
+  defp slot_str(other), do: inspect(other)
+
+  # One answer of the two-clock grid: what we knew at `known_date` about the world on `effective_at`.
+  defp cell_view(log, known_date, effective_at, priority) do
+    known_at = ts(known_date)
+
+    revision =
+      log
+      |> History.claims_bitemporal(known_at, effective_at)
+      |> Enum.map(& &1.record_revision)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+      |> List.first()
+
+    variant =
+      log
+      |> History.project_bitemporal(known_at, effective_at, priority)
+      |> Enum.flat_map(& &1.variants)
+      |> List.first()
+
+    %{
+      knownAt: date_str(known_date),
+      effectiveAt: date_str(effective_at),
+      revision: revision,
+      key: variant && variant.key,
+      value: variant && field_value(variant, :name)
+    }
+  end
+
+  defp field_value(variant, field) do
+    case List.keyfind(variant.attributes, field, 0) do
+      {^field, decision} -> decision.value
+      nil -> nil
+    end
+  end
+
+  defp ts(%Date{} = date), do: DateTime.new!(date, ~T[12:00:00], "Etc/UTC")
 
   defp identity(source, ref, codes, d),
     do: Substrate.claim(source, :identity, %{ref: ref, codes: codes}, d, d)
@@ -268,6 +575,17 @@ defmodule DemoExport do
 
   defp data_view(:media, d),
     do: %{asset: code_str(d.asset), target: code_str(d.target), uri: d.uri}
+
+  # An approved merge records WHY it merged: the steward's own same-product evidence, in the log
+  # alongside the sources' claims — which is why a later split can undo it without re-importing.
+  defp data_view(:identity_evidence, d),
+    do: %{
+      left: code_str(d.left),
+      right: code_str(d.right),
+      relation: d.relation,
+      by: to_string(d.by),
+      reason: d.reason
+    }
 
   defp golden_view(grouped) do
     for %{variants: vs} <- grouped, v <- vs do
@@ -365,6 +683,7 @@ defmodule DemoExport do
   defp code_str({scheme, value}), do: "#{scheme}:#{value}"
 
   defp date_str(%Date{} = d), do: Date.to_iso8601(d)
+  defp date_str(%DateTime{} = dt), do: dt |> DateTime.to_date() |> Date.to_iso8601()
 end
 
 DemoExport.run()

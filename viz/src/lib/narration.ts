@@ -33,17 +33,37 @@ const NARRATION: Record<string, string> = {
   "priority/steward-pick":
     "A steward decides. The pick is recorded as an event — who, what, when — not an overwrite.",
 
-  // 4 — identity has a "when" (the embedded time machine drives itself)
+  // 4 — the record keeps changing
+  "record/v1-replace":
+    "A supplier sends its record for the first time. Ingot mints one stable key for it and binds the two together — permanently.",
+  "record/v2-patch":
+    "A correction touches one fact. The other facts carry over untouched, and version 1 is still there to read.",
+  "record/v3-withdraw":
+    "The supplier delists the product. Ingot publishes nothing — but it has not forgotten the key.",
+  "record/v4-reactivate":
+    "Months later it returns under completely new barcodes. Same key: the binding survived the gap, so customers' links never broke.",
+
+  // 5 — identity has a "when" (the embedded time machine drives itself)
   "machine/scrub":
     "The real product 422156: drag the date and watch identity become resolvable. A snapshot would have hidden all of this.",
 
-  // 5 — the guard
+  // 6 — two clocks
+  "clocks/ask-january":
+    "One record, one answer: in January the pack was 30 g. Straightforward — so far there is only one version.",
+  "clocks/before-correction":
+    "Ask about 5 February, from March. Still 30 g — because in March that is genuinely all Ingot had been told.",
+  "clocks/after-correction":
+    "The same question, asked in April: 50 g. The late correction changed the answer about February without rewriting March's answer.",
+  "clocks/window-closed":
+    "One day later and it's 30 g again. The correction covered nine days only, so the original record simply reappears.",
+
+  // 7 — the guard
   "guard/disjoint":
     "Two identities, each established on its own evidence. Nothing connects them — yet.",
   "guard/bridge":
     "A late barcode bridges them. Same product, or a reused barcode? The engine proposes a merge — it never silently applies one.",
 
-  // 6 — the mistake is cheap
+  // 8 — the mistake is cheap
   "mistake/two-products": "Two sunscreens from two manufacturers. Similar names. Two golden records, two keys.",
   "mistake/wrong-merge": "A steward merges them — the names looked alike. The engine records the decision and obeys.",
   "mistake/contradiction":

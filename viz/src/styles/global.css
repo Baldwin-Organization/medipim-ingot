@@ -1254,3 +1254,346 @@ body {
   border-color: color-mix(in srgb, var(--amber) 45%, transparent);
   color: var(--amber);
 }
+
+/* ── chapter 4: the record keeps changing ─────────────────────────────────────────────────────── */
+.record-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 6fr);
+  gap: 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+.revision-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 470px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.revision-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px;
+}
+.revision-card.past {
+  opacity: 0.5;
+}
+.revision-card.current {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  border-left-color: var(--accent);
+}
+.revision-card.withdrawn.current {
+  border-color: color-mix(in srgb, var(--amber) 50%, var(--border));
+  border-left-color: var(--amber);
+}
+.revision-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.revision-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+.revision-op {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--muted);
+}
+.revision-op.replace {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.revision-op.patch {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 40%, transparent);
+}
+.revision-op.withdraw {
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
+}
+.revision-op.reactivate {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, transparent);
+}
+.revision-governs {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.revision-dates,
+.revision-blurb,
+.revision-summary {
+  font-size: 11.5px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+.revision-summary {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.revision-card.withdrawn.past .revision-summary {
+  color: var(--amber);
+}
+.revision-blurb {
+  color: var(--muted);
+  font-style: italic;
+}
+.revision-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.revision-fact {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 12.5px;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: var(--panel);
+}
+.fact-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+.revision-fact.changed {
+  background: color-mix(in srgb, var(--cyan) 10%, var(--panel));
+}
+.revision-card.withdrawn .revision-fact {
+  text-decoration: line-through;
+  color: var(--faint);
+}
+.fact-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  min-width: 74px;
+}
+.fact-value b {
+  color: var(--text);
+}
+.fact-changed {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+}
+.nothing-card {
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--border));
+  border-style: dashed;
+}
+.nothing-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--amber);
+}
+.nothing-body {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 7px;
+  line-height: 1.5;
+}
+.binding-panel {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: var(--panel-2);
+}
+.binding-body {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.binding-body b {
+  font-family: var(--mono);
+  color: var(--gold);
+}
+
+/* ── chapter 6: two clocks ────────────────────────────────────────────────────────────────────── */
+.clocks-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 14px;
+}
+.clocks-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.clock-revision {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 9px;
+  padding: 9px 12px;
+}
+.clock-revision.rev-2 {
+  border-left-color: var(--gold);
+}
+.clock-revision-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.clock-revision-recorded {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+}
+.clock-revision-window,
+.clock-revision-fact {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.clock-revision-window b,
+.clock-revision-fact b {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.clocks-note {
+  font-size: 12.5px;
+  color: var(--faint);
+  line-height: 1.6;
+  margin: 2px 0 0;
+}
+.clocks-note b {
+  color: var(--muted);
+}
+.clocks-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dial-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+.dial-label i {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--faint);
+  margin-left: 8px;
+  font-style: italic;
+}
+.dial-track {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 9px;
+}
+.dial-stop {
+  position: relative;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.dial-stop.active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.dial-marker {
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+}
+.clock-answer {
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--border));
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  padding: 13px 16px;
+}
+.clock-answer-value {
+  font-size: 20px;
+  color: var(--gold);
+  line-height: 1.3;
+}
+.clock-answer-meta {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 6px;
+}
+.clock-answer-meta b {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+.clock-grid {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.clock-grid th {
+  font-weight: 400;
+  color: var(--faint);
+  padding: 5px 9px;
+  text-align: left;
+}
+.clock-cell {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--faint);
+  text-align: center;
+}
+.clock-cell.rev-1 {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.clock-cell.rev-2 {
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.clock-cell.active {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+  color: var(--text);
+}
+.clock-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 9px;
+  font-size: 11.5px;
+}
+.clock-legend-item {
+  color: var(--faint);
+}
+.clock-legend-item.rev-1 {
+  color: var(--accent);
+}
+.clock-legend-item.rev-2 {
+  color: var(--gold);
+}
