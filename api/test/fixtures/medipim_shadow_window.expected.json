@@ -88,18 +88,6 @@
                 {
                     "candidates": [
                         {
-                            "source": "44",
-                            "value": "340130"
-                        }
-                    ],
-                    "field": "hsCode",
-                    "status": "resolved",
-                    "value": "340130",
-                    "winner": "44"
-                },
-                {
-                    "candidates": [
-                        {
                             "source": "1035",
                             "value": 243
                         },
@@ -168,18 +156,6 @@
                     "status": "needs_review",
                     "value": null,
                     "winner": null
-                },
-                {
-                    "candidates": [
-                        {
-                            "source": "44",
-                            "value": "750 ml"
-                        }
-                    ],
-                    "field": "packageQuantity",
-                    "status": "resolved",
-                    "value": "750 ml",
-                    "winner": "44"
                 },
                 {
                     "candidates": [
@@ -445,18 +421,6 @@
                 {
                     "candidates": [
                         {
-                            "source": "44",
-                            "value": "340130"
-                        }
-                    ],
-                    "field": "hsCode",
-                    "status": "resolved",
-                    "value": "340130",
-                    "winner": "44"
-                },
-                {
-                    "candidates": [
-                        {
                             "source": "1035",
                             "value": 243
                         },
@@ -525,18 +489,6 @@
                     "status": "needs_review",
                     "value": null,
                     "winner": null
-                },
-                {
-                    "candidates": [
-                        {
-                            "source": "44",
-                            "value": "750 ml"
-                        }
-                    ],
-                    "field": "packageQuantity",
-                    "status": "resolved",
-                    "value": "750 ml",
-                    "winner": "44"
                 },
                 {
                     "candidates": [
@@ -802,18 +754,6 @@
                 {
                     "candidates": [
                         {
-                            "source": "44",
-                            "value": "340130"
-                        }
-                    ],
-                    "field": "hsCode",
-                    "status": "resolved",
-                    "value": "340130",
-                    "winner": "44"
-                },
-                {
-                    "candidates": [
-                        {
                             "source": "1035",
                             "value": 243
                         },
@@ -882,18 +822,6 @@
                     "status": "needs_review",
                     "value": null,
                     "winner": null
-                },
-                {
-                    "candidates": [
-                        {
-                            "source": "44",
-                            "value": "750 ml"
-                        }
-                    ],
-                    "field": "packageQuantity",
-                    "status": "resolved",
-                    "value": "750 ml",
-                    "winner": "44"
                 },
                 {
                     "candidates": [
