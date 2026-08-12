@@ -593,7 +593,7 @@ img,video,canvas,svg{max-width:100%;max-height:100%}
   <div class="f-l">01 · The log</div><div class="f-r">08</div>
 </section>
 
-<!-- ============ 09 · SNAPSHOT RULE + GATE ============ -->
+<!-- ============ 09 · WHOLE-RECORD RULE + REVISION GATE ============ -->
 <section class="slide">
   <div class="grid-lines"></div>
   <div class="eyebrow reveal d1">01 · The log</div>
@@ -604,19 +604,26 @@ img,video,canvas,svg{max-width:100%;max-height:100%}
     <div class="cols">
       <div class="col">
         <span class="tag reveal d2">Rule one</span>
-        <div class="h3 reveal d2" style="margin:14px 0 20px">Store the result, never the delta</div>
-        <p class="p reveal d3">A <code style="font-family:var(--font-mono)">patch</code> event does
-        not record "change the weight". It records the <b>complete resulting snapshot</b> of the
-        record after the patch was applied.</p>
-        <div class="callout reveal d4" style="margin-top:28px">
-          <div class="h">Replay never depends on the future</div>
-          <p>If the patch algorithm changes next year, replaying a two-year-old log still produces
-          exactly what it produced then. A stored delta would be reinterpreted by the new code; a
-          stored snapshot cannot be.</p>
+        <div class="h3 reveal d2" style="margin:14px 0 16px">A revision carries the whole record,
+        not the instruction</div>
+        <p class="p reveal d3" style="font-size:21px">The log stays append-only — this is about what
+        one revision <i>event</i> holds. A <code style="font-family:var(--font-mono)">patch</code>
+        stores the <b>complete set of facts the record contributes afterwards</b>, worked out once
+        at write time.</p>
+        <div class="code reveal d4" style="margin-top:18px;font-size:17px;padding:20px 24px;line-height:1.62"><span class="c"># a delta-style event        # what Ingot stores</span>
+%{op: <span class="k">:patch</span>,                %SourceRecordRevised{
+  changes: %{weight_g: <span class="hl">305</span>},   operation: <span class="k">:patch</span>,
+  remove: [{<span class="k">:media</span>, <span class="s">"i2"</span>}]}    claims: [identity  cnk:1234567
+                                        attribute weight_g <span class="hl">305</span>
+<span class="c"># read March 2024 =</span>                     attribute name     <span class="s">"Sun 50"</span>
+<span class="c">#  replay 1..N through</span>                  media     img-1]}
+<span class="c">#  TODAY's merge code</span>        <span class="c"># read March 2024 = one lookup</span>
+</div>
+        <div class="callout reveal d5" style="margin-top:18px">
+          <div class="h">The reader never runs a patch</div>
+          <p>So no later change to merge semantics can alter what an old revision meant. The price:
+          you keep the <b>outcome</b>, never the request.</p>
         </div>
-        <p class="p reveal d5" style="margin-top:26px;font-size:20px">The cost is storage. The
-        benefit is that <b>history means one thing forever</b>, which is the entire premise of an
-        event-sourced master-data system.</p>
       </div>
       <div class="col">
         <span class="tag reveal d3">Rule two</span>
@@ -638,8 +645,8 @@ img,video,canvas,svg{max-width:100%;max-height:100%}
             active record without exactly one identity claim holding at least one code.</td></tr>
         </table>
         <p class="p reveal d6" style="margin-top:24px;font-size:20px">The fingerprint is a SHA-256
-        over the address, operation, claim identities and interval — so <b>idempotency is content-
-        based</b>, not a client-supplied token.</p>
+        over the address, operation, claim identities and interval — so
+        <b>idempotency is content-based</b>, not a client-supplied token.</p>
       </div>
     </div>
   </div>
