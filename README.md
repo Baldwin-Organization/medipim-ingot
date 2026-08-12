@@ -20,14 +20,16 @@ at the repo root.
 | `lib/golden_record_core.ex` | The engine (library): contexts, aggregates, events, resolution, projection. |
 | `lib/ingest/envelope_loader.ex` | Legacy-medipim ingest stage 1 — load + validate `HistoryEnvelope` JSON (contract C). |
 | `lib/ingest/claim_mapping.ex` | Ingest stage 2 — fold listings, canonicalize/partition, build engine claims. |
+| `lib/ingest/parity.ex` | The whole-product parity harness — engine fold vs the applier's snapshot, divergences classified. |
 | `docs/HISTORY_ENVELOPE.md` | The contract-C spec the ingest consumes. |
 | `api/` | The Product API for medipim — Plug+Bandit + Postgres service over the engine (`docs/API.md`). |
 | `viz/` | The guided story demo + time machine (Astro + React; see `viz/README.md`). |
-| `test/` | ExUnit suites (291 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
+| `test/` | ExUnit suites (339 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
 | `golden_record_ddd.exs` | DDD + event-sourced walkthrough — event log, golden as a fold, time travel, conflicts, verdicts. |
 | `golden_record_stress.exs` | Stress tests — multiple products + JSON, code collision → shared, 3-way contradictions, media re-homing. |
 | `golden_record_api.exs` | Customer-facing layer — ATC collections, CNK public identity, the read API. |
 | `golden_record.exs` | The original pre-DDD procedural version (standalone; kept for comparison). |
+| `parity_harness.exs` | Runs the parity harness over a cohort directory (`test/ingest/fixtures/README.md` has the export contract). |
 
 ```sh
 mix test                            # the engine suites
@@ -36,6 +38,8 @@ mix run golden_record_ddd.exs       # the guided tour
 mix run golden_record_stress.exs    # the hard cases
 mix run golden_record_api.exs       # collections, CNK, the read API
 elixir golden_record.exs            # the standalone pre-DDD version
+
+mix run parity_harness.exs test/ingest/fixtures   # whole-product parity over a cohort
 ```
 
 ## Try the API story
