@@ -44,7 +44,7 @@ defmodule CanonicalClaims do
   in batch order, or `{:error, errors}` with `ClaimsValidator`'s per-index findings.
   """
   def to_engine(claims, opts \\ []) do
-    case ClaimsValidator.validate(claims) do
+    case ClaimsValidator.validate(claims, opts) do
       {:ok, _warnings} -> {:ok, to_engine!(claims, opts)}
       {:error, errors} -> {:error, errors}
     end
@@ -56,42 +56,49 @@ defmodule CanonicalClaims do
   """
   def to_engine!(claims, opts \\ []) when is_list(claims) do
     recorded_at = Keyword.get(opts, :recorded_at)
-    Enum.map(claims, &build(&1, recorded_at))
+    registry = Keyword.get(opts, :scheme_registry)
+    Enum.map(claims, &build(&1, recorded_at, registry))
   end
 
   # ── one claim map → one engine claim ────────────────────────────────────────
-  defp build(%{"kind" => "identity", "source" => s, "ref" => ref, "codes" => codes} = m, at) do
-    data = %{ref: ref, codes: Enum.map(codes, &code!/1)} |> put_entity(m)
-    Substrate.claim(s, :identity, data, valid_from(m, at), recorded_at(m, at))
+  defp build(%{"kind" => "identity", "source" => s, "ref" => ref, "codes" => codes} = m, at, registry) do
+    data = %{ref: ref, codes: Enum.map(codes, &code!(&1, registry))} |> put_entity(m)
+    asserted(s, :identity, data, m, at)
   end
 
   # An edge claim (gr-xde): both endpoints are "scheme:value" codes; the relation must be one
   # the registry declares (Relations.parse/1 — a whitelist, never String.to_atom on input).
-  defp build(%{"kind" => "edge", "source" => s, "from" => f, "relation" => r, "to" => t} = m, at) do
-    {:ok, relation} = Relations.parse(r)
-    data = %{from: code!(f), relation: relation, to: code!(t)}
-    Substrate.claim(s, :edge, data, valid_from(m, at), recorded_at(m, at))
+  defp build(
+         %{"kind" => "edge", "source" => s, "from" => f, "relation" => r, "to" => t} = m,
+         at,
+         registry
+       ) do
+    {:ok, relation} = Relations.parse(r, registry)
+    data = %{from: code!(f, registry), relation: relation, to: code!(t, registry)}
+    asserted(s, :edge, data, m, at)
   end
 
   defp build(
          %{"kind" => "attribute", "source" => s, "code" => c, "field" => f, "value" => v} = m,
-         at
+         at,
+         registry
        ) do
-    data = %{code: code!(c), field: f, value: v}
-    Substrate.claim(s, :attribute, data, valid_from(m, at), recorded_at(m, at))
+    data = %{code: code!(c, registry), field: f, value: v}
+    asserted(s, :attribute, data, m, at)
   end
 
   defp build(
          %{"kind" => "media", "source" => s, "asset" => a, "target" => t, "uri" => uri} = m,
-         at
+         at,
+         registry
        ) do
     role = if m["role"] == "primary", do: :primary, else: :secondary
-    data = %{asset: {:dam, a}, target: code!(t), role: role, uri: uri}
-    Substrate.claim(s, :media, data, valid_from(m, at), recorded_at(m, at))
+    data = %{asset: {:dam, a}, target: code!(t, registry), role: role, uri: uri}
+    asserted(s, :media, data, m, at)
   end
 
-  defp build(%{"kind" => "grouping", "source" => s, "code" => c, "product" => p} = m, at) do
-    Substrate.claim(s, :grouping, %{code: code!(c), product: p}, valid_from(m, at), recorded_at(m, at))
+  defp build(%{"kind" => "grouping", "source" => s, "code" => c, "product" => p} = m, at, registry) do
+    asserted(s, :grouping, %{code: code!(c, registry), product: p}, m, at)
   end
 
   # member_of is NOT on the live wire yet (open question 1 in docs/CLAIMS_CONTRACT.md); this is
@@ -99,25 +106,34 @@ defmodule CanonicalClaims do
   # collection name is NOT scheme-folded — it is a collection namespace, not a code scheme.
   defp build(
          %{"kind" => "member_of", "source" => s, "code" => c, "collection" => coll, "member" => member} = m,
-         at
+         at,
+         registry
        ) do
-    data = %{member_code: code!(c), collection: {coll, member}}
-    Substrate.claim(s, :member_of, data, valid_from(m, at), recorded_at(m, at))
+    data = %{member_code: code!(c, registry), collection: {coll, member}}
+    asserted(s, :member_of, data, m, at)
   end
 
   # ── codes: the two directions of "scheme:value" ─────────────────────────────
   @doc ~s(Parse one "scheme:value" string into an engine {scheme, value} code tuple.)
-  def parse_code(raw) when is_binary(raw) do
+  def parse_code(raw), do: parse_code(raw, nil)
+
+  def parse_code(raw, registry) when is_binary(raw) do
     case String.split(raw, ":", parts: 2) do
       [scheme, value] when scheme != "" and value != "" ->
-        {:ok, {CodeRegistry.engine_scheme(scheme), value}}
+        canonical =
+          case registry do
+            %SchemeRegistry{} -> SchemeRegistry.canonical_name(registry, scheme) || scheme
+            nil -> scheme
+          end
+
+        {:ok, {CodeRegistry.engine_scheme(canonical), value}}
 
       _ ->
         {:error, ~s(code must be "scheme:value", got #{inspect(raw)})}
     end
   end
 
-  def parse_code(raw),
+  def parse_code(raw, _registry),
     do: {:error, ~s(code must be a "scheme:value" string, got #{inspect(raw)})}
 
   @doc ~s"""
@@ -135,10 +151,20 @@ defmodule CanonicalClaims do
 
   defp valid_from(%{"valid_from" => raw}, _at) when is_binary(raw), do: Date.from_iso8601!(raw)
   defp valid_from(%{"valid_from" => vf}, _at) when not is_nil(vf), do: vf
+  defp valid_from(_m, %DateTime{} = at), do: DateTime.to_date(at)
   defp valid_from(m, at), do: recorded_at(m, at)
 
-  defp code!(raw) do
-    {:ok, code} = parse_code(raw)
+  defp valid_to(%{"valid_to" => raw}) when is_binary(raw), do: Date.from_iso8601!(raw)
+  defp valid_to(_m), do: nil
+
+  defp asserted(source, kind, data, map, at) do
+    source
+    |> Substrate.claim(kind, data, valid_from(map, at), recorded_at(map, at))
+    |> Map.put(:valid_to, valid_to(map))
+  end
+
+  defp code!(raw, registry) do
+    {:ok, code} = parse_code(raw, registry)
     code
   end
 

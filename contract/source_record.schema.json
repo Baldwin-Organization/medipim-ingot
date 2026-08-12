@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ingot.dev/contract/source_record.schema.json",
+  "title": "Ingot source-record revision",
+  "description": "Body for PUT /v1/source-records/{source}/{ref}/revisions/{revision}. The source, ref, revision, and recorded_at are server-controlled from the route and request time.",
+  "type": "object",
+  "required": ["operation"],
+  "properties": {
+    "operation": {
+      "enum": ["replace", "patch", "withdraw", "reactivate"]
+    },
+    "base_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "valid_to": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "claims.schema.json#/$defs/claim" }
+    },
+    "upsert": {
+      "type": "array",
+      "items": { "$ref": "claims.schema.json#/$defs/claim" }
+    },
+    "remove": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": { "enum": ["attribute", "media", "grouping", "edge"] },
+          "code": { "$ref": "claims.schema.json#/$defs/code" },
+          "field": { "type": "string" },
+          "asset": { "type": "string" },
+          "target": { "$ref": "claims.schema.json#/$defs/code" },
+          "from": { "$ref": "claims.schema.json#/$defs/code" },
+          "relation": { "type": "string" },
+          "to": { "$ref": "claims.schema.json#/$defs/code" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "operation": { "const": "replace" } }
+      },
+      "then": {
+        "required": ["claims"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "patch" } }
+      },
+      "then": {
+        "required": ["base_revision"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "reactivate" } }
+      },
+      "then": {
+        "required": ["base_revision", "claims"]
+      }
+    }
+  ]
+}

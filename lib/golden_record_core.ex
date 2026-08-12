@@ -11,27 +11,71 @@
 defmodule Events do
   defmodule ClaimAsserted do
     @enforce_keys [:source, :kind, :data, :valid_from, :recorded_at]
-    defstruct [:source, :kind, :data, :valid_from, :recorded_at, :order]
+    defstruct [
+      :source,
+      :kind,
+      :data,
+      :valid_from,
+      :valid_to,
+      :recorded_at,
+      :order,
+      :record_ref,
+      :record_revision
+    ]
+  end
+
+  defmodule SourceRecordRevised do
+    @enforce_keys [
+      :source,
+      :ref,
+      :revision,
+      :operation,
+      :active,
+      :claims,
+      :fingerprint,
+      :valid_from,
+      :valid_to,
+      :recorded_at
+    ]
+    defstruct [
+      :source,
+      :ref,
+      :revision,
+      :base_revision,
+      :operation,
+      :active,
+      :claims,
+      :fingerprint,
+      :valid_from,
+      :valid_to,
+      :recorded_at,
+      :order
+    ]
+  end
+
+  defmodule SourceRecordKeyBound do
+    @enforce_keys [:source, :ref, :lane, :key, :recorded_at]
+    defstruct [:source, :ref, :lane, :key, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   defmodule IdentityMinted do
     @enforce_keys [:key, :codes, :recorded_at]
-    defstruct [:key, :codes, :recorded_at, :order]
+    defstruct [:key, :codes, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   defmodule IdentityMembersChanged do
     @enforce_keys [:key, :codes, :recorded_at]
-    defstruct [:key, :codes, :recorded_at, :order]
+    defstruct [:key, :codes, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   defmodule IdentitiesMerged do
     @enforce_keys [:from, :into, :recorded_at]
-    defstruct [:from, :into, :recorded_at, :order]
+    defstruct [:from, :into, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   defmodule IdentitySplit do
     @enforce_keys [:key, :kept_codes, :into, :recorded_at]
-    defstruct [:key, :kept_codes, :into, :recorded_at, :order]
+    defstruct [:key, :kept_codes, :into, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   # The bookend of IdentityMinted: a key whose EVERY contributing listing was retracted (identity
@@ -39,7 +83,7 @@ defmodule Events do
   # before retraction — the notification payload ("SK_3 with cnk:333 was retracted").
   defmodule IdentityRetracted do
     @enforce_keys [:key, :codes, :recorded_at]
-    defstruct [:key, :codes, :recorded_at, :order]
+    defstruct [:key, :codes, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   # External-id continuity: `key` answers to `legacy_id` (a consumer-facing id from a system the
@@ -47,14 +91,14 @@ defmodule Events do
   # across merges/splits is a fold (see the ingest's LegacyIds).
   defmodule LegacyIdAssigned do
     @enforce_keys [:key, :legacy_id, :recorded_at]
-    defstruct [:key, :legacy_id, :recorded_at, :order]
+    defstruct [:key, :legacy_id, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   # subject: {:attr, key, field} | {:merge, [keys]} | {:collision, key} | {:code, {scheme, code}}
   #        | {:split, key}
   defmodule ConflictFlagged do
     @enforce_keys [:subject, :candidates, :recorded_at]
-    defstruct [:subject, :candidates, :recorded_at, :order]
+    defstruct [:subject, :candidates, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   # Four-eyes on merges: one steward ENDORSES a flagged merge of established keys; nothing fuses
@@ -62,14 +106,41 @@ defmodule Events do
   # proposal is replayable state, not UI memory.
   defmodule MergeProposed do
     @enforce_keys [:keys, :by, :recorded_at]
-    defstruct [:keys, :by, :reason, :recorded_at, :order]
+    defstruct [:keys, :by, :reason, :valid_from, :valid_to, :recorded_at, :order]
   end
 
   # decision: {:pick, value} | :rejected | :approved | :shared
   # `reason` is the steward's optional free-text justification, kept in the log.
   defmodule ConflictResolved do
     @enforce_keys [:subject, :decision, :by, :recorded_at]
-    defstruct [:subject, :decision, :by, :reason, :recorded_at, :order]
+    defstruct [:subject, :decision, :by, :reason, :valid_from, :valid_to, :recorded_at, :order]
+  end
+
+  defmodule ReviewCaseOpened do
+    @enforce_keys [
+      :case_id,
+      :subject,
+      :evidence,
+      :evidence_digest,
+      :evidence_offset,
+      :required_approvals,
+      :recorded_at
+    ]
+    defstruct [
+      :case_id,
+      :subject,
+      :evidence,
+      :evidence_digest,
+      :evidence_offset,
+      :required_approvals,
+      :recorded_at,
+      :order
+    ]
+  end
+
+  defmodule ReviewCaseEndorsed do
+    @enforce_keys [:case_id, :principal, :evidence_offset, :recorded_at]
+    defstruct [:case_id, :principal, :evidence_offset, :proposal, :reason, :recorded_at, :order]
   end
 end
 
@@ -203,9 +274,18 @@ defmodule Lanes do
   @doc ~s{Lane atom for a wire entity name ("description" => :description) — never an atom leak.}
   def parse(name), do: Map.fetch(@by_name, name)
 
-  @doc "Lane of one code scheme. `:uuid` is shared (nil); unknown schemes default to :product."
-  def lane_of_scheme(:uuid), do: nil
-  def lane_of_scheme(scheme), do: Map.get(@lane_of, scheme, :product)
+  @doc """
+  Lane of one code scheme. Runtime registry declarations win; built-in schemes remain the
+  compatibility fallback. `:uuid` is shared (nil); undeclared schemes default to :product.
+  """
+  def lane_of_scheme(scheme), do: lane_of_scheme(scheme, nil)
+  def lane_of_scheme(:uuid, _registry), do: nil
+  def lane_of_scheme("uuid", _registry), do: nil
+
+  def lane_of_scheme(scheme, %SchemeRegistry{} = registry),
+    do: SchemeRegistry.lane(registry, scheme) || Map.get(@lane_of, scheme, :product)
+
+  def lane_of_scheme(scheme, nil), do: Map.get(@lane_of, scheme, :product)
 
   @doc "Lane of a surrogate key, by its prefix (\"SUB_3\" => :substance)."
   def lane_of_key(key) do
@@ -217,9 +297,11 @@ defmodule Lanes do
   falling back to an explicit `entity:` in the claim data, else :product. Codes from two lanes
   in one claim are a contract violation — `{:error, {:mixed_lanes, lanes}}`.
   """
-  def of_claim(%Events.ClaimAsserted{kind: :identity, data: data}) do
+  def of_claim(claim), do: of_claim(claim, nil)
+
+  def of_claim(%Events.ClaimAsserted{kind: :identity, data: data}, registry) do
     data.codes
-    |> Enum.map(fn {scheme, _} -> lane_of_scheme(scheme) end)
+    |> Enum.map(fn {scheme, _} -> lane_of_scheme(scheme, registry) end)
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> case do
@@ -230,8 +312,21 @@ defmodule Lanes do
   end
 
   @doc "The identity claims of one lane (mixed-lane claims belong to no lane)."
-  def identity_claims(claims, lane),
-    do: Enum.filter(claims, &(&1.kind == :identity and of_claim(&1) == {:ok, lane}))
+  def identity_claims(claims, lane), do: identity_claims(claims, lane, nil)
+
+  def identity_claims(claims, lane, registry),
+    do: Enum.filter(claims, &(&1.kind == :identity and of_claim(&1, registry) == {:ok, lane}))
+
+  @doc false
+  def identity_evidence(claims, lane, registry \\ nil) do
+    Enum.filter(claims, fn
+      %Events.ClaimAsserted{kind: :identity_evidence, data: %{left: {left, _}, right: {right, _}}} ->
+        lane_of_scheme(left, registry) == lane and lane_of_scheme(right, registry) == lane
+
+      _ ->
+        false
+    end)
+  end
 
   @doc "Partition a ledger's members map by each key's lane."
   def partition_members(members) do
@@ -246,15 +341,21 @@ defmodule Lanes do
   Cluster + reconcile each lane's identity claims against that lane's own ledger — the per-lane
   fold. Returns `{identity_events, ledgers}`; events come out in lane order (product first).
   """
-  def reconcile(live_claims, shared, ledgers, at) do
+  def reconcile(live_claims, shared, ledgers, at), do: reconcile(live_claims, shared, ledgers, at, nil)
+
+  def reconcile(live_claims, shared, ledgers, at, registry),
+    do: reconcile(live_claims, shared, ledgers, at, registry, %{})
+
+  def reconcile(live_claims, shared, ledgers, at, registry, preferred) do
     Enum.flat_map_reduce(@lanes, ledgers, fn lane, acc ->
-      case identity_claims(live_claims, lane) do
+      case identity_claims(live_claims, lane, registry) do
         [] ->
           {[], acc}
 
         claims ->
-          clusters = Cluster.variants(claims, shared)
-          events = IdentityLedger.decide(acc[lane], {:reconcile, clusters, shared, at})
+          clusters = Cluster.variants(claims ++ identity_evidence(live_claims, lane, registry), shared)
+          lane_preferred = Map.take(preferred, clusters)
+          events = IdentityLedger.decide(acc[lane], {:reconcile, clusters, shared, lane_preferred, at})
           {events, Map.put(acc, lane, Enum.reduce(events, acc[lane], &IdentityLedger.evolve(&2, &1)))}
       end
     end)
@@ -284,19 +385,40 @@ defmodule Relations do
   def signatures, do: @signatures
 
   @doc ~s{Relation atom for a wire name ("contains" => :contains) — never an atom leak.}
-  def parse(name), do: Map.fetch(@by_name, name)
+  def parse(name), do: parse(name, nil)
+
+  def parse(name, %SchemeRegistry{} = registry) do
+    case SchemeRegistry.relation(registry, name) do
+      {:ok, %{name: relation}} -> {:ok, relation}
+      :error -> Map.fetch(@by_name, name)
+    end
+  end
+
+  def parse(name, nil), do: Map.fetch(@by_name, name)
 
   @doc "Do an edge's endpoints satisfy the relation's lane signature? (`:uuid` is lane-neutral.)"
-  def valid_signature?(relation, {from_scheme, _}, to) do
-    case Map.fetch(@signatures, relation) do
+  def valid_signature?(relation, from, to), do: valid_signature?(relation, from, to, nil)
+
+  def valid_signature?(relation, {from_scheme, _}, to, registry) do
+    case signature(relation, registry) do
       :error ->
         false
 
       {:ok, {froms, tos}} ->
-        lane_ok?(Lanes.lane_of_scheme(from_scheme), froms) and
-          (tos == nil or (match?({_, _}, to) and lane_ok?(Lanes.lane_of_scheme(elem(to, 0)), tos)))
+        lane_ok?(Lanes.lane_of_scheme(from_scheme, registry), froms) and
+          (tos == nil or
+             (match?({_, _}, to) and lane_ok?(Lanes.lane_of_scheme(elem(to, 0), registry), tos)))
     end
   end
+
+  defp signature(relation, %SchemeRegistry{} = registry) do
+    case SchemeRegistry.relation(registry, relation) do
+      {:ok, %{from: from, to: to}} -> {:ok, {from, to}}
+      :error -> Map.fetch(@signatures, relation)
+    end
+  end
+
+  defp signature(relation, nil), do: Map.fetch(@signatures, relation)
 
   defp lane_ok?(nil, _allowed), do: true
   defp lane_ok?(lane, allowed), do: lane in allowed
@@ -348,6 +470,10 @@ defmodule Substrate do
     }
 
   defp normalize(:identity, %{codes: codes} = d), do: %{d | codes: Enum.map(codes, &Codes.canonicalize/1)}
+
+  defp normalize(:identity_evidence, %{left: left, right: right} = d),
+    do: %{d | left: Codes.canonicalize(left), right: Codes.canonicalize(right)}
+
   defp normalize(:grouping, %{code: c} = d), do: %{d | code: Codes.canonicalize(c)}
   defp normalize(:attribute, %{code: c} = d), do: %{d | code: Codes.canonicalize(c)}
   defp normalize(:media, %{target: t} = d), do: %{d | target: Codes.canonicalize(t)}
@@ -366,7 +492,14 @@ defmodule Substrate do
   # Public (@doc false) so the API's fold-state can maintain the current view INCREMENTALLY —
   # one Map.put per claim instead of re-grouping the whole log per projection.
   @doc false
+  def slot(%ClaimAsserted{source: s, record_ref: ref} = claim) when not is_nil(ref),
+    do: {s, :record, ref, local_slot(claim)}
+
   def slot(%ClaimAsserted{source: s, kind: :identity, data: %{ref: r}}), do: {s, :identity, r}
+
+  def slot(%ClaimAsserted{source: s, kind: :identity_evidence, data: %{left: left, right: right}}),
+    do: {s, :identity_evidence, left, right}
+
   def slot(%ClaimAsserted{source: s, kind: :grouping, data: %{code: c}}), do: {s, :grouping, c}
   def slot(%ClaimAsserted{source: s, kind: :attribute, data: %{code: c, field: f}}), do: {s, :attr, c, f}
   def slot(%ClaimAsserted{source: s, kind: :media, data: %{asset: a, target: t}}), do: {s, :media, a, t}
@@ -376,6 +509,22 @@ defmodule Substrate do
 
   def slot(%ClaimAsserted{source: s, kind: :member_of, data: %{member_code: m, collection: c}}),
     do: {s, :member_of, m, c}
+
+  @doc false
+  def local_slot(%ClaimAsserted{kind: :identity}), do: :identity
+
+  def local_slot(%ClaimAsserted{kind: :identity_evidence, data: %{left: left, right: right}}),
+    do: {:identity_evidence, left, right}
+
+  def local_slot(%ClaimAsserted{kind: :grouping, data: %{code: c}}), do: {:grouping, c}
+  def local_slot(%ClaimAsserted{kind: :attribute, data: %{code: c, field: f}}), do: {:attr, c, f}
+  def local_slot(%ClaimAsserted{kind: :media, data: %{asset: a, target: t}}), do: {:media, a, t}
+
+  def local_slot(%ClaimAsserted{kind: :edge, data: %{from: f, relation: r, to: t}}),
+    do: {:edge, f, r, t}
+
+  def local_slot(%ClaimAsserted{kind: :member_of, data: %{member_code: m, collection: c}}),
+    do: {:member_of, m, c}
 
   def current(claims) do
     claims
@@ -420,9 +569,13 @@ defmodule Survivorship do
     rank = rank_fun(policy)
 
     latest =
-      entries |> Enum.group_by(& &1.source) |> Enum.map(fn {_s, es} -> Enum.max_by(es, & &1.order) end)
+      entries
+      |> Enum.group_by(& &1.source)
+      |> Enum.map(fn {_source, source_entries} ->
+        Enum.max_by(source_entries, &{&1.order, &1.value})
+      end)
 
-    ranked = Enum.sort_by(latest, fn e -> rank.(dimension, e.source) end)
+    ranked = Enum.sort_by(latest, fn e -> {rank.(dimension, e.source), e.source, e.value} end)
     winner = hd(ranked)
     top = rank.(dimension, winner.source)
 
@@ -432,10 +585,12 @@ defmodule Survivorship do
       |> Enum.map(& &1.value)
       |> Enum.uniq()
 
+    unresolved? = length(distinct) > 1
+
     %{
-      value: winner.value,
-      winner: winner.source,
-      status: if(length(distinct) > 1, do: :needs_review, else: :resolved),
+      value: if(unresolved?, do: nil, else: winner.value),
+      winner: if(unresolved?, do: nil, else: winner.source),
+      status: if(unresolved?, do: :needs_review, else: :resolved),
       candidates: Enum.map(ranked, &{&1.source, &1.value})
     }
   end
@@ -451,14 +606,175 @@ defmodule Survivorship do
 end
 
 defmodule Cluster do
-  @doc "Group identity codes into variant clusters. `shared` codes are members but never bridge."
-  def variants(live_claims, shared \\ MapSet.new()) do
-    live_claims
-    |> Enum.filter(&(&1.kind == :identity))
-    |> Enum.map(fn c -> MapSet.new(c.data.codes) end)
-    |> Enum.reject(&(MapSet.size(&1) == 0))
-    |> connected_components(shared)
+  @doc """
+  Group identity codes into variant clusters.
+
+  `shared` codes are members but never bridge. By default a bridge is also held when joining its
+  two components would put different values of a unique scheme (national ids, ISBNs) into one
+  identity. Pass `guard?: false` only for explicit before/after comparison tooling.
+  """
+  def variants(live_claims, shared \\ MapSet.new())
+  def variants(live_claims, shared), do: variants(live_claims, shared, [])
+
+  def variants(live_claims, shared, opts) do
+    sets =
+      live_claims
+      |> Enum.filter(&(&1.kind == :identity))
+      |> Enum.map(fn c -> MapSet.new(c.data.codes) end)
+      |> Enum.reject(&(MapSet.size(&1) == 0))
+      |> Enum.uniq()
+      |> Enum.sort_by(&code_signature/1)
+
+    if Keyword.get(opts, :guard?, true) do
+      unique_scheme? = Keyword.get(opts, :unique_scheme?, &CodeRegistry.national_grade?/1)
+      trusted_sources = Keyword.get(opts, :trusted_sources, MapSet.new([:steward]))
+
+      evidence =
+        Enum.filter(live_claims, fn claim ->
+          claim.kind == :identity_evidence and MapSet.member?(trusted_sources, claim.source)
+        end)
+
+      distinct_pairs =
+        for %{data: %{relation: :distinct, left: left, right: right}} <- evidence,
+            into: MapSet.new(),
+            do: code_pair(left, right)
+
+      same_pairs =
+        for %{data: %{relation: :same, left: left, right: right}} <- evidence,
+            do: code_pair(left, right)
+
+      guarded_components(sets, shared, unique_scheme?, distinct_pairs, same_pairs)
+    else
+      sets |> connected_components(shared) |> Enum.sort_by(&Enum.min/1)
+    end
+  end
+
+  defp guarded_components([], _shared, _unique_scheme?, _distinct_pairs, _same_pairs), do: []
+
+  defp guarded_components(sets, shared, unique_scheme?, distinct_pairs, same_pairs) do
+    indexed = Enum.with_index(sets)
+    parent = Map.new(indexed, fn {_set, index} -> {index, index} end)
+    codes = Map.new(indexed, fn {set, index} -> {index, set} end)
+
+    allowed_pairs =
+      sets
+      |> allowed_unique_pairs(unique_scheme?)
+      |> MapSet.union(MapSet.new(same_pairs))
+
+    {parent, codes} =
+      sets
+      |> candidate_edges(shared, unique_scheme?, same_pairs)
+      |> Enum.reduce({parent, codes}, fn {_kind, _bridge, left, right, override?}, {parents, by_root} ->
+        left_root = root(parents, left)
+        right_root = root(parents, right)
+
+        if left_root == right_root do
+          {parents, by_root}
+        else
+          merged = MapSet.union(Map.fetch!(by_root, left_root), Map.fetch!(by_root, right_root))
+
+          if distinct_conflict?(merged, distinct_pairs) or
+               (not override? and unique_conflict?(merged, unique_scheme?, allowed_pairs)) do
+            {parents, by_root}
+          else
+            keep = min(left_root, right_root)
+            drop = max(left_root, right_root)
+
+            {
+              Map.put(parents, drop, keep),
+              by_root |> Map.put(keep, merged) |> Map.delete(drop)
+            }
+          end
+        end
+      end)
+
+    parent
+    |> Map.keys()
+    |> Enum.map(&root(parent, &1))
+    |> Enum.uniq()
+    |> Enum.map(&Map.fetch!(codes, &1))
     |> Enum.sort_by(&Enum.min/1)
+  end
+
+  # Adjacent nodes are sufficient to connect every ordinary code group, while sorting by its
+  # unique-id signature lets compatible records (e.g. the same CNK) converge on either side of a
+  # held contradiction. The order is data-derived, never input-derived.
+  defp candidate_edges(sets, shared, unique_scheme?, same_pairs) do
+    by_code =
+      sets
+      |> Enum.with_index()
+      |> Enum.reduce(%{}, fn {set, index}, acc ->
+        Enum.reduce(set, acc, fn code, by_code -> Map.update(by_code, code, [index], &[index | &1]) end)
+      end)
+
+    ordinary =
+      by_code
+      |> Enum.reject(fn {code, _indexes} -> MapSet.member?(shared, code) end)
+      |> Enum.flat_map(fn {code, indexes} ->
+        indexes
+        |> Enum.sort_by(fn index ->
+          set = Enum.at(sets, index)
+          {unique_signature(set, unique_scheme?), code_signature(set)}
+        end)
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.map(fn [left, right] -> {0, code, left, right, false} end)
+      end)
+
+    explicit_same =
+      for {left_code, right_code} = pair <- same_pairs,
+          left <- Map.get(by_code, left_code, []),
+          right <- Map.get(by_code, right_code, []),
+          left != right,
+          do: {1, pair, left, right, true}
+
+    Enum.sort(ordinary ++ explicit_same)
+  end
+
+  defp unique_conflict?(codes, unique_scheme?, allowed_pairs) do
+    codes
+    |> Enum.filter(fn {scheme, _value} -> unique_scheme?.(scheme) end)
+    |> Enum.group_by(&elem(&1, 0))
+    |> Enum.any?(fn {_scheme, scheme_codes} ->
+      scheme_codes
+      |> Enum.sort()
+      |> pairs()
+      |> Enum.any?(&(not MapSet.member?(allowed_pairs, &1)))
+    end)
+  end
+
+  # Co-asserting two unique ids in ONE source record is explicit positive evidence that they are
+  # aliases for the same thing. A later bridge may reuse that pair without being held.
+  defp allowed_unique_pairs(sets, unique_scheme?) do
+    for set <- sets,
+        {_scheme, scheme_codes} <-
+          set
+          |> Enum.filter(fn {scheme, _} -> unique_scheme?.(scheme) end)
+          |> Enum.group_by(&elem(&1, 0)),
+        pair <- scheme_codes |> Enum.sort() |> pairs(),
+        into: MapSet.new(),
+        do: pair
+  end
+
+  defp pairs(values) do
+    for {left, index} <- Enum.with_index(values), right <- Enum.drop(values, index + 1), do: {left, right}
+  end
+
+  defp distinct_conflict?(codes, distinct_pairs),
+    do: Enum.any?(distinct_pairs, fn {left, right} -> left in codes and right in codes end)
+
+  defp code_pair(left, right) when left <= right, do: {left, right}
+  defp code_pair(left, right), do: {right, left}
+
+  defp unique_signature(codes, unique_scheme?),
+    do: codes |> Enum.filter(fn {scheme, _} -> unique_scheme?.(scheme) end) |> Enum.sort()
+
+  defp code_signature(codes), do: Enum.sort(codes)
+
+  defp root(parent, node) do
+    case Map.fetch!(parent, node) do
+      ^node -> node
+      next -> root(parent, next)
+    end
   end
 
   defp connected_components(sets, shared) do
@@ -474,31 +790,39 @@ end
 
 defmodule IdentityLedger do
   @enforce_keys [:members, :next]
-  defstruct [:members, :next, prefix: "SK"]
+  defstruct [:members, :next, prefix: "SK", next_by_prefix: %{}]
 
   # The prefix is the lane qualifier (gr-2a8): :product ledgers keep the legacy "SK", other
   # lanes mint under their own prefix ("SUB_1", "DSC_1", …) — see Lanes.prefix/1.
-  def new(prefix \\ "SK"), do: %__MODULE__{members: %{}, next: 1, prefix: prefix}
+  def new(prefix \\ "SK"),
+    do: %__MODULE__{members: %{}, next: 1, prefix: prefix, next_by_prefix: %{prefix => 1}}
 
   def decide(state, {:reconcile, clusters, at}), do: decide(state, {:reconcile, clusters, MapSet.new(), at})
 
-  def decide(%__MODULE__{members: members, next: next, prefix: prefix}, {:reconcile, clusters, shared, at}) do
-    members |> reconcile(next, prefix, clusters, shared) |> then(&build_events(members, &1, at))
+  def decide(state, {:reconcile, clusters, shared, at}),
+    do: decide(state, {:reconcile, clusters, shared, %{}, at})
+
+  def decide(
+        %__MODULE__{members: members, next: next, prefix: prefix},
+        {:reconcile, clusters, shared, preferred, at}
+      ) do
+    members
+    |> reconcile(next, prefix, clusters, shared, preferred)
+    |> then(&build_events(members, &1, at))
   end
 
   def evolve(%__MODULE__{} = s, %Events.IdentityMinted{key: k, codes: c}),
-    do: %{s | members: Map.put(s.members, k, c), next: max(s.next, key_num(k) + 1)}
+    do: advance(%{s | members: Map.put(s.members, k, c)}, k)
 
   def evolve(%__MODULE__{} = s, %Events.IdentityMembersChanged{key: k, codes: c}),
-    do: %{s | members: Map.put(s.members, k, c)}
+    do: advance(%{s | members: Map.put(s.members, k, c)}, k)
 
   def evolve(%__MODULE__{} = s, %Events.IdentitiesMerged{from: from, into: into}),
     do: %{s | members: Map.drop(s.members, from -- [into])}
 
   def evolve(%__MODULE__{} = s, %Events.IdentitySplit{key: k, kept_codes: kept, into: into}) do
     members = Enum.reduce(into, Map.put(s.members, k, kept), fn {nk, c}, m -> Map.put(m, nk, c) end)
-    next = Enum.reduce(into, s.next, fn {nk, _}, n -> max(n, key_num(nk) + 1) end)
-    %{s | members: members, next: next}
+    Enum.reduce(into, %{s | members: members}, fn {nk, _}, state -> advance(state, nk) end)
   end
 
   def evolve(%__MODULE__{} = s, %Events.IdentityRetracted{key: k}),
@@ -508,24 +832,41 @@ defmodule IdentityLedger do
   def evolve(%__MODULE__{} = s, %Events.MergeProposed{}), do: s
   def evolve(%__MODULE__{} = s, %Events.ConflictResolved{}), do: s
   def evolve(%__MODULE__{} = s, %Events.ClaimAsserted{}), do: s
+  def evolve(%__MODULE__{} = s, %Events.SourceRecordRevised{}), do: s
+  def evolve(%__MODULE__{} = s, %Events.SourceRecordKeyBound{}), do: s
+  def evolve(%__MODULE__{} = s, %Events.ReviewCaseOpened{}), do: s
+  def evolve(%__MODULE__{} = s, %Events.ReviewCaseEndorsed{}), do: s
   def evolve(%__MODULE__{} = s, %Events.LegacyIdAssigned{}), do: s
 
-  defp reconcile(old_members, next, prefix, clusters, shared) do
+  defp reconcile(old_members, next, prefix, clusters, shared, preferred) do
     original = old_members
+    conflicts = cluster_conflicts(clusters, shared)
+    non_bridging = MapSet.union(shared, MapSet.new(conflicts, &elem(&1, 0)))
 
-    {assigns, members, next, minted, proposals} =
-      Enum.reduce(clusters, {[], old_members, next, [], []}, fn cluster, {assigns, m, n, minted, proposals} ->
-        case overlapping_keys(original, cluster, shared) do
+    {assigns, members, next, minted, reactivated, proposals} =
+      Enum.reduce(clusters, {[], old_members, next, [], [], []}, fn cluster,
+                                                                    {assigns, m, n, minted, reactivated,
+                                                                     proposals} ->
+        candidates =
+          (overlapping_keys(original, cluster, non_bridging) ++ Map.get(preferred, cluster, []))
+          |> Enum.uniq()
+          |> Enum.sort()
+
+        case candidates do
           [] ->
             key = "#{prefix}_#{n}"
-            {[{cluster, key} | assigns], Map.put(m, key, cluster), n + 1, [key | minted], proposals}
+
+            {[{cluster, key} | assigns], Map.put(m, key, cluster), n + 1, [key | minted], reactivated,
+             proposals}
 
           [key] ->
-            {[{cluster, key} | assigns], Map.put(m, key, cluster), n, minted, proposals}
+            reactivated = if Map.has_key?(original, key), do: reactivated, else: [key | reactivated]
+
+            {[{cluster, key} | assigns], Map.put(m, key, cluster), n, minted, reactivated, proposals}
 
           many ->
             # GATED: never auto-merge established keys — propose for steward review.
-            {assigns, m, n, minted, [{Enum.sort(many), cluster} | proposals]}
+            {assigns, m, n, minted, reactivated, [{Enum.sort(many), cluster} | proposals]}
         end
       end)
 
@@ -553,6 +894,27 @@ defmodule IdentityLedger do
           {Map.put(m, key, keep_cluster), n, [{key, Enum.reverse(into)} | split]}
       end)
 
+    held_proposals =
+      conflicts
+      |> Enum.flat_map(fn {_code, carriers} ->
+        keys =
+          carriers
+          |> Enum.map(fn carrier ->
+            Enum.find_value(assigns, fn {cluster, key} -> if cluster == carrier, do: key end)
+          end)
+          |> Enum.reject(&is_nil/1)
+          |> Enum.uniq()
+          |> Enum.sort()
+
+        if length(keys) > 1 do
+          [{keys, Enum.reduce(carriers, &MapSet.union/2)}]
+        else
+          []
+        end
+      end)
+      |> Enum.uniq_by(&elem(&1, 0))
+
+    proposals = Enum.reverse(proposals) ++ held_proposals
     assigned_keys = MapSet.new(assigns, fn {_cluster, key} -> key end)
     proposed_keys = for {keys, _cluster} <- proposals, key <- keys, into: MapSet.new(), do: key
     touched = MapSet.union(assigned_keys, proposed_keys)
@@ -560,8 +922,10 @@ defmodule IdentityLedger do
 
     %{
       minted: Enum.reverse(minted),
+      reactivated: Enum.reverse(reactivated),
       split: Enum.reverse(split),
-      proposals: Enum.reverse(proposals),
+      proposals: proposals,
+      conflicts: conflicts,
       retracted: Enum.sort(retracted),
       members: Map.drop(members, retracted)
     }
@@ -570,6 +934,11 @@ defmodule IdentityLedger do
   defp build_events(old_members, outcome, at) do
     mints =
       Enum.map(outcome.minted, &%Events.IdentityMinted{key: &1, codes: outcome.members[&1], recorded_at: at})
+
+    reactivations =
+      Enum.map(outcome.reactivated, fn key ->
+        %Events.IdentityMembersChanged{key: key, codes: outcome.members[key], recorded_at: at}
+      end)
 
     splits =
       Enum.map(outcome.split, fn {key, into} ->
@@ -586,12 +955,23 @@ defmodule IdentityLedger do
         %Events.ConflictFlagged{subject: {:merge, keys}, candidates: cluster, recorded_at: at}
       end)
 
+    identity_conflicts =
+      Enum.map(outcome.conflicts, fn {code, carriers} ->
+        %Events.ConflictFlagged{
+          subject: {:identity_conflict, code},
+          candidates: Enum.map(carriers, &Enum.sort/1),
+          recorded_at: at
+        }
+      end)
+
     retractions =
       Enum.map(outcome.retracted, fn key ->
         %Events.IdentityRetracted{key: key, codes: Map.get(old_members, key, MapSet.new()), recorded_at: at}
       end)
 
-    mints ++ splits ++ proposals ++ retractions ++ keeps_changed(old_members, outcome, at)
+    mints ++
+      reactivations ++
+      splits ++ proposals ++ identity_conflicts ++ retractions ++ keeps_changed(old_members, outcome, at)
   end
 
   defp keeps_changed(old_members, outcome, at) do
@@ -614,10 +994,40 @@ defmodule IdentityLedger do
     |> Enum.sort()
   end
 
+  defp cluster_conflicts(clusters, shared) do
+    clusters
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {cluster, index}, carriers ->
+      Enum.reduce(cluster, carriers, fn code, acc ->
+        if MapSet.member?(shared, code),
+          do: acc,
+          else: Map.update(acc, code, [{index, cluster}], &[{index, cluster} | &1])
+      end)
+    end)
+    |> Enum.flat_map(fn {code, carriers} ->
+      carriers = carriers |> Enum.uniq_by(&elem(&1, 0)) |> Enum.sort_by(&elem(&1, 0))
+      if length(carriers) > 1, do: [{code, Enum.map(carriers, &elem(&1, 1))}], else: []
+    end)
+    |> Enum.sort_by(&elem(&1, 0))
+  end
+
   defp has_spine?(cluster), do: Enum.any?(cluster, fn {scheme, _} -> scheme == :gtin end)
 
   # Works for any lane prefix ("SK_7", "SUB_3", "DSC_12" — the trailing integer is the counter).
   defp key_num(key), do: key |> String.split("_") |> List.last() |> String.to_integer()
+
+  defp key_prefix(key), do: key |> String.split("_") |> Enum.drop(-1) |> Enum.join("_")
+
+  defp advance(%__MODULE__{} = s, key) do
+    next = key_num(key) + 1
+    prefix = key_prefix(key)
+
+    %{
+      s
+      | next: max(s.next, next),
+        next_by_prefix: Map.update(Map.get(s, :next_by_prefix, %{}), prefix, next, &max(&1, next))
+    }
+  end
 end
 
 defmodule Stewardship do
@@ -741,20 +1151,39 @@ defmodule Stewardship do
 
   @doc "The raw fuse — emits the merge events. The steward surface reaches it via `endorse_merge/6`."
   def approve_merge(members, keys, by, at, reason \\ nil) do
-    [survivor | _] = Enum.sort(keys)
+    keys = Enum.sort(keys)
+    [survivor | _] = keys
     union = keys |> Enum.map(&Map.get(members, &1, MapSet.new())) |> Enum.reduce(&MapSet.union/2)
 
-    [
-      %Events.IdentitiesMerged{from: Enum.sort(keys), into: survivor, recorded_at: at},
-      %Events.IdentityMembersChanged{key: survivor, codes: union, recorded_at: at},
-      %Events.ConflictResolved{
-        subject: {:merge, Enum.sort(keys)},
-        decision: :approved,
-        by: by,
-        reason: reason,
-        recorded_at: at
-      }
-    ]
+    standing_same_evidence =
+      for {left_key, index} <- Enum.with_index(keys),
+          right_key <- Enum.drop(keys, index + 1),
+          {scheme, _} = left <- Map.get(members, left_key, MapSet.new()),
+          {^scheme, _} = right <- Map.get(members, right_key, MapSet.new()),
+          left != right,
+          CodeRegistry.national_grade?(scheme),
+          uniq: true do
+        Substrate.claim(
+          :steward,
+          :identity_evidence,
+          %{relation: :same, left: left, right: right, by: by, reason: reason},
+          at,
+          at
+        )
+      end
+
+    standing_same_evidence ++
+      [
+        %Events.IdentitiesMerged{from: keys, into: survivor, recorded_at: at},
+        %Events.IdentityMembersChanged{key: survivor, codes: union, recorded_at: at},
+        %Events.ConflictResolved{
+          subject: {:merge, keys},
+          decision: :approved,
+          by: by,
+          reason: reason,
+          recorded_at: at
+        }
+      ]
   end
 
   @doc """
@@ -1055,34 +1484,229 @@ defmodule Catalog do
         base = Survivorship.decide(:product, entries, priority)
         # Contested: a single variant pointing at >1 product is a code collision — surface it.
         if entries |> Enum.map(& &1.value) |> Enum.uniq() |> length() > 1,
-          do: %{base | status: :needs_review},
+          do: %{base | value: nil, winner: nil, status: :needs_review},
           else: base
     end
   end
 end
 
 defmodule History do
-  @far_future ~D[9999-12-31]
+  @doc """
+  Project what was known at `known_at` about the world on `effective_at`.
 
-  def project_bitemporal(log, as_known, effective_on, priority) do
-    upto = Enum.filter(log, &(Date.compare(&1.recorded_at, as_known) != :gt))
-    members = Enum.reduce(upto, IdentityLedger.new(), &IdentityLedger.evolve(&2, &1)).members
-    overrides = overrides_from(upto)
-
-    claims =
-      for(%Events.ClaimAsserted{} = e <- upto, do: e)
-      |> Substrate.current()
-      |> Enum.filter(&(Date.compare(&1.valid_from, effective_on) != :gt))
-
-    Catalog.project(members, claims, priority, overrides)
+  Selection happens before identity reconciliation: future or bounded revisions cannot hide the
+  prior applicable record, and a late correction changes only queries made after it was recorded.
+  Effective intervals are half-open: `valid_from <= date < valid_to`.
+  """
+  def project_bitemporal(log, known_at, effective_at, priority) do
+    state = state_bitemporal(log, known_at, effective_at)
+    Catalog.project(state.members, state.claims, priority, state.overrides)
   end
 
-  def project_as_of(log, date, priority), do: project_bitemporal(log, date, @far_future, priority)
+  @doc false
+  def state_bitemporal(log, known_at, %Date{} = effective_at) do
+    known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
+
+    if Enum.any?(known, &match?(%Events.SourceRecordRevised{}, &1)) do
+      source_record_state(known, known_at, effective_at)
+    else
+      legacy_state(known, effective_at)
+    end
+  end
+
+  defp source_record_state(known, known_at, effective_at) do
+    boundaries =
+      known
+      |> Enum.flat_map(fn event ->
+        [Map.get(event, :valid_from), Map.get(event, :valid_to)]
+      end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(fn
+        %Date{} = date -> date
+        other -> Bitemporal.effective_date(other)
+      end)
+      |> Enum.filter(&(Date.compare(&1, effective_at) != :gt))
+      |> Kernel.++([effective_at])
+      |> Enum.uniq()
+      |> Enum.sort(Date)
+
+    ledger =
+      Enum.reduce(boundaries, IdentityLedger.new(), fn boundary, ledger ->
+        claims = claims_bitemporal(known, known_at, boundary)
+        ledger = apply_merges(ledger, known, boundary)
+
+        reconcile_temporal(
+          ledger,
+          claims,
+          preferred(known, claims, boundary),
+          shared(known, claims, boundary),
+          boundary
+        )
+      end)
+
+    %{
+      members: ledger.members,
+      claims: claims_bitemporal(known, known_at, effective_at),
+      overrides: overrides_from(Enum.filter(known, &Bitemporal.effective?(&1, effective_at)))
+    }
+  end
+
+  defp legacy_state(known, effective_at) do
+    applicable = Enum.filter(known, &Bitemporal.effective?(&1, effective_at))
+
+    claims =
+      applicable
+      |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1))
+      |> Substrate.current()
+
+    %{
+      members: Enum.reduce(applicable, IdentityLedger.new(), &IdentityLedger.evolve(&2, &1)).members,
+      claims: claims,
+      overrides: overrides_from(applicable)
+    }
+  end
+
+  @doc false
+  def claims_bitemporal(log, known_at, %Date{} = effective_at) do
+    known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
+
+    standalone =
+      known
+      |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1))
+      |> Enum.filter(&Bitemporal.effective?(&1, effective_at))
+      |> Substrate.current()
+
+    source =
+      known
+      |> selected_records(effective_at)
+      |> Enum.flat_map(fn
+        %Events.SourceRecordRevised{active: false} ->
+          []
+
+        revision ->
+          Enum.map(revision.claims, fn claim ->
+            %{
+              claim
+              | valid_from: revision.valid_from,
+                valid_to: revision.valid_to,
+                recorded_at: revision.recorded_at,
+                order: revision.order
+            }
+          end)
+      end)
+
+    Substrate.current(standalone ++ source)
+  end
+
+  def project_as_of(log, date, priority), do: project_bitemporal(log, date, date, priority)
 
   def project_valid_as_of(log, valid_date, priority),
-    do: project_bitemporal(log, @far_future, valid_date, priority)
+    do: project_bitemporal(log, DateTime.utc_now(), valid_date, priority)
 
-  def now(log, priority), do: project_bitemporal(log, @far_future, @far_future, priority)
+  def now(log, priority), do: project_bitemporal(log, DateTime.utc_now(), Date.utc_today(), priority)
+
+  defp selected_records(known, effective_at) do
+    known
+    |> Enum.filter(&match?(%Events.SourceRecordRevised{}, &1))
+    |> Enum.filter(&Bitemporal.effective?(&1, effective_at))
+    |> Enum.group_by(&{&1.source, &1.ref})
+    |> Enum.map(fn {_record, revisions} ->
+      Enum.max_by(revisions, &{Bitemporal.sort_key(&1.recorded_at), &1.order || -1})
+    end)
+  end
+
+  defp reconcile_temporal(ledger, claims, preferred, shared, at) do
+    {events, _ledgers} =
+      Enum.flat_map_reduce(Lanes.lanes(), FinerClaims.ledgers_from(ledger), fn lane, ledgers ->
+        identity = Lanes.identity_claims(claims, lane)
+        evidence = Lanes.identity_evidence(claims, lane)
+        clusters = Cluster.variants(identity ++ evidence, shared)
+        lane_preferred = Map.take(preferred, clusters)
+
+        events =
+          IdentityLedger.decide(
+            ledgers[lane],
+            {:reconcile, clusters, shared, lane_preferred, at}
+          )
+
+        next = Enum.reduce(events, ledgers[lane], &IdentityLedger.evolve(&2, &1))
+        {events, Map.put(ledgers, lane, next)}
+      end)
+
+    Enum.reduce(events, ledger, &IdentityLedger.evolve(&2, &1))
+  end
+
+  defp preferred(known, claims, effective_at) do
+    records =
+      known
+      |> selected_records(effective_at)
+      |> Enum.filter(& &1.active)
+      |> Map.new(&{{&1.source, &1.ref}, &1})
+
+    redirects =
+      for %Events.IdentitiesMerged{} = merge <- known,
+          Bitemporal.effective?(merge, effective_at),
+          from <- merge.from -- [merge.into],
+          into: %{},
+          do: {from, merge.into}
+
+    clusters =
+      for lane <- Lanes.lanes(),
+          identity = Lanes.identity_claims(claims, lane),
+          cluster <-
+            Cluster.variants(
+              identity ++ Lanes.identity_evidence(claims, lane),
+              shared(known, claims, effective_at)
+            ),
+          do: cluster
+
+    known
+    |> Enum.filter(&match?(%Events.SourceRecordKeyBound{}, &1))
+    |> Enum.reduce(%{}, fn binding, acc ->
+      with %Events.SourceRecordRevised{} = record <- Map.get(records, {binding.source, binding.ref}),
+           identity when not is_nil(identity) <- Enum.find(record.claims, &(&1.kind == :identity)),
+           codes = MapSet.new(identity.data.codes),
+           cluster when not is_nil(cluster) <- Enum.find(clusters, &MapSet.subset?(codes, &1)) do
+        key = follow_redirect(binding.key, redirects)
+        Map.update(acc, cluster, [key], &[key | &1])
+      else
+        _ -> acc
+      end
+    end)
+  end
+
+  defp shared(known, claims, effective_at) do
+    declared =
+      for %Events.ConflictResolved{subject: {:code, code}, decision: :shared} = decision <- known,
+          Bitemporal.effective?(decision, effective_at),
+          into: MapSet.new(),
+          do: code
+
+    restricted =
+      for claim <- claims,
+          claim.kind == :identity,
+          code <- claim.data.codes,
+          ClaimMapping.shared?(code),
+          into: MapSet.new(),
+          do: code
+
+    MapSet.union(declared, restricted)
+  end
+
+  defp apply_merges(ledger, known, effective_at) do
+    known
+    |> Enum.filter(&match?(%Events.IdentitiesMerged{}, &1))
+    |> Enum.filter(&Bitemporal.effective?(&1, effective_at))
+    |> Enum.sort_by(&(&1.order || -1))
+    |> Enum.reduce(ledger, &IdentityLedger.evolve(&2, &1))
+  end
+
+  defp follow_redirect(key, redirects) do
+    case Map.get(redirects, key) do
+      nil -> key
+      next -> follow_redirect(next, redirects)
+    end
+  end
 
   def lineage(log, key) do
     Enum.filter(log, fn
@@ -1195,20 +1819,48 @@ defmodule PublicId do
 
   @doc "Canonical public id of `scheme` for `key` (by source priority), plus its aliases."
   def canonical(scheme, key, log, priority) do
-    codes = ledger(log).members |> Map.get(key, MapSet.new()) |> Enum.filter(fn {s, _} -> s == scheme end)
+    codes =
+      ledger(log).members
+      |> Map.get(key, MapSet.new())
+      |> Enum.filter(fn {s, _} -> s == scheme end)
+      |> Enum.sort()
 
     case codes do
       [] ->
         nil
 
-      _ ->
+      [code] ->
+        %{canonical: code, aliases: []}
+
+      _multiple ->
         idclaims = identity_claims(log)
 
         entries =
           for code <- codes, src <- sources_of(code, idclaims), do: %{source: src, value: code, order: 0}
 
-        winner = if entries == [], do: hd(codes), else: Survivorship.decide(scheme, entries, priority).value
-        %{canonical: winner, aliases: List.delete(codes, winner)}
+        case entries do
+          [] ->
+            %{
+              canonical: nil,
+              aliases: codes,
+              status: :needs_review,
+              candidates: Enum.map(codes, &{nil, &1})
+            }
+
+          _ ->
+            decision = Survivorship.decide(scheme, entries, priority)
+
+            if decision.status == :needs_review do
+              %{
+                canonical: nil,
+                aliases: codes,
+                status: :needs_review,
+                candidates: decision.candidates
+              }
+            else
+              %{canonical: decision.value, aliases: List.delete(codes, decision.value)}
+            end
+        end
     end
   end
 

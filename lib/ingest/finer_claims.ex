@@ -146,23 +146,23 @@ defmodule FinerClaims do
 
   Returns `%{events: [dated identity events, order: nil], ledger: %IdentityLedger{}}`.
   """
-  def fold_forward(claims, shared, ledger \\ IdentityLedger.new(), dates \\ nil) do
+  def fold_forward(claims, shared, ledger \\ IdentityLedger.new(), dates \\ nil, preferred \\ %{}) do
     dates =
       dates ||
         claims
         |> Enum.filter(&(&1.kind == :identity))
         |> Enum.map(& &1.recorded_at)
         |> Enum.uniq()
-        |> Enum.sort(Date)
+        |> Enum.sort(&(Bitemporal.compare(&1, &2) != :gt))
 
     {events_rev, ledger} =
       Enum.reduce(dates, {[], ledger}, fn d, {acc, prev} ->
         live =
           claims
-          |> Enum.filter(&(Date.compare(&1.recorded_at, d) != :gt))
+          |> Enum.filter(&(Bitemporal.compare(&1.recorded_at, d) != :gt))
           |> Substrate.current()
 
-        {events, _ledgers} = Lanes.reconcile(live, shared, ledgers_from(prev), d)
+        {events, _ledgers} = Lanes.reconcile(live, shared, ledgers_from(prev), d, nil, preferred)
         {Enum.reverse(events, acc), Enum.reduce(events, prev, &IdentityLedger.evolve(&2, &1))}
       end)
 
@@ -292,13 +292,22 @@ defmodule FinerClaims do
 
   defp to_date(epoch) when is_integer(epoch), do: epoch |> DateTime.from_unix!() |> DateTime.to_date()
 
-  defp ledgers_from(%IdentityLedger{} = ledger) do
+  @doc false
+  def ledgers_from(%IdentityLedger{} = ledger) do
     members_by_lane = Lanes.partition_members(ledger.members)
 
     Map.new(Lanes.lanes(), fn lane ->
       members = Map.fetch!(members_by_lane, lane)
       prefix = Lanes.prefix(lane)
-      {lane, %IdentityLedger{members: members, next: next_key(members), prefix: prefix}}
+      next = Map.get(Map.get(ledger, :next_by_prefix, %{}), prefix, next_key(members))
+
+      {lane,
+       %IdentityLedger{
+         members: members,
+         next: next,
+         prefix: prefix,
+         next_by_prefix: Map.get(ledger, :next_by_prefix, %{})
+       }}
     end)
   end
 

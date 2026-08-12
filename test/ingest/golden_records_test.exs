@@ -80,16 +80,34 @@ defmodule GoldenRecordsTest do
       assert variant.cnk == %{canonical: Codes.canonicalize({:cnk, "3612173"}), aliases: []}
     end
 
-    test "resolved attributes reflect the fixture's real attribute events", %{gr: gr} do
+    test "attributes reflect the fixture without inventing winners for conflicting names", %{gr: gr} do
       [%{variants: [variant]}] = gr.records
 
       # A resolved, single-source field straight from the fixture's import_871 events.
       assert %{value: "cosmetics", status: :resolved} = field(variant, "apbCategory")
       assert %{value: "active", status: :resolved} = field(variant, "status")
 
-      # A localized field — claim_mapping keys it "<field>:<locale>" — carries the real name.
-      assert field(variant, "name:fr").value == "Aderma Primalba Gel Lavant 2en1 750ml"
-      assert field(variant, "name:nl").value == "Aderma Primalba Wasgel 2in1 750ml"
+      # The two equally-ranked sources disagree only in spelling/spacing. Keep both candidates and
+      # publish no arbitrary canonical spelling until policy or a steward resolves it.
+      assert %{
+               value: nil,
+               winner: nil,
+               status: :needs_review,
+               candidates: [
+                 {"1034", "Aderma Primalba Gel Lavant 2en1 750ml"},
+                 {"1035", "ADERMA PRIMALBA GEL LAVANT 2EN1 750 ML"}
+               ]
+             } = field(variant, "name:fr")
+
+      assert %{
+               value: nil,
+               winner: nil,
+               status: :needs_review,
+               candidates: [
+                 {"1034", "Aderma Primalba Wasgel 2in1 750ml"},
+                 {"1035", "ADERMA PRIMALBA WASGEL 2IN1 750 ML"}
+               ]
+             } = field(variant, "name:nl")
     end
 
     test "media carries the depicted media-lane records via :depicts edges (gr-kek)", %{gr: gr} do

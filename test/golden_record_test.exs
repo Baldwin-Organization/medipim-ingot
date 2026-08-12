@@ -141,6 +141,13 @@ defmodule EngineTest do
     {c ++ res, fold(res, IdentityLedger.new())}
   end
 
+  defp steward_merge(log, ledger, at \\ @d2) do
+    keys = ledger.members |> Map.keys() |> Enum.sort()
+    start = log |> Enum.map(& &1.order) |> Enum.max(fn -> 0 end) |> Kernel.+(1)
+    {events, _next} = Stewardship.approve_merge(ledger.members, keys, :steward, at) |> stamp(start)
+    {log ++ events, fold(events, ledger)}
+  end
+
   defp variants(golden), do: Enum.flat_map(golden, & &1.variants)
   defp find_variant(golden, code), do: Enum.find(variants(golden), &(code in &1.codes))
   defp attr(variant, field), do: variant.attributes |> List.keyfind(field, 0) |> elem(1)
@@ -448,11 +455,21 @@ defmodule EngineTest do
 
   describe "CNK identity-grade (canonical id + aliases)" do
     test "two sources, two CNKs, same product -> canonical by priority + alias, resolvable by either" do
-      {log, _} =
+      {log, ledger} =
         resolve([
           claim(:manufacturer, :identity, %{ref: "A", codes: [{:cnk, "0111"}, {:gtin, "5001"}]}, @d1, @d1),
           claim(:supplier, :identity, %{ref: "B", codes: [{:cnk, "0222"}, {:gtin, "5001"}]}, @d1, @d1)
         ])
+
+      # The automatic guard keeps these apart because the shared barcode contradicts the two CNKs.
+      # A reviewed merge is the explicit positive evidence that allows both ids on one key.
+      assert map_size(ledger.members) == 2
+      {log, ledger} = steward_merge(log, ledger)
+
+      live = log |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1)) |> Substrate.current()
+      replay = IdentityLedger.decide(ledger, {:reconcile, Cluster.variants(live), @d2})
+      refute Enum.any?(replay, &match?(%Events.IdentitySplit{}, &1))
+      assert map_size(fold(replay, ledger).members) == 1
 
       key = Api.resolve_key(log, {:gtin, "5001"})
       result = PublicId.canonical(:cnk, key, log, @priority)
@@ -460,6 +477,35 @@ defmodule EngineTest do
       assert result.aliases == [{:cnk, "0222"}]
       # a customer can look up by the alias and still land on the same product
       assert Api.resolve_key(log, {:cnk, "0222"}) == key
+    end
+
+    test "equally trusted sources with different CNKs expose candidates, not a fake canonical id" do
+      claims = [
+        claim(:source_b, :identity, %{ref: "B", codes: [{:cnk, "0222"}, {:gtin, "5001"}]}, @d1, @d1),
+        claim(:source_a, :identity, %{ref: "A", codes: [{:cnk, "0111"}, {:gtin, "5001"}]}, @d1, @d1)
+      ]
+
+      unresolved = Priority.new(%{}, [])
+
+      decisions =
+        for ordered <- [claims, Enum.reverse(claims)] do
+          {log, ledger} = resolve(ordered)
+          {log, _ledger} = steward_merge(log, ledger)
+          key = Api.resolve_key(log, {:gtin, "5001"})
+          PublicId.canonical(:cnk, key, log, unresolved)
+        end
+
+      expected = %{
+        canonical: nil,
+        aliases: [{:cnk, "0111"}, {:cnk, "0222"}],
+        status: :needs_review,
+        candidates: [
+          {:source_a, {:cnk, "0111"}},
+          {:source_b, {:cnk, "0222"}}
+        ]
+      }
+
+      assert decisions == [expected, expected]
     end
 
     test "no identity-grade collision in the normal case" do
