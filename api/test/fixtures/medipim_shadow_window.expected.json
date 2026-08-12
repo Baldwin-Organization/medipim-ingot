@@ -1,0 +1,1090 @@
+{
+    "normalization": {
+        "excluded": [
+            "product and media surrogate keys (engine-specific formats)",
+            "legacy_id (the HTTP route selector, not a PHP projection field)",
+            "known_at/effective_at/merged_from (API transport metadata)",
+            "media role (not exposed by the HTTP product view)"
+        ],
+        "included": [
+            "active identity status",
+            "sorted canonical product codes",
+            "sorted attribute field/value/winner/status/candidates",
+            "sorted media source/URI multiset and count"
+        ],
+        "product_selection": "variant carrying cnk:3612173 (medipim legacy entity 422156)"
+    },
+    "phases": {
+        "baseline": {
+            "attributes": [
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "human"
+                        }
+                    ],
+                    "field": "allowedSpecies",
+                    "status": "resolved",
+                    "value": "human",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "cosmetics"
+                        }
+                    ],
+                    "field": "apbCategory",
+                    "status": "resolved",
+                    "value": "cosmetics",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "room"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "room"
+                        }
+                    ],
+                    "field": "conservation",
+                    "status": "resolved",
+                    "value": "room",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 60
+                        },
+                        {
+                            "source": "44",
+                            "value": 60
+                        }
+                    ],
+                    "field": "depth",
+                    "status": "resolved",
+                    "value": 60,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": true
+                        }
+                    ],
+                    "field": "expires",
+                    "status": "resolved",
+                    "value": true,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "340130"
+                        }
+                    ],
+                    "field": "hsCode",
+                    "status": "resolved",
+                    "value": "340130",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 243
+                        },
+                        {
+                            "source": "44",
+                            "value": 243
+                        }
+                    ],
+                    "field": "length",
+                    "status": "resolved",
+                    "value": 243,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": false
+                        }
+                    ],
+                    "field": "limitedExport",
+                    "status": "resolved",
+                    "value": false,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "manufacturerPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Aderma Primalba Gel Lavant 2en1 750ml"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "ADERMA PRIMALBA GEL LAVANT 2EN1 750 ML"
+                        }
+                    ],
+                    "field": "name:fr",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Aderma Primalba Wasgel 2in1 750ml"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "ADERMA PRIMALBA WASGEL 2IN1 750 ML"
+                        }
+                    ],
+                    "field": "name:nl",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "750 ml"
+                        }
+                    ],
+                    "field": "packageQuantity",
+                    "status": "resolved",
+                    "value": "750 ml",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "pharmacistPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 1450
+                        },
+                        {
+                            "source": "1035",
+                            "value": 1650
+                        }
+                    ],
+                    "field": "publicPrice",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé"
+                        }
+                    ],
+                    "field": "seoName:fr",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid"
+                        }
+                    ],
+                    "field": "seoName:nl",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "active"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "active"
+                        }
+                    ],
+                    "field": "status",
+                    "status": "resolved",
+                    "value": "active",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 2100
+                        },
+                        {
+                            "source": "1035",
+                            "value": 2100
+                        }
+                    ],
+                    "field": "tax",
+                    "status": "resolved",
+                    "value": 2100,
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 0
+                        }
+                    ],
+                    "field": "tradeInRefundValue",
+                    "status": "resolved",
+                    "value": 0,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 859
+                        },
+                        {
+                            "source": "44",
+                            "value": 780
+                        }
+                    ],
+                    "field": "weight",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 111
+                        },
+                        {
+                            "source": "44",
+                            "value": 110
+                        }
+                    ],
+                    "field": "width",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                }
+            ],
+            "codes": [
+                "cnk:3612173",
+                "gtin:03282770114577",
+                "gtin:03282770146004"
+            ],
+            "media": [
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                }
+            ],
+            "media_count": 13,
+            "status": "active"
+        },
+        "late_arriving_correction": {
+            "attributes": [
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "human"
+                        }
+                    ],
+                    "field": "allowedSpecies",
+                    "status": "resolved",
+                    "value": "human",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "cosmetics"
+                        }
+                    ],
+                    "field": "apbCategory",
+                    "status": "resolved",
+                    "value": "cosmetics",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "room"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "room"
+                        }
+                    ],
+                    "field": "conservation",
+                    "status": "resolved",
+                    "value": "room",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 60
+                        },
+                        {
+                            "source": "44",
+                            "value": 60
+                        }
+                    ],
+                    "field": "depth",
+                    "status": "resolved",
+                    "value": 60,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": true
+                        }
+                    ],
+                    "field": "expires",
+                    "status": "resolved",
+                    "value": true,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "340130"
+                        }
+                    ],
+                    "field": "hsCode",
+                    "status": "resolved",
+                    "value": "340130",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 243
+                        },
+                        {
+                            "source": "44",
+                            "value": 243
+                        }
+                    ],
+                    "field": "length",
+                    "status": "resolved",
+                    "value": 243,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": false
+                        }
+                    ],
+                    "field": "limitedExport",
+                    "status": "resolved",
+                    "value": false,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "manufacturerPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Correction arrivée en retard"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "Nom rafraîchi"
+                        }
+                    ],
+                    "field": "name:fr",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Aderma Primalba Wasgel 2in1 750ml"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "ADERMA PRIMALBA WASGEL 2IN1 750 ML"
+                        }
+                    ],
+                    "field": "name:nl",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "750 ml"
+                        }
+                    ],
+                    "field": "packageQuantity",
+                    "status": "resolved",
+                    "value": "750 ml",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "pharmacistPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 1450
+                        },
+                        {
+                            "source": "1035",
+                            "value": 1650
+                        }
+                    ],
+                    "field": "publicPrice",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé"
+                        }
+                    ],
+                    "field": "seoName:fr",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid"
+                        }
+                    ],
+                    "field": "seoName:nl",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "active"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "active"
+                        }
+                    ],
+                    "field": "status",
+                    "status": "resolved",
+                    "value": "active",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 2100
+                        },
+                        {
+                            "source": "1035",
+                            "value": 2100
+                        }
+                    ],
+                    "field": "tax",
+                    "status": "resolved",
+                    "value": 2100,
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 0
+                        }
+                    ],
+                    "field": "tradeInRefundValue",
+                    "status": "resolved",
+                    "value": 0,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 859
+                        },
+                        {
+                            "source": "44",
+                            "value": 780
+                        }
+                    ],
+                    "field": "weight",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 111
+                        },
+                        {
+                            "source": "44",
+                            "value": 110
+                        }
+                    ],
+                    "field": "width",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                }
+            ],
+            "codes": [
+                "cnk:3612173",
+                "gtin:03282770114577",
+                "gtin:03282770146004"
+            ],
+            "media": [
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                }
+            ],
+            "media_count": 13,
+            "status": "active"
+        },
+        "source_refresh": {
+            "attributes": [
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "human"
+                        }
+                    ],
+                    "field": "allowedSpecies",
+                    "status": "resolved",
+                    "value": "human",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "cosmetics"
+                        }
+                    ],
+                    "field": "apbCategory",
+                    "status": "resolved",
+                    "value": "cosmetics",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "room"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "room"
+                        }
+                    ],
+                    "field": "conservation",
+                    "status": "resolved",
+                    "value": "room",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 60
+                        },
+                        {
+                            "source": "44",
+                            "value": 60
+                        }
+                    ],
+                    "field": "depth",
+                    "status": "resolved",
+                    "value": 60,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": true
+                        }
+                    ],
+                    "field": "expires",
+                    "status": "resolved",
+                    "value": true,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "340130"
+                        }
+                    ],
+                    "field": "hsCode",
+                    "status": "resolved",
+                    "value": "340130",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 243
+                        },
+                        {
+                            "source": "44",
+                            "value": 243
+                        }
+                    ],
+                    "field": "length",
+                    "status": "resolved",
+                    "value": 243,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": false
+                        }
+                    ],
+                    "field": "limitedExport",
+                    "status": "resolved",
+                    "value": false,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "manufacturerPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Nom rafraîchi"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "Nom rafraîchi"
+                        }
+                    ],
+                    "field": "name:fr",
+                    "status": "resolved",
+                    "value": "Nom rafraîchi",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "Aderma Primalba Wasgel 2in1 750ml"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "ADERMA PRIMALBA WASGEL 2IN1 750 ML"
+                        }
+                    ],
+                    "field": "name:nl",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "750 ml"
+                        }
+                    ],
+                    "field": "packageQuantity",
+                    "status": "resolved",
+                    "value": "750 ml",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 941
+                        }
+                    ],
+                    "field": "pharmacistPrice",
+                    "status": "resolved",
+                    "value": 941,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 1450
+                        },
+                        {
+                            "source": "1035",
+                            "value": 1650
+                        }
+                    ],
+                    "field": "publicPrice",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé"
+                        }
+                    ],
+                    "field": "seoName:fr",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA GEL LAVANT 2 EN 1 BEBE CORPS ET CHEVEUX - Peaux fragiles du bébé",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "44",
+                            "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid"
+                        }
+                    ],
+                    "field": "seoName:nl",
+                    "status": "resolved",
+                    "value": "A-DERMA - PRIMALBA 2-IN-1 BABY WASGEL VOOR LICHAAM EN HAAR -  Kwetsbare babyhuid",
+                    "winner": "44"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": "active"
+                        },
+                        {
+                            "source": "1035",
+                            "value": "active"
+                        }
+                    ],
+                    "field": "status",
+                    "status": "resolved",
+                    "value": "active",
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1034",
+                            "value": 2100
+                        },
+                        {
+                            "source": "1035",
+                            "value": 2100
+                        }
+                    ],
+                    "field": "tax",
+                    "status": "resolved",
+                    "value": 2100,
+                    "winner": "1034"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 0
+                        }
+                    ],
+                    "field": "tradeInRefundValue",
+                    "status": "resolved",
+                    "value": 0,
+                    "winner": "1035"
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 859
+                        },
+                        {
+                            "source": "44",
+                            "value": 780
+                        }
+                    ],
+                    "field": "weight",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                },
+                {
+                    "candidates": [
+                        {
+                            "source": "1035",
+                            "value": 111
+                        },
+                        {
+                            "source": "44",
+                            "value": 110
+                        }
+                    ],
+                    "field": "width",
+                    "status": "needs_review",
+                    "value": null,
+                    "winner": null
+                }
+            ],
+            "codes": [
+                "cnk:3612173",
+                "gtin:03282770114577",
+                "gtin:03282770146004"
+            ],
+            "media": [
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                },
+                {
+                    "source": "medipim-be",
+                    "uri": null
+                }
+            ],
+            "media_count": 13,
+            "status": "active"
+        }
+    }
+}

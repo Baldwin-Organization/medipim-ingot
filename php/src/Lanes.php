@@ -164,7 +164,13 @@ final class Lanes
             if ($claims === []) {
                 continue;
             }
-            $clusters = Cluster::variants($claims, $shared);
+            $evidence = array_values(array_filter(
+                $liveClaims,
+                static fn (array $claim): bool => ($claim['kind'] ?? null) === 'identity_evidence'
+                    && self::laneOfScheme($claim['data']['left'][0]) === $lane
+                    && self::laneOfScheme($claim['data']['right'][0]) === $lane,
+            ));
+            $clusters = Cluster::variants(array_merge($claims, $evidence), $shared);
             $laneEvents = IdentityLedger::decide($ledgers[$lane], ['reconcile', $clusters, $shared, $at]);
             $state = $ledgers[$lane];
             foreach ($laneEvents as $e) {

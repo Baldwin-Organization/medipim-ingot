@@ -53,7 +53,7 @@ final class Survivorship
      * Decide one dimension from its entries ([{source, value, order}, ...]).
      *
      * @param list<array{source: string, value: mixed, order: int}> $entries
-     * @return array{value: mixed, winner: string, status: string, candidates: list<array{0: string, 1: mixed}>}
+     * @return array{value: mixed, winner: ?string, status: string, candidates: list<array{0: ?string, 1: mixed}>}
      */
     public static function decide(string $dimension, array $entries, Priority|callable $policy): array
     {
@@ -63,7 +63,12 @@ final class Survivorship
         $latestBySource = [];
         foreach ($entries as $e) {
             $src = $e['source'] ?? '';
-            if (!isset($latestBySource[$src]) || $e['order'] > $latestBySource[$src]['order']) {
+            $previous = $latestBySource[$src] ?? null;
+            if (
+                $previous === null
+                || $e['order'] > $previous['order']
+                || ($e['order'] === $previous['order'] && strcmp(self::valueKey($e['value']), self::valueKey($previous['value'])) > 0)
+            ) {
                 $latestBySource[$src] = $e;
             }
         }
@@ -77,17 +82,23 @@ final class Survivorship
         // A Priority (back-compat) or an injected fn(dimension, source): int|float.
         $rank = self::rankFn($policy);
 
-        // Stable sort by rank — usort is not stable, so carry the original index as a tie-break.
+        // Rank first, then source/value as deterministic tie-breaks. An unresolved answer must be
+        // byte-identical when the same claims arrive in another order.
         $indexed = [];
-        foreach ($latest as $i => $e) {
-            $indexed[] = [$rank($dimension, $e['source']), $i, $e];
+        foreach ($latest as $e) {
+            $indexed[] = [$rank($dimension, $e['source']), (string) ($e['source'] ?? ''), self::valueKey($e['value']), $e];
         }
         usort($indexed, static function (array $a, array $b): int {
             $r = self::compareRank($a[0], $b[0]);
+            if ($r !== 0) {
+                return $r;
+            }
 
-            return $r !== 0 ? $r : ($a[1] <=> $b[1]);
+            $r = strcmp($a[1], $b[1]);
+
+            return $r !== 0 ? $r : strcmp($a[2], $b[2]);
         });
-        $ranked = array_map(static fn (array $row): array => $row[2], $indexed);
+        $ranked = array_map(static fn (array $row): array => $row[3], $indexed);
 
         $winner = $ranked[0];
         $top = $rank($dimension, $winner['source']);
@@ -100,11 +111,12 @@ final class Survivorship
             }
         }
         $distinctUnique = self::uniqueValues($distinct);
+        $unresolved = count($distinctUnique) > 1;
 
         return [
-            'value' => $winner['value'],
-            'winner' => $winner['source'],
-            'status' => count($distinctUnique) > 1 ? 'needs_review' : 'resolved',
+            'value' => $unresolved ? null : $winner['value'],
+            'winner' => $unresolved ? null : $winner['source'],
+            'status' => $unresolved ? 'needs_review' : 'resolved',
             'candidates' => array_map(
                 static fn (array $e): array => [$e['source'], $e['value']],
                 $ranked

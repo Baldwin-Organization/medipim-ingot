@@ -109,6 +109,9 @@ final class IdentityLedger
     private static function reconcile(array $oldMembers, int $next, string $prefix, array $clusters, array $shared): array
     {
         $original = $oldMembers;
+        $conflicts = self::clusterConflicts($clusters, $shared);
+        $heldCodes = Sets::of(array_map(static fn (array $conflict): array => $conflict[0], $conflicts));
+        $nonBridging = Sets::union($shared, $heldCodes);
 
         // Pass 1 — place each cluster: mint (no overlap), extend (one key), or propose (many keys).
         // assigns/minted/proposals are PREPENDED in Elixir; we append then reverse to match order.
@@ -118,7 +121,7 @@ final class IdentityLedger
         $proposals = [];   // list of [sortedKeys, cluster] (reversed at end)
 
         foreach ($clusters as $cluster) {
-            $keys = self::overlappingKeys($original, $cluster, $shared);
+            $keys = self::overlappingKeys($original, $cluster, $nonBridging);
 
             if ($keys === []) {
                 $key = $prefix.'_'.$next;
@@ -181,6 +184,38 @@ final class IdentityLedger
             $split[] = [$key, $into];
         }
 
+        $heldProposals = [];
+        $seenHeldKeys = [];
+        foreach ($conflicts as [$_code, $carriers]) {
+            $keys = [];
+            foreach ($carriers as $carrier) {
+                foreach ($assigns as [$cluster, $key]) {
+                    if (self::sameSet($cluster, $carrier)) {
+                        $keys[] = $key;
+                        break;
+                    }
+                }
+            }
+            $keys = array_values(array_unique($keys));
+            sort($keys, SORT_STRING);
+            if (count($keys) < 2) {
+                continue;
+            }
+
+            $keySignature = implode("\x1f", $keys);
+            if (isset($seenHeldKeys[$keySignature])) {
+                continue;
+            }
+            $seenHeldKeys[$keySignature] = true;
+
+            $candidate = [];
+            foreach ($carriers as $carrier) {
+                $candidate = Sets::union($candidate, $carrier);
+            }
+            $heldProposals[] = [$keys, $candidate];
+        }
+        $proposals = array_merge($proposals, $heldProposals);
+
         $assignedKeys = [];
         foreach ($assigns as [$_cluster, $key]) {
             $assignedKeys[$key] = true;
@@ -205,6 +240,7 @@ final class IdentityLedger
             'minted' => $minted,
             'split' => $split,
             'proposals' => $proposals,
+            'conflicts' => $conflicts,
             'retracted' => $retracted,
             'members' => $members,
         ];
@@ -236,6 +272,11 @@ final class IdentityLedger
 
         foreach ($outcome['proposals'] as [$keys, $cluster]) {
             $events[] = Events::conflictFlagged(['merge', $keys], $cluster, $at);
+        }
+
+        foreach ($outcome['conflicts'] as [$code, $carriers]) {
+            $candidates = array_map(static fn (array $carrier): array => array_values($carrier), $carriers);
+            $events[] = Events::conflictFlagged(['identity_conflict', $code], $candidates, $at);
         }
 
         foreach ($outcome['retracted'] as $key) {
@@ -304,6 +345,37 @@ final class IdentityLedger
         sort($keys, SORT_STRING);
 
         return $keys;
+    }
+
+    /**
+     * A non-shared code present in multiple guarded clusters is the bridge that was held.
+     *
+     * @param list<array<string, array{0: string, 1: string}>> $clusters
+     * @param array<string, array{0: string, 1: string}> $shared
+     * @return list<array{0: array{0: string, 1: string}, 1: list<array<string, array{0: string, 1: string}>>}>
+     */
+    private static function clusterConflicts(array $clusters, array $shared): array
+    {
+        $byCode = [];
+        foreach ($clusters as $index => $cluster) {
+            foreach ($cluster as $key => $code) {
+                if (!isset($shared[$key])) {
+                    $byCode[$key]['code'] = $code;
+                    $byCode[$key]['carriers'][$index] = $cluster;
+                }
+            }
+        }
+        ksort($byCode, SORT_STRING);
+
+        $out = [];
+        foreach ($byCode as $entry) {
+            $carriers = array_values($entry['carriers']);
+            if (count($carriers) > 1) {
+                $out[] = [$entry['code'], $carriers];
+            }
+        }
+
+        return $out;
     }
 
     /**

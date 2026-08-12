@@ -14,6 +14,69 @@ namespace Ingot;
 final class Stewardship
 {
     /**
+     * Reviewed merge override. Besides the merge events, persist standing `same` evidence for
+     * every conflicting national-id pair so a later replay does not immediately split the keys.
+     *
+     * @param array<string, array<string, array{0: string, 1: string}>> $members
+     * @param list<string> $keys
+     * @return list<array<string,mixed>>
+     */
+    public static function approveMerge(
+        array $members,
+        array $keys,
+        string $by,
+        mixed $at,
+        ?string $reason = null,
+    ): array {
+        sort($keys, SORT_STRING);
+        $survivor = $keys[0];
+        $union = [];
+        foreach ($keys as $key) {
+            $union = Sets::union($union, $members[$key] ?? []);
+        }
+
+        $evidence = [];
+        $seen = [];
+        foreach ($keys as $leftIndex => $leftKey) {
+            foreach (array_slice($keys, $leftIndex + 1) as $rightKey) {
+                foreach ($members[$leftKey] ?? [] as $left) {
+                    foreach ($members[$rightKey] ?? [] as $right) {
+                        if (
+                            $left[0] !== $right[0]
+                            || $left === $right
+                            || !CodeRegistry::nationalGrade($left[0])
+                        ) {
+                            continue;
+                        }
+
+                        if (Sets::compareCodes($left, $right) > 0) {
+                            [$left, $right] = [$right, $left];
+                        }
+                        $pairKey = Codes::key($left)."\x1e".Codes::key($right);
+                        if (isset($seen[$pairKey])) {
+                            continue;
+                        }
+                        $seen[$pairKey] = true;
+                        $evidence[] = Substrate::claim('steward', 'identity_evidence', [
+                            'relation' => 'same',
+                            'left' => $left,
+                            'right' => $right,
+                            'by' => $by,
+                            'reason' => $reason,
+                        ], $at, $at);
+                    }
+                }
+            }
+        }
+
+        return array_merge($evidence, [
+            Events::identitiesMerged($keys, $survivor, $at),
+            Events::identityMembersChanged($survivor, $union, $at),
+            Events::conflictResolved(['merge', $keys], 'approved', $by, $at, $reason),
+        ]);
+    }
+
+    /**
      * Flag SOURCE WITHDRAWALS: a source retracted its listing (codes: []) but the key
      * survives under other sources.
      *
