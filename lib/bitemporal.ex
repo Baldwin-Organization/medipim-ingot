@@ -3,12 +3,22 @@ defmodule Bitemporal do
 
   def known?(event, known_at), do: compare(Map.fetch!(event, :recorded_at), known_at) != :gt
 
+  # Temporals reach here as Date, DateTime or unix seconds — the backfill carries contract-C
+  # unix-second stamps, the live wire carries ISO dates. Every other function in this module
+  # already normalises through effective_date/1; this one used to compare raw, so a backfilled
+  # claim raised FunctionClauseError inside Date.compare/2 the moment anything asked for it
+  # bitemporally.
   def effective?(event, %Date{} = effective_at) do
-    from = Map.get(event, :valid_from) || effective_date(Map.fetch!(event, :recorded_at))
+    from =
+      case Map.get(event, :valid_from) do
+        nil -> effective_date(Map.fetch!(event, :recorded_at))
+        value -> effective_date(value)
+      end
+
     until_date = Map.get(event, :valid_to)
 
     Date.compare(from, effective_at) != :gt and
-      (is_nil(until_date) or Date.compare(effective_at, until_date) == :lt)
+      (is_nil(until_date) or Date.compare(effective_at, effective_date(until_date)) == :lt)
   end
 
   def compare(left, right), do: DateTime.compare(to_datetime(left), to_datetime(right))

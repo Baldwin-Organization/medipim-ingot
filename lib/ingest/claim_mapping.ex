@@ -94,6 +94,7 @@ defmodule ClaimMapping do
     do: canonical(envelopes, fold_raw(envelopes))
 
   defp canonical(envelopes, folded) do
+    periods = listing_periods(envelopes)
     listing_codes = listing_codes(folded)
     entity_codes = union_by_entity(listing_codes)
 
@@ -112,15 +113,20 @@ defmodule ClaimMapping do
     # would let stamp/1's tie-break (and primary/1's pick among equals) drift between runs/versions.
     ordered = Enum.sort_by(listing_codes, fn {k, _set} -> k end)
 
+    # One identity claim PER PERIOD, not one per listing. A code that was attached and later
+    # removed keeps an interval saying so, instead of silently never having existed — see
+    # listing_periods/1 and docs/CLAIM_MAPPING_SPEC.md.
     identity =
-      for {{e, s} = k, set} <- ordered do
+      for {{e, s}, periods} <- Enum.sort_by(periods, fn {k, _} -> k end),
+          period <- periods do
         %{
           "kind" => "identity",
           "source" => s,
           "ref" => "#{e}:#{s}",
-          "codes" => set |> Enum.sort() |> Enum.map(&CanonicalClaims.code_string/1),
-          "valid_from" => folded[k].last_at,
-          "recorded_at" => folded[k].last_at
+          "codes" => period.codes |> Enum.sort() |> Enum.map(&CanonicalClaims.code_string/1),
+          "valid_from" => period.from,
+          "valid_to" => period.to,
+          "recorded_at" => period.from
         }
       end
 
@@ -247,6 +253,45 @@ defmodule ClaimMapping do
     |> Enum.reject(fn {_k, set} -> MapSet.size(set) == 0 end)
     |> Map.new()
   end
+
+  @doc """
+  Per-listing code-set PERIODS — `%{{entity, source} => [%{from:, to:, codes:}]}`.
+
+  `fold_raw/1` answers "which codes does this listing carry now" and throws the history away. That
+  is wrong for any code that can move: a barcode transferred to another pack leaves no trace that
+  it was ever here, and the two packs then look like one thing that always had both.
+
+  This replays the same events but snapshots the code set after each one, coalescing runs where
+  the set did not change. Each period is half-open — `from` inclusive, `to` exclusive — and the
+  last period has `to: nil`, meaning still applicable. A period whose set is empty is a delisting,
+  and is kept: an identity claim with no codes retracts the listing.
+  """
+  def listing_periods(envelopes) when is_list(envelopes) do
+    for env <- envelopes, ev <- env.events, ev.kind == :identity, reduce: %{} do
+      acc ->
+        key = {env.legacy_entity, ev.source}
+        {raw, periods} = Map.get(acc, key, {%{}, []})
+        raw = apply_identity(raw, ev)
+        Map.put(acc, key, {raw, append_period(periods, engine_codes(raw), ev.recorded_at)})
+    end
+    |> Map.new(fn {key, {_raw, periods}} -> {key, Enum.reverse(periods)} end)
+  end
+
+  # Periods accumulate newest-first. An event that does not change the set extends the current
+  # period rather than starting one; an event that does change it closes the current period at
+  # this timestamp and opens the next.
+  defp append_period([%{codes: codes} | _] = periods, codes, _at), do: periods
+
+  # Several events routinely share a recorded_at. A period that would start and end at the same
+  # instant never applies to any date, so the later set replaces it instead of stacking an empty
+  # interval that every reader would then have to skip.
+  defp append_period([%{from: at} | rest], codes, at),
+    do: [%{from: at, to: nil, codes: codes} | rest]
+
+  defp append_period([current | rest], codes, at),
+    do: [%{from: at, to: nil, codes: codes}, %{current | to: at} | rest]
+
+  defp append_period([], codes, at), do: [%{from: at, to: nil, codes: codes}]
 
   # ── fold ──────────────────────────────────────────────────────────────────
 
