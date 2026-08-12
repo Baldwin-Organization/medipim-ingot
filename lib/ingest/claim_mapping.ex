@@ -147,7 +147,7 @@ defmodule ClaimMapping do
           "source" => ev.source,
           "code" => CanonicalClaims.code_string(a),
           "field" => field_dim(ev),
-          "value" => ev.data.value,
+          "value" => attribute_value(ev.data.value),
           "valid_from" => ev.valid_from,
           "recorded_at" => ev.recorded_at
         }
@@ -329,6 +329,14 @@ defmodule ClaimMapping do
       Enum.find(codes, &match?({^scheme, _}, &1))
     end)
   end
+
+  # medipim emits allowedSpecies both as "human" and as ["human"]. A one-element list carries no
+  # more information than its element, so the two spellings become one value and stop looking like
+  # a contradiction to survivorship. Longer lists are left alone — none occur in the fixtures, and
+  # the right shape for a genuine multi-value field (several claims? member_of?) is undecided.
+  # See docs/CLAIM_MAPPING_SPEC.md.
+  defp attribute_value([single]), do: single
+  defp attribute_value(value), do: value
 
   @doc false
   # Shared with FinerClaims.
