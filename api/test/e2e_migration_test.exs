@@ -38,8 +38,13 @@ defmodule Api.E2eMigrationTest do
     |> ClaimMapping.canonical_claims()
     # member_of is not on the live wire yet (docs/CLAIMS_CONTRACT.md, open question 1)
     |> Enum.reject(&(&1["kind"] == "member_of"))
-    # the live wire owns recorded_at (server clock); valid_from becomes an ISO date
-    |> Enum.map(fn m -> m |> Map.delete("recorded_at") |> Map.update!("valid_from", &iso/1) end)
+    # the live wire owns recorded_at (server clock); both interval ends become ISO dates
+    |> Enum.map(fn m ->
+      m
+      |> Map.delete("recorded_at")
+      |> Map.update!("valid_from", &iso/1)
+      |> then(fn m -> if m["valid_to"], do: Map.update!(m, "valid_to", &iso/1), else: m end)
+    end)
   end
 
   # The fix after the first dry-run report: drop unattributed claims and null values, scalarize
@@ -146,11 +151,11 @@ defmodule Api.E2eMigrationTest do
     assert report["conflicts"] == dry["conflicts"]
     assert report["steward_queue"] == dry["steward_queue"]
 
-    # migration semantics: the batch is the source's current truth — slot history compacts.
-    # 117 = the 73 product-side claims + 44 lane claims (gr-kek: 22 surviving description/media
-    # references × identity + edge each).
-    assert report["counts"]["compacted"] == 19
-    assert report["counts"]["accepted"] == 117
+    # Migration semantics: the batch is the source's current truth, so slot history compacts.
+    # The totals grew when identity and grouping became per-period (gr-blb) — the same facts,
+    # now carrying the interval each one applied for, plus one claim per code a source held.
+    assert report["counts"]["compacted"] == 69
+    assert report["counts"]["accepted"] == 229
     assert report["counts"]["skipped"] == 0
 
     # lineage: both legacy entities keep their ids on the minted keys
@@ -208,7 +213,7 @@ defmodule Api.E2eMigrationTest do
     second = decoded(request(:post, "/v1/cutover", %{claims: batch}))
 
     assert second["counts"]["accepted"] == 0
-    assert second["counts"]["skipped"] == 117
+    assert second["counts"]["skipped"] == 229
     assert second["counts"]["mints"] == 0
     assert second["lineage"] == []
 
@@ -238,14 +243,15 @@ defmodule Api.E2eMigrationTest do
 
     report = decoded(request(:post, "/v1/cutover", %{claims: modified}))
 
-    # exactly the four name:fr slots supersede; nothing else moves
-    assert report["counts"]["accepted"] == 4
-    assert report["counts"]["skipped"] == 113
+    # The name:fr slots supersede and nothing else moves. Six rather than four now: the source
+    # held three codes in its last period, so one changed fact is one claim per code.
+    assert report["counts"]["accepted"] == 6
+    assert report["counts"]["skipped"] == 223
     assert report["counts"]["mints"] == 0
     assert report["lineage"] == []
 
     after_feed = decoded(request(:get, "/v1/changes?since=0&limit=1000"))
-    assert after_feed["count"] == before_count + 4
+    assert after_feed["count"] == before_count + 6
 
     new_events = Enum.drop(after_feed["events"], before_count)
     assert Enum.all?(new_events, &(&1["type"] == "claim"))

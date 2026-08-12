@@ -94,9 +94,10 @@ defmodule ClaimMapping do
   def canonical_claims(envelopes) when is_list(envelopes),
     do: canonical(envelopes, fold_raw(envelopes))
 
-  defp canonical(envelopes, folded) do
+  defp canonical(envelopes, _folded) do
+    # Periods are emitted in listing order — Map iteration order is otherwise unspecified, which
+    # would let stamp/1's tie-break drift between runs.
     periods = listing_periods(envelopes)
-    listing_codes = listing_codes(folded)
 
     # A claim is ABOUT a code — cnk, ean, cn. There is no such thing as a claim without one, so
     # the anchor is the code the asserting source itself held AT THE TIME it spoke, read out of
@@ -113,10 +114,6 @@ defmodule ClaimMapping do
     # heuristic here at all: emit a claim per code the source held. An image carrying three EANs
     # links to three products, and a claim survives a split by attaching wherever its code went.
     codes_at = &codes_at(periods, &1, &2, &3)
-
-    # Deterministic emission order — Map/MapSet iteration order is otherwise unspecified, which
-    # would let stamp/1's tie-break (and primary/1's pick among equals) drift between runs/versions.
-    ordered = Enum.sort_by(listing_codes, fn {k, _set} -> k end)
 
     # One identity claim PER PERIOD, not one per listing. A code that was attached and later
     # removed keeps an interval saying so, instead of silently never having existed — see
@@ -135,15 +132,21 @@ defmodule ClaimMapping do
         }
       end
 
+    # Grouping tracks the same periods as identity. Dating it at the end of the fold left a
+    # window where a code existed but belonged to no legacy product, so an as-of projection at
+    # the first mint resolved to no product at all.
     grouping =
-      for {{e, s} = k, set} <- ordered, code <- Enum.sort(set) do
+      for {{e, s}, listing_periods} <- Enum.sort_by(periods, fn {k, _} -> k end),
+          period <- listing_periods,
+          code <- Enum.sort(period.codes) do
         %{
           "kind" => "grouping",
           "source" => s,
           "code" => CanonicalClaims.code_string(code),
           "product" => e,
-          "valid_from" => folded[k].last_at,
-          "recorded_at" => folded[k].last_at
+          "valid_from" => period.from,
+          "valid_to" => period.to,
+          "recorded_at" => period.from
         }
       end
 
@@ -288,11 +291,13 @@ defmodule ClaimMapping do
   # this timestamp and opens the next.
   defp append_period([%{codes: codes} | _] = periods, codes, _at), do: periods
 
-  # Several events routinely share a recorded_at. A period that would start and end at the same
-  # instant never applies to any date, so the later set replaces it instead of stacking an empty
-  # interval that every reader would then have to skip.
-  defp append_period([%{from: at} | rest], codes, at),
-    do: [%{from: at, to: nil, codes: codes} | rest]
+  # Several events routinely land on the same day, sometimes the same second. Every reader of a
+  # period works at DAY granularity — Bitemporal.effective?/2 compares Dates — so a period that
+  # opens and closes within one day can never apply to any date. The later set replaces it rather
+  # than leaving an empty interval behind, which the live-wire contract would reject anyway
+  # ("valid_to must be later than valid_from").
+  defp append_period([%{from: from} | rest], codes, at) when div(from, 86_400) == div(at, 86_400),
+    do: [%{from: from, to: nil, codes: codes} | rest]
 
   defp append_period([current | rest], codes, at),
     do: [%{from: at, to: nil, codes: codes}, %{current | to: at} | rest]
