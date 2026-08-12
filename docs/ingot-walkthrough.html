@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot — Engine Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   THEME — Swiss Modern
+   Pure white, pure black, one red. Change these
+   five values to re-skin the entire deck.
+   =========================================== */
+:root{
+  --paper:#ffffff;
+  --ink:#0a0a0a;
+  --red:#ff3300;
+  --ink-2:#454545;
+  --ink-3:#6b6b6b;
+
+  --panel:#f4f4f2;      /* light card fill */
+  --panel-2:#ececea;    /* alternate row */
+  --grid:rgba(10,10,10,.075);
+  --hair:rgba(10,10,10,.16);
+
+  --font-display:'Archivo',sans-serif;
+  --font-body:'Nunito',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+
+  --ease:cubic-bezier(.16,1,.3,1);
+  --stage-bg:#111111;
+  --slide-bg:var(--paper);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* ===========================================
+   FIXED 16:9 STAGE — MANDATORY BASE STYLES
+   Slides are authored at 1920x1080 and the whole
+   stage is scaled by one transform. Never reflow.
+   =========================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#000)}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#000)}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#fff)}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#fff)}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1}
+img,video,canvas,svg{max-width:100%;max-height:100%}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000}
+@media print{
+  html,body{width:1920px;height:auto;overflow:visible;background:#fff}
+  .deck-viewport{position:static;overflow:visible;background:#fff}
+  .deck-stage{position:static;width:auto;height:auto;transform:none!important;background:none}
+  .slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always}
+  .slide:last-child{break-after:auto;page-break-after:auto}
+  .deck-controls{display:none!important}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}
+}
+
+/* ===========================================
+   GRID SUBSTRATE
+   The visible 160px grid is the Swiss Modern
+   signature. It sits under every slide.
+   =========================================== */
+.grid-lines{position:absolute;inset:0;pointer-events:none;
+  background-image:
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 160px),
+    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 160px);
+}
+
+/* ===========================================
+   SLIDE FURNITURE — header, footer, rules
+   Body content lives between y=340 and y=980.
+   =========================================== */
+.eyebrow{position:absolute;left:120px;top:92px;font-family:var(--font-body);font-weight:700;
+  font-size:18px;letter-spacing:.28em;text-transform:uppercase;color:var(--red)}
+.stitle{position:absolute;left:114px;top:126px;font-family:var(--font-display);font-weight:800;
+  font-size:76px;line-height:1;letter-spacing:-.032em;color:var(--ink)}
+.head-rule{position:absolute;left:120px;right:120px;top:240px;height:3px;background:var(--ink)}
+.lede{position:absolute;left:120px;top:266px;width:1520px;font-family:var(--font-body);
+  font-weight:400;font-size:25px;line-height:1.5;color:var(--ink-2)}
+.lede b{font-weight:700;color:var(--ink)}
+
+.f-rule{position:absolute;left:120px;right:120px;bottom:66px;height:2px;background:var(--hair)}
+.f-l{position:absolute;left:120px;bottom:30px;font-family:var(--font-body);font-weight:600;
+  font-size:17px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.f-r{position:absolute;right:120px;bottom:30px;font-family:var(--font-display);font-weight:700;
+  font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+
+/* ===========================================
+   TYPE COMPONENTS
+   =========================================== */
+.h3{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.14;
+  letter-spacing:-.018em;color:var(--ink)}
+.p{font-family:var(--font-body);font-weight:400;font-size:22px;line-height:1.58;color:var(--ink-2)}
+.p b{font-weight:700;color:var(--ink)}
+.p .r{color:var(--red);font-weight:700}
+.mono{font-family:var(--font-mono);font-weight:400;font-size:19px;color:var(--ink)}
+.tag{display:inline-block;font-family:var(--font-body);font-weight:700;font-size:15px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--red)}
+.kicker{font-family:var(--font-body);font-weight:700;font-size:16px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ink-3)}
+
+/* ===========================================
+   LAYOUT PRIMITIVES
+   =========================================== */
+.body{position:absolute;left:120px;right:120px;top:352px;bottom:110px}
+.body.tight{top:300px}
+.body.low{top:400px}
+
+.cols{display:flex;gap:64px;height:100%}
+.col{flex:1;min-width:0}
+.col.w40{flex:0 0 620px}
+.col.w45{flex:0 0 720px}
+.col.w55{flex:0 0 900px}
+
+/* --- Cards: bordered blocks, one red-filled focal card --- */
+.cards{display:grid;gap:28px;height:100%}
+.cards.c2{grid-template-columns:repeat(2,1fr)}
+.cards.c3{grid-template-columns:repeat(3,1fr)}
+.cards.c4{grid-template-columns:repeat(4,1fr)}
+.card{border:3px solid var(--ink);padding:32px 30px;display:flex;flex-direction:column;
+  background:var(--paper)}
+.card .num{font-family:var(--font-display);font-weight:900;font-size:46px;line-height:1;
+  letter-spacing:-.04em;color:var(--red);margin-bottom:16px}
+.card h4{font-family:var(--font-display);font-weight:800;font-size:26px;line-height:1.16;
+  letter-spacing:-.016em;color:var(--ink);margin-bottom:14px}
+.card p{font-family:var(--font-body);font-weight:400;font-size:19px;line-height:1.52;
+  color:var(--ink-2)}
+.card p b{font-weight:700;color:var(--ink)}
+.card code{font-family:var(--font-mono);font-size:17px;color:var(--ink)}
+.card.fill{background:var(--red);border-color:var(--red)}
+.card.fill .num{color:var(--paper)}
+.card.fill h4,.card.fill p,.card.fill p b,.card.fill code{color:var(--paper)}
+.card.flat{border:0;background:var(--panel);padding:30px 28px}
+
+/* --- Tables: rules only, no boxes --- */
+.tbl{width:100%;border-collapse:collapse;font-family:var(--font-body)}
+.tbl th{text-align:left;font-weight:700;font-size:16px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);padding:0 22px 14px 0;border-bottom:3px solid var(--ink);vertical-align:bottom}
+.tbl td{font-weight:400;font-size:20px;line-height:1.42;color:var(--ink-2);padding:17px 22px 17px 0;
+  border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl td:first-child{font-family:var(--font-mono);font-weight:500;font-size:19px;color:var(--ink);
+  white-space:nowrap}
+.tbl td b{font-weight:700;color:var(--ink)}
+.tbl td .r{color:var(--red);font-weight:700}
+.tbl.compact td{padding:13px 22px 13px 0;font-size:19px}
+
+/* --- Code specimens --- */
+.code{background:var(--ink);padding:30px 34px;font-family:var(--font-mono);font-weight:400;
+  font-size:20px;line-height:1.72;color:#e8e8e6;white-space:pre;overflow:hidden}
+.code .c{color:#8a8a86}                      /* comment */
+.code .k{color:#ff7a55;font-weight:500}      /* keyword / atom */
+.code .s{color:#b9e6a8}                      /* string */
+.code .hl{color:#fff;font-weight:700}
+.code.light{background:var(--panel);color:var(--ink)}
+.code.light .c{color:var(--ink-3)}
+.code.light .k{color:var(--red);font-weight:700}
+
+/* --- Callout strip --- */
+.callout{border-left:8px solid var(--red);padding:22px 0 22px 30px;background:var(--panel)}
+.callout .h{font-family:var(--font-display);font-weight:800;font-size:24px;color:var(--ink);
+  margin-bottom:8px;letter-spacing:-.012em}
+.callout p{font-family:var(--font-body);font-weight:400;font-size:20px;line-height:1.5;
+  color:var(--ink-2)}
+.callout p b{font-weight:700;color:var(--ink)}
+
+/* --- Numbered step list --- */
+.steps{list-style:none}
+.steps li{display:flex;gap:22px;padding:18px 0;border-bottom:1px solid var(--hair)}
+.steps li:last-child{border-bottom:0}
+.steps .n{flex:0 0 46px;font-family:var(--font-display);font-weight:900;font-size:26px;
+  color:var(--red);line-height:1.3;letter-spacing:-.03em}
+.steps .t{font-family:var(--font-body);font-size:21px;line-height:1.5;color:var(--ink-2)}
+.steps .t b{font-weight:700;color:var(--ink)}
+/* Only the LEADING bold acts as the item title. A nested <b> mid-sentence
+   must stay inline, or it breaks the sentence onto its own line. */
+.steps .t > b:first-child{display:block;margin-bottom:3px;font-size:22px}
+.steps .t code{font-family:var(--font-mono);font-size:18px;color:var(--ink)}
+.steps.dense li{padding:11px 0}
+.steps.dense .t{font-size:20px;line-height:1.46}
+.steps.dense .t > b:first-child{font-size:21px}
+
+/* ===========================================
+   SECTION DIVIDER SLIDES
+   Giant number, red block, one line of promise.
+   =========================================== */
+.div-block{position:absolute;left:0;top:0;bottom:0;width:760px;background:var(--red)}
+.div-num{position:absolute;left:96px;top:50%;transform:translateY(-50%);
+  font-family:var(--font-display);font-weight:900;font-size:420px;line-height:.8;
+  letter-spacing:-.06em;color:var(--paper)}
+.div-title{position:absolute;left:880px;top:50%;transform:translateY(-50%);width:920px}
+.div-title .kicker{display:block;margin-bottom:24px;color:var(--red)}
+.div-title h2{font-family:var(--font-display);font-weight:900;font-size:112px;line-height:.94;
+  letter-spacing:-.042em;color:var(--ink);margin-bottom:30px}
+.div-title p{font-family:var(--font-body);font-weight:400;font-size:26px;line-height:1.5;
+  color:var(--ink-2)}
+.div-title p b{font-weight:700;color:var(--ink)}
+
+/* ===========================================
+   TITLE SLIDE
+   =========================================== */
+.t-rule-v{position:absolute;top:0;bottom:0;width:3px;background:var(--ink);left:1180px}
+.t-rule-h{position:absolute;left:140px;right:140px;height:3px;background:var(--ink);top:196px}
+.t-block{position:absolute;left:1180px;top:196px;width:600px;height:604px;background:var(--red)}
+.t-block .bnum{position:absolute;left:44px;bottom:24px;font-family:var(--font-display);
+  font-weight:900;font-size:300px;line-height:.78;color:var(--paper);letter-spacing:-.05em}
+.t-block .btag{position:absolute;left:48px;top:40px;font-family:var(--font-body);font-weight:700;
+  font-size:19px;letter-spacing:.22em;text-transform:uppercase;color:var(--paper)}
+.t-eyebrow{position:absolute;left:140px;top:132px;font-family:var(--font-body);font-weight:700;
+  font-size:20px;letter-spacing:.3em;text-transform:uppercase;color:var(--red)}
+.t-title{position:absolute;left:132px;top:250px;font-family:var(--font-display);font-weight:900;
+  font-size:290px;line-height:.82;letter-spacing:-.055em;color:var(--ink)}
+.t-lede{position:absolute;left:140px;top:610px;width:940px;font-family:var(--font-display);
+  font-weight:700;font-size:58px;line-height:1.12;letter-spacing:-.025em;color:var(--ink)}
+.t-body{position:absolute;left:140px;top:790px;width:900px;font-family:var(--font-body);
+  font-weight:400;font-size:25px;line-height:1.6;color:var(--ink-2)}
+.t-body b{font-weight:700;color:var(--ink)}
+.t-foot{position:absolute;left:140px;right:140px;bottom:78px;height:3px;background:var(--ink)}
+.t-foot-l{position:absolute;left:140px;bottom:34px;font-family:var(--font-body);font-weight:600;
+  font-size:19px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.t-foot-r{position:absolute;right:140px;bottom:34px;font-family:var(--font-body);font-weight:700;
+  font-size:19px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink)}
+
+/* ===========================================
+   DIAGRAMS — built from CSS boxes and rules
+   =========================================== */
+/* Source boxes feeding one record */
+.flow{display:flex;align-items:center;gap:0;height:100%}
+.flow-src{flex:0 0 400px;display:flex;flex-direction:column;gap:18px}
+.src{border:2px solid var(--ink);padding:16px 20px;background:var(--paper)}
+.src .s-n{font-family:var(--font-body);font-weight:700;font-size:15px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--red);margin-bottom:6px}
+.src .s-v{font-family:var(--font-mono);font-size:18px;color:var(--ink);line-height:1.5}
+.flow-arrow{flex:0 0 150px;position:relative;height:3px;background:var(--ink);margin:0 26px}
+.flow-arrow::after{content:"";position:absolute;right:-2px;top:-8px;border:10px solid transparent;
+  border-left:16px solid var(--ink)}
+.flow-arrow .lbl{position:absolute;left:0;right:0;top:-42px;text-align:center;
+  font-family:var(--font-body);font-weight:700;font-size:15px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-3)}
+.flow-out{flex:1;border:3px solid var(--ink);padding:26px 30px;background:var(--panel)}
+
+/* Two-clock interval diagram */
+.clocks{display:flex;flex-direction:column;gap:34px}
+.clock-row .cl-head{display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:12px}
+.clock-row .cl-name{font-family:var(--font-mono);font-weight:700;font-size:22px;color:var(--ink)}
+.clock-row .cl-q{font-family:var(--font-body);font-size:19px;color:var(--ink-3)}
+.axis{position:relative;height:56px;border-left:3px solid var(--ink);
+  border-bottom:3px solid var(--ink)}
+.axis .tick{position:absolute;bottom:-3px;width:1px;height:12px;background:var(--hair)}
+.axis .bar{position:absolute;top:14px;height:16px;background:var(--red)}
+.axis .bar.open{background:repeating-linear-gradient(90deg,var(--red) 0 12px,transparent 12px 20px)}
+.axis .bar.ghost{background:var(--panel-2);border:2px dashed var(--ink-3);height:14px}
+/* Month labels sit BELOW the axis rule, like a real x-axis — above the rule
+   they collided with the row heading. */
+.axis .cap{position:absolute;bottom:-27px;font-family:var(--font-mono);font-size:15px;
+  color:var(--ink-2)}
+
+/* ===========================================
+   ANIMATION — one orchestrated load per slide
+   =========================================== */
+.reveal{opacity:0;transform:translateY(26px);
+  transition:opacity .72s var(--ease),transform .72s var(--ease)}
+.slide.visible .reveal{opacity:1;transform:translateY(0)}
+.slide.visible .reveal.d1{transition-delay:.10s}
+.slide.visible .reveal.d2{transition-delay:.20s}
+.slide.visible .reveal.d3{transition-delay:.30s}
+.slide.visible .reveal.d4{transition-delay:.40s}
+.slide.visible .reveal.d5{transition-delay:.50s}
+.slide.visible .reveal.d6{transition-delay:.60s}
+.slide.visible .reveal.d7{transition-delay:.70s}
+.slide.visible .reveal.d8{transition-delay:.80s}
+/* rules draw themselves */
+.draw{transform:scaleX(0);transform-origin:0 50%;transition:transform .9s var(--ease) .05s}
+.slide.visible .draw{transform:scaleX(1)}
+.draw-y{transform:scaleY(0);transform-origin:50% 0;transition:transform .9s var(--ease) .12s}
+.slide.visible .draw-y{transform:scaleY(1)}
+/* red block wipes in */
+.wipe{clip-path:inset(0 100% 0 0);transition:clip-path .85s var(--ease) .35s}
+.slide.visible .wipe{clip-path:inset(0 0 0 0)}
+/* interval bars extend */
+.grow{transform:scaleX(0);transform-origin:0 50%;transition:transform .85s var(--ease) .55s}
+.slide.visible .grow{transform:scaleX(1)}
+
+/* ===========================================
+   PRESENTATION CHROME (outside the stage)
+   =========================================== */
+.pager{position:fixed;right:24px;bottom:20px;z-index:1000;font-family:var(--font-mono);
+  font-size:13px;letter-spacing:.14em;color:rgba(255,255,255,.5);user-select:none}
+.progress{position:fixed;left:0;top:0;height:3px;background:var(--red);z-index:1001;
+  transition:width .4s var(--ease)}
+.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer}
+.edit-toggle{position:fixed;top:18px;left:18px;z-index:10001;width:44px;height:44px;
+  border:0;border-radius:50%;background:var(--red);color:#fff;font-size:19px;cursor:pointer;
+  opacity:0;pointer-events:none;transition:opacity .3s ease}
+.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto}
+.edit-toggle.active{background:var(--ink);outline:3px solid var(--red)}
+.editing [contenteditable="true"]{outline:2px dashed var(--red);outline-offset:4px;cursor:text}
+.edit-hint{position:fixed;top:20px;left:78px;z-index:10001;background:var(--ink);color:#fff;
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;padding:9px 14px;
+  display:none}
+.editing .edit-hint{display:block}
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)" aria-label="Toggle edit mode">✏️</button>
+<div class="edit-hint">EDIT MODE · CLICK TEXT TO CHANGE · CTRL+S TO SAVE · E TO EXIT</div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============ 01 · TITLE ============ -->
+<section class="slide title-slide active">
+  <div class="grid-lines"></div>
+  <div class="t-rule-h draw"></div>
+  <div class="t-rule-v draw-y"></div>
+  <div class="t-block wipe">
+    <div class="btag">Append-only</div>
+    <div class="bnum">01</div>
+  </div>
+  <div class="t-eyebrow reveal d1">Product master data</div>
+  <h1 class="t-title reveal d2">Ingot</h1>
+  <p class="t-lede reveal d3">Golden records from contradicting sources.</p>
+  <p class="t-body reveal d4">Products carry many codes — GTIN, CNK, MPN, supplier refs — and the
+  sources that assert them <b>disagree</b>. Ingot keeps every claim, folds them into one record,
+  and refuses to invent a winner when the evidence is genuinely split.</p>
+  <div class="t-foot draw"></div>
+  <div class="t-foot-l reveal d5">Engine walkthrough</div>
+  <div class="t-foot-r reveal d5">Elixir · Postgres · PHP parity</div>
+</section>
+
+<!-- ============ 02 · THE PROBLEM ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">The problem</div>
+  <h2 class="stitle reveal d1">Four sources. One product, or two?</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Nobody is lying. Four sources describe what they each believe is one box
+  on a shelf. The barcode says they are the same product; the two national codes say they are two.
+  <b>Ingot does not resolve that by voting.</b></p>
+
+  <div class="body">
+    <div class="flow">
+      <div class="flow-src">
+        <div class="src reveal d3"><div class="s-n">manufacturer</div>
+          <div class="s-v">gtin:05410013100072<br>weight_g: 300</div></div>
+        <div class="src reveal d4"><div class="s-n">supplier</div>
+          <div class="s-v">gtin:05410013100072<br>cnk:1234567 · weight_g: 305</div></div>
+        <div class="src reveal d5"><div class="s-n">marketplace</div>
+          <div class="s-v">gtin:05410013100072<br>weight_g: 300</div></div>
+        <div class="src reveal d6"><div class="s-n">regulator</div>
+          <div class="s-v">gtin:05410013100072<br>cnk:7654321</div></div>
+      </div>
+      <div class="flow-arrow reveal d6"><span class="lbl">fold</span></div>
+      <div class="flow-out reveal d7">
+        <div class="tag">Two golden records, and a filed contradiction</div>
+        <p class="p" style="margin:16px 0 6px"><b>SK_1</b> — cnk:1234567, gtin:05410013100072</p>
+        <p class="p" style="margin-bottom:18px"><b>SK_2</b> — cnk:7654321, gtin:05410013100072</p>
+        <p class="p"><b>weight_g</b> — <span class="r">needs_review</span>, no value returned.
+        Candidates kept: manufacturer 300, marketplace 300, supplier 305.
+        <span style="color:var(--ink-3)">Two sources agreeing is not a majority vote — the engine
+        ranks sources, it never counts them.</span></p>
+        <p class="p" style="margin-top:18px;font-size:20px"><b>flagged</b> —
+        <code style="font-family:var(--font-mono);font-size:18px">identity_conflict</code> on the
+        barcode, plus a merge proposal for a human. One barcode reached two national codes, so the
+        bridge is <b>held</b> rather than fused.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">The problem</div><div class="f-r">02</div>
+</section>
+
+<!-- ============ 03 · WHAT THIS REPO IS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">Orientation</div>
+  <h2 class="stitle reveal d1">What is actually in the repository</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Five things live here. Only the first two are the product; the rest exist
+  to prove the first two are right.</p>
+
+  <div class="body">
+    <table class="tbl">
+      <tr><th style="width:290px">Path</th><th style="width:330px">What it is</th><th>Why it exists</th></tr>
+      <tr class="reveal d3"><td>lib/</td><td><b>The engine</b></td>
+        <td>Pure functions over data. No GenServers, no processes, <b>no external dependencies</b> — the
+        stdlib <code style="font-family:var(--font-mono)">JSON</code> module instead of Jason. The event log is the only state.</td></tr>
+      <tr class="reveal d4"><td>api/</td><td><b>The service</b></td>
+        <td>Plug + Bandit over Postgres. Stores an append-only JSON event log and disposable indexed
+        read models. Has its own deps; the engine does not.</td></tr>
+      <tr class="reveal d5"><td>php/</td><td><b>The parity port</b></td>
+        <td>An independent PHP implementation of the same engine. It is the oracle: if Elixir and PHP
+        disagree on a fixture, one of them has a bug.</td></tr>
+      <tr class="reveal d6"><td>viz/</td><td><b>The explainer</b></td>
+        <td>Astro + React story of the fold, generated from the real engine by
+        <code style="font-family:var(--font-mono)">demo_export.exs</code> — not hand-written data.</td></tr>
+      <tr class="reveal d7"><td>test/, *.exs</td><td><b>The evidence</b></td>
+        <td>291 engine tests plus runnable explainers at the repo root, including the full delta
+        history of a real product, entity 422156.</td></tr>
+    </table>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">Orientation</div><div class="f-r">03</div>
+</section>
+
+<!-- ============ 04 · SECTION 01 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">01</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section one</span>
+    <h2 class="reveal d2">The log</h2>
+    <p class="reveal d3">Nothing in Ingot is stored as a current value. There is an append-only
+    sequence of claims, and <b>every answer is a fold over it</b>. Get this one idea and the rest
+    of the system follows.</p>
+  </div>
+</section>
+
+<!-- ============ 05 · THE FOLD ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">01 · The log</div>
+  <h2 class="stitle reveal d1">The log is the system of record</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w55">
+        <div class="code reveal d3"><span class="c"># A projection is never stored. It is computed.</span>
+
+<span class="hl">golden_record</span> =
+  log
+  |&gt; <span class="k">Enum</span>.filter(&amp;known?(&amp;1, known_at))
+  |&gt; <span class="k">Enum</span>.filter(&amp;effective?(&amp;1, effective_at))
+  |&gt; <span class="k">Substrate</span>.current()      <span class="c"># last-wins per slot</span>
+  |&gt; <span class="k">Cluster</span>.variants()       <span class="c"># codes -&gt; identities</span>
+  |&gt; <span class="k">Catalog</span>.project(priority) <span class="c"># resolve contradictions</span>
+</div>
+        <div class="callout reveal d5" style="margin-top:34px">
+          <div class="h">Why this matters for everything else</div>
+          <p>Because the answer is recomputed, you can ask it <b>as of any point in time</b>, replay
+          it after a bug fix, and rebuild every database table from scratch. Read models are a cache,
+          never a truth.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d4" style="margin-bottom:20px">Three consequences</div>
+        <ol class="steps">
+          <li class="reveal d5"><span class="n">01</span><span class="t"><b>Corrections are appends</b>
+            You never mutate history. A wrong fact is superseded by a later claim, and the wrong fact
+            stays visible in the audit trail.</span></li>
+          <li class="reveal d6"><span class="n">02</span><span class="t"><b>Determinism is testable</b>
+            Same log in, same record out. Order-independence is asserted directly in the suites —
+            equal-priority ties sort by <code>(rank, source, value)</code>.</span></li>
+          <li class="reveal d7"><span class="n">03</span><span class="t"><b>Two clocks become possible</b>
+            Because nothing is overwritten, "what did we know in March?" and "what was true in
+            February?" are different filters over the same log.</span></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">01 · The log</div><div class="f-r">05</div>
+</section>
+
+<!-- ============ 06 · CLAIMS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">01 · The log</div>
+  <h2 class="stitle reveal d1">Claims: the atom of the system</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">A claim is one source saying one thing at one time. It is never a
+  command and never authoritative on its own — it is <b>evidence</b>. Seven kinds cover everything
+  the engine models.</p>
+
+  <div class="body">
+    <table class="tbl compact">
+      <tr><th style="width:270px">Kind</th><th style="width:440px">Says</th><th>Used for</th></tr>
+      <tr class="reveal d3"><td>identity</td><td>This listing carries these codes.</td>
+        <td>The clustering input. Codes bridge listings into one identity.</td></tr>
+      <tr class="reveal d3"><td>attribute</td><td>This code has field = value.</td>
+        <td>Names, weights, dosages — anything survivorship resolves.</td></tr>
+      <tr class="reveal d4"><td>media</td><td>This asset depicts this code.</td>
+        <td>Images, with a primary/secondary role.</td></tr>
+      <tr class="reveal d4"><td>grouping</td><td>This code belongs to legacy product N.</td>
+        <td>Continuity with the system being replaced.</td></tr>
+      <tr class="reveal d5"><td>edge</td><td>This code relates to that code.</td>
+        <td>The typed graph: contains, describes, depicts, suppress.</td></tr>
+      <tr class="reveal d5"><td>member_of</td><td>This code is in that collection.</td>
+        <td>ATC groups and similar namespaces.</td></tr>
+      <tr class="reveal d6"><td class="mono" style="color:var(--red)">identity_evidence</td>
+        <td>These two codes <b>are</b> / <b>are not</b> the same thing.</td>
+        <td><span class="r">The escape hatch.</span> How a human overrules the clustering rules —
+        covered in section two.</td></tr>
+    </table>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">01 · The log</div><div class="f-r">06</div>
+</section>
+
+<!-- ============ 07 · SLOTS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">01 · The log</div>
+  <h2 class="stitle reveal d1">Slots, and why last-wins is not lossy</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w55">
+        <p class="p reveal d2" style="margin-bottom:26px">Every claim computes a <b>slot</b> — a
+        tuple identifying exactly which fact it is asserting. Within one slot, the newest claim from
+        that source wins. Across sources, nothing wins yet: all of them survive into survivorship.</p>
+        <div class="code light reveal d3"><span class="c"># the slot is derived, never supplied</span>
+<span class="k">def</span> slot(%ClaimAsserted{source: s, kind: <span class="k">:attribute</span>,
+                          data: %{code: c, field: f}}),
+  <span class="k">do</span>: {s, <span class="k">:attr</span>, c, f}
+
+<span class="c"># manufacturer's weight and supplier's weight are</span>
+<span class="c"># DIFFERENT slots. One does not overwrite the other.</span>
+{<span class="s">"manufacturer"</span>, <span class="k">:attr</span>, {<span class="k">:gtin</span>, <span class="s">"054100…"</span>}, <span class="s">"weight_g"</span>}
+{<span class="s">"supplier"</span>,     <span class="k">:attr</span>, {<span class="k">:gtin</span>, <span class="s">"054100…"</span>}, <span class="s">"weight_g"</span>}
+</div>
+      </div>
+      <div class="col">
+        <div class="cards c1" style="grid-template-columns:1fr;gap:24px">
+          <div class="card reveal d4"><div class="num">→</div><h4>Within a source</h4>
+            <p>Last write wins. A supplier correcting its own weight replaces its previous claim —
+            that is <b>an update</b>, not a disagreement.</p></div>
+          <div class="card fill reveal d5"><div class="num">↔</div><h4>Between sources</h4>
+            <p>Nothing is dropped. Two sources on the same fact are <b>a contradiction</b>, and
+            contradictions are the whole point of the system.</p></div>
+          <div class="card flat reveal d6"><h4 style="font-size:23px">The distinction is structural</h4>
+            <p>Because <code>source</code> is part of the slot key, the engine cannot accidentally
+            silence a disagreement by treating it as an overwrite.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">01 · The log</div><div class="f-r">07</div>
+</section>
+
+<!-- ============ 08 · SOURCE RECORDS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">01 · The log</div>
+  <h2 class="stitle reveal d1">Source records: four operations</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Claims do not arrive one at a time. Upstream systems own whole records,
+  addressed by <b>{source, ref}</b> and revised atomically. Each revision names the operation it is
+  performing, and the engine enforces which operations are legal from which state.</p>
+
+  <div class="body">
+    <div class="cards c4">
+      <div class="card reveal d3"><div class="num">01</div><h4>replace</h4>
+        <p>The whole record, as it now stands. Anything the payload omits is <b>gone</b> — omission
+        is a deletion, not a silence.</p>
+        <p style="margin-top:auto;padding-top:18px;font-size:17px;color:var(--ink-3)">The only legal
+        first revision.</p></div>
+      <div class="card reveal d4"><div class="num">02</div><h4>patch</h4>
+        <p>Change only the named facts. Everything unmentioned is <b>preserved</b>. Explicit removal
+        needs an explicit selector in <code>remove</code>.</p>
+        <p style="margin-top:auto;padding-top:18px;font-size:17px;color:var(--ink-3)">Legal only on
+        an active record.</p></div>
+      <div class="card fill reveal d5"><div class="num">03</div><h4>withdraw</h4>
+        <p>The record contributes nothing from now on. It is not deleted — the log keeps it, and its
+        surrogate key is <b>held, not recycled</b>.</p>
+        <p style="margin-top:auto;padding-top:18px;font-size:17px;opacity:.8">Rejects any claims or
+        remove selectors.</p></div>
+      <div class="card reveal d6"><div class="num">04</div><h4>reactivate</h4>
+        <p>A withdrawn record comes back with a <b>fresh whole record</b>. It reclaims its old key —
+        even if every code changed.</p>
+        <p style="margin-top:auto;padding-top:18px;font-size:17px;color:var(--ink-3)">Legal only on a
+        withdrawn record.</p></div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">01 · The log</div><div class="f-r">08</div>
+</section>
+
+<!-- ============ 09 · SNAPSHOT RULE + GATE ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">01 · The log</div>
+  <h2 class="stitle reveal d1">Two rules that make replay safe</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col">
+        <span class="tag reveal d2">Rule one</span>
+        <div class="h3 reveal d2" style="margin:14px 0 20px">Store the result, never the delta</div>
+        <p class="p reveal d3">A <code style="font-family:var(--font-mono)">patch</code> event does
+        not record "change the weight". It records the <b>complete resulting snapshot</b> of the
+        record after the patch was applied.</p>
+        <div class="callout reveal d4" style="margin-top:28px">
+          <div class="h">Replay never depends on the future</div>
+          <p>If the patch algorithm changes next year, replaying a two-year-old log still produces
+          exactly what it produced then. A stored delta would be reinterpreted by the new code; a
+          stored snapshot cannot be.</p>
+        </div>
+        <p class="p reveal d5" style="margin-top:26px;font-size:20px">The cost is storage. The
+        benefit is that <b>history means one thing forever</b>, which is the entire premise of an
+        event-sourced master-data system.</p>
+      </div>
+      <div class="col">
+        <span class="tag reveal d3">Rule two</span>
+        <div class="h3 reveal d3" style="margin:14px 0 20px">Every revision passes a gate</div>
+        <table class="tbl compact reveal d4">
+          <tr><th style="width:130px">Result</th><th>When</th></tr>
+          <tr><td class="mono" style="color:var(--ink-3)">replay</td>
+            <td>Same revision id, same content fingerprint. A <b>no-op</b>, not an error — retries
+            are safe.</td></tr>
+          <tr><td class="mono" style="color:var(--red)">409</td>
+            <td>Same revision id, <b>different</b> content — someone reused a version number. Also
+            an <b>illegal transition</b>: a first revision that isn't <code>replace</code>,
+            patching a withdrawn record, reactivating a live one.</td></tr>
+          <tr><td class="mono" style="color:var(--red)">412</td>
+            <td><code>base_revision</code> does not match the current revision. Optimistic
+            concurrency: you were working from a stale copy.</td></tr>
+          <tr><td class="mono" style="color:var(--red)">422</td>
+            <td>Malformed: a bad address or interval, a <code>withdraw</code> carrying claims, or an
+            active record without exactly one identity claim holding at least one code.</td></tr>
+        </table>
+        <p class="p reveal d6" style="margin-top:24px;font-size:20px">The fingerprint is a SHA-256
+        over the address, operation, claim identities and interval — so <b>idempotency is content-
+        based</b>, not a client-supplied token.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">01 · The log</div><div class="f-r">09</div>
+</section>
+
+<!-- ============ 10 · SECTION 02 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">02</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section two</span>
+    <h2 class="reveal d2">Identity</h2>
+    <p class="reveal d3">Deciding <b>which listings are the same product</b> is the hardest thing
+    the engine does, and the place where being wrong is most expensive. Ingot's answer is to be
+    cautious by default and to make every override an event.</p>
+  </div>
+</section>
+
+<!-- ============ 11 · CLUSTERING ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity</div>
+  <h2 class="stitle reveal d1">Codes bridge listings into identities</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Take every live identity claim, treat its codes as a set, and join any
+  two sets that share a code. The connected components are the identities. That is the whole
+  algorithm — and then reality complicates it three times.</p>
+
+  <div class="body">
+    <div class="cards c3">
+      <div class="card reveal d3"><div class="num">i</div><h4>Shared codes never bridge</h4>
+        <p>Some codes are legitimately carried by many distinct products — a shared packaging code, a
+        generic reference. Marked <b>shared</b>, they stay members of a cluster but are not allowed
+        to fuse two clusters together.</p>
+        <p style="margin-top:16px">A steward can declare a code shared with a
+        <code>ConflictResolved</code> decision; the ingest also restricts known ones.</p></div>
+      <div class="card reveal d4"><div class="num">ii</div><h4>Established keys never auto-merge</h4>
+        <p>If a new bridge would join two clusters that <b>already have surrogate keys</b>, the
+        engine does not merge them. It emits a <b>merge proposal</b> and waits for a human.</p>
+        <p style="margin-top:16px">Auto-merging two live products is the one mistake that is
+        genuinely hard to undo downstream.</p></div>
+      <div class="card fill reveal d5"><div class="num">iii</div><h4>Unique ids can veto a bridge</h4>
+        <p>If joining two components would put <b>two different national-grade ids</b> — CNK, ISBN —
+        into a single identity, the bridge is held.</p>
+        <p style="margin-top:16px">This is the case on the next slide, and the most interesting
+        thing in the engine.</p></div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">11</div>
+</section>
+
+<!-- ============ 12 · LANES ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity</div>
+  <h2 class="stitle reveal d1">Lanes: four kinds of thing, four ledgers</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">A product, the substance inside it, the text describing it and the photo
+  of it are <b>different entities</b> that happen to travel together. Each lane clusters
+  independently, in its own ledger, with its own key prefix.</p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w55">
+        <table class="tbl">
+          <tr><th style="width:180px">Lane</th><th style="width:120px">Prefix</th><th>Schemes that route here</th></tr>
+          <tr class="reveal d3"><td>product</td><td class="mono">SK_1</td>
+            <td><b>The default.</b> gtin, cnk, isbn, mpn, supplier_ref — every scheme not listed
+            below, so pre-lane logs keep their meaning.</td></tr>
+          <tr class="reveal d4"><td>substance</td><td class="mono">SUB_1</td>
+            <td>cas, unii, substance_id</td></tr>
+          <tr class="reveal d5"><td>description</td><td class="mono">DSC_1</td>
+            <td>text_id</td></tr>
+          <tr class="reveal d6"><td>media</td><td class="mono">MED_1</td>
+            <td>asset_id</td></tr>
+          <tr class="reveal d7"><td style="color:var(--ink-3)">(neutral)</td><td class="mono">—</td>
+            <td>uuid is lane-neutral. A claim made only of uuids must name its
+            <code style="font-family:var(--font-mono)">entity</code> explicitly.</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <div class="callout reveal d5">
+          <div class="h">One claim, one lane</div>
+          <p>Codes from two lanes in a single identity claim are a <b>contract violation</b>, not a
+          guess to resolve. A thing cannot be a product and a substance at once.</p>
+        </div>
+        <div class="h3 reveal d6" style="margin:34px 0 18px">Lanes are joined by edges, not by fusion</div>
+        <p class="p reveal d6">Each relation declares which lanes its endpoints may occupy, so
+        traversal is scoped config rather than blanket closure:</p>
+        <table class="tbl compact reveal d7" style="margin-top:18px">
+          <tr><td>contains</td><td>product → substance</td></tr>
+          <tr><td>describes</td><td>description → product, substance</td></tr>
+          <tr><td>depicts</td><td>media → product, substance</td></tr>
+          <tr><td>suppress</td><td>description → product</td></tr>
+        </table>
+        <p class="p reveal d8" style="margin-top:18px;font-size:19px">Without signatures, one common
+        excipient would drag its descriptions onto thousands of unrelated products.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">12</div>
+</section>
+
+<!-- ============ 13 · THE LEDGER ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity</div>
+  <h2 class="stitle reveal d1">The ledger, and the life of a key</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Clusters are recomputed on every fold, but <b>surrogate keys must be
+  stable</b> — downstream systems store them. The ledger is the memory that maps a cluster back to
+  the key it already had.</p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w45">
+        <ol class="steps dense">
+          <li class="reveal d3"><span class="n">→</span><span class="t"><b>IdentityMinted</b>
+            A cluster with no existing key gets a fresh one.</span></li>
+          <li class="reveal d4"><span class="n">→</span><span class="t"><b>IdentityMembersChanged</b>
+            The key survives; its code set moved.</span></li>
+          <li class="reveal d5"><span class="n">→</span><span class="t"><b>IdentitiesMerged</b>
+            Two keys become one — <b>only ever from a steward decision</b>, never automatic.</span></li>
+          <li class="reveal d6"><span class="n">→</span><span class="t"><b>IdentitySplit</b>
+            One key breaks apart. Which side <i>keeps</i> the key is decided by
+            <code>has_spine?/1</code> — see the next slide.</span></li>
+          <li class="reveal d7"><span class="n">→</span><span class="t"><b>IdentityRetracted</b>
+            Every contributing listing was withdrawn. It carries the last known codes, so the
+            notification can say what was lost.</span></li>
+        </ol>
+      </div>
+      <div class="col">
+        <div class="callout reveal d5">
+          <div class="h">Keys are held, never recycled</div>
+          <p>A retracted <code>SK_7</code> does not free up the number 7. A later unrelated record
+          gets <code>SK_8</code>. Reusing an identifier that a downstream system still remembers is
+          worse than leaving a gap.</p>
+        </div>
+        <div class="callout reveal d6" style="margin-top:30px;border-left-color:var(--ink)">
+          <div class="h">Merges leave standing evidence</div>
+          <p>When a steward approves a merge of two conflicting national ids, the engine also writes
+          <code>identity_evidence: same</code> for that pair. Without it, the very next replay would
+          re-apply the unique-id guard and <b>split back apart</b> what the human just joined.</p>
+        </div>
+        <p class="p reveal d7" style="margin-top:30px;font-size:20px">That detail is a good test of
+        whether you have internalised the model: <b>a decision that isn't in the log didn't
+        happen.</b></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">13</div>
+</section>
+
+<!-- ============ 14 · THE HARD CASE ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity · the hard case</div>
+  <h2 class="stitle reveal d1">Two CNKs arrive on one barcode</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">A national id is supposed to be unique per product. A barcode is
+  supposed to identify one product. Here they contradict each other, and <b>both cannot be right</b>.</p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w45">
+        <div class="code reveal d3"><span class="c"># supplier A's listing</span>
+{<span class="k">:gtin</span>, <span class="s">"05410013100072"</span>}
+{<span class="k">:cnk</span>,  <span class="s">"1234567"</span>}
+
+<span class="c"># supplier B's listing</span>
+{<span class="k">:gtin</span>, <span class="s">"05410013100072"</span>}   <span class="c">&lt;- same barcode</span>
+{<span class="k">:cnk</span>,  <span class="s">"7654321"</span>}          <span class="c">&lt;- different CNK</span>
+</div>
+        <div class="h3 reveal d4" style="margin:32px 0 16px">The naive answer is wrong</div>
+        <p class="p reveal d4">Plain connected components joins them on the shared GTIN and produces
+        one identity carrying two national ids. That record is <b>silently corrupt</b>: it will be
+        published, consumed, and stored downstream before anyone notices.</p>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d5" style="margin-bottom:18px">What Ingot does instead</div>
+        <ol class="steps">
+          <li class="reveal d5"><span class="n">01</span><span class="t"><b>Hold the bridge</b>
+            The union-find refuses the join. Two separate identities remain, each internally
+            consistent.</span></li>
+          <li class="reveal d6"><span class="n">02</span><span class="t"><b>Flag the contradiction</b>
+            A <code>ConflictFlagged</code> event names the held code, so the barcode is visible as
+            the thing in dispute.</span></li>
+          <li class="reveal d7"><span class="n">03</span><span class="t"><b>Keep serving</b>
+            Everything unrelated to this barcode is unaffected. One contradiction does not degrade
+            the rest of the catalogue.</span></li>
+        </ol>
+        <div class="callout reveal d8" style="margin-top:18px">
+          <div class="h">The exception that proves it</div>
+          <p>If <b>one source record</b> asserts both CNKs together, that is a deliberate statement
+          that they are aliases — positive evidence, not a collision. The pair is never held again.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">14</div>
+</section>
+
+<!-- ============ 15 · THE LIMIT OF THE GUARD (open defect) ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity · the limit</div>
+  <h2 class="stitle reveal d1">When the barcode itself moves</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">NHSBSA publishes a <b>GTIN Transfer Tracking Log</b> — some 580 rows of
+  barcodes moving from one dm+d pack to another. A GTIN is not permanently bound to one product.
+  <span class="r">Ingot currently assumes it is.</span></p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w55">
+        <div class="h3 reveal d3" style="margin-bottom:16px">What a replay actually does</div>
+        <table class="tbl compact reveal d3">
+          <tr><th style="width:380px">Transfer, replayed against the engine</th><th>Result</th></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Both packs
+            still asserted, <b>no national codes</b><br>
+            <span style="color:var(--ink-3)">the UK dm+d case</span></td>
+            <td><span class="r">Fuses into one identity.</span> Silent — no flag.</td></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Both packs
+            still asserted, <b>different CNKs</b></td>
+            <td>Held and flagged. <b>The guard works.</b></td></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Old pack
+            drops the GTIN, new pack gains it —<br><b>both carry CNKs</b></td>
+            <td><span class="r">The key follows the barcode.</span> The old pack is re-keyed.</td></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Old pack
+            identified <b>only</b> by the GTIN</td>
+            <td><span class="r">No events at all.</span> The key silently means something else.</td></tr>
+        </table>
+        <div class="code reveal d5" style="margin-top:14px;font-size:19px;padding:22px 34px"><span class="c"># row three — the realistic case, guard active</span>
+week 1   <span class="hl">SK_1</span> = {cnk:1111111, gtin:X}   <span class="c"># the 100 g pack</span>
+week 2   <span class="hl">SK_1</span> = {cnk:<span class="k">2222222</span>, gtin:X}   <span class="c"># a DIFFERENT pack</span>
+         SK_2 = {cnk:1111111}          <span class="c"># re-keyed</span>
+</div>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d4" style="margin-bottom:16px">Why, and what it costs</div>
+        <p class="p reveal d4"><code style="font-family:var(--font-mono)">has_spine?/1</code> is
+        literally <i>"does this cluster contain a GTIN"</i>, and it decides which side keeps the
+        surrogate key on a split. The registry already grades a barcode as a
+        <b>suspect</b> bridge — but nothing consumes that grade.</p>
+        <div class="callout reveal d5" style="margin-top:22px">
+          <div class="h">The four reasons are not one event</div>
+          <p><b>Used on a different pack</b> — an effective-time boundary.<br>
+          <b>Incorrectly recorded</b> — a <i>known</i>-time correction; the old link was never true.<br>
+          <b>Merger / takeover</b> — a supplier attribute. Identity must not move at all.<br>
+          <b>Invalidation / ended</b> — <code>valid_to</code> with no successor.</p>
+        </div>
+        <div class="callout reveal d6" style="margin-top:22px;border-left-color:var(--ink)">
+          <div class="h">The machinery already exists</div>
+          <p>Given <code>valid_to</code> on the old association, the projection answers <b>one</b>
+          identity before the transfer date and <b>two</b> after — both correct. An ingest
+          obligation, not a redesign.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">15</div>
+</section>
+
+<!-- ============ 16 · IDENTITY EVIDENCE ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">02 · Identity</div>
+  <h2 class="stitle reveal d1">Overruling the rules, on the record</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Automatic rules will be wrong sometimes. The design question is not how
+  to avoid that — it is <b>where the override lives</b>. In Ingot it is a claim in the log, not a
+  flag in a database or a special case in the code.</p>
+
+  <div class="body">
+    <div class="cards c2">
+      <div class="card reveal d3">
+        <div class="num">same</div>
+        <h4>Force a join the guard would refuse</h4>
+        <p>A trusted source asserts that two codes name the same thing. The bridge is allowed even
+        though it puts two national ids together.</p>
+        <p style="margin-top:20px"><b>Where it comes from:</b> a steward approving a merge, or an
+        upstream system with authority to say so.</p>
+        <p style="margin-top:20px"><b>Why it must persist:</b> it is re-read on every fold. The
+        override survives replay because it <i>is</i> part of the history.</p>
+      </div>
+      <div class="card fill reveal d4">
+        <div class="num">distinct</div>
+        <h4>Forbid a join that looks fine</h4>
+        <p>Two codes that share a bridge are declared to be different things anyway — a mis-keyed
+        barcode, a recycled reference.</p>
+        <p style="margin-top:20px"><b>Effect:</b> the components stay apart no matter how much
+        evidence accumulates for joining them.</p>
+        <p style="margin-top:20px"><b>Trust boundary:</b> only sources in the trusted set are read as
+        evidence. Ordinary suppliers cannot assert it.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">02 · Identity</div><div class="f-r">16</div>
+</section>
+
+<!-- ============ 17 · SECTION 03 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">03</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section three</span>
+    <h2 class="reveal d2">Truth</h2>
+    <p class="reveal d3">Once you know <i>which</i> product it is, you still have to say what it
+    weighs. Four sources, three answers. Ingot resolves what it can with a priority list — and
+    <b>returns nothing at all</b> when it can't.</p>
+  </div>
+</section>
+
+<!-- ============ 18 · SURVIVORSHIP ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">03 · Truth</div>
+  <h2 class="stitle reveal d1">Survivorship, and the refusal to guess</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w45">
+        <div class="h3 reveal d2" style="margin-bottom:18px">How a field is decided</div>
+        <ol class="steps">
+          <li class="reveal d3"><span class="n">01</span><span class="t"><b>One entry per source</b>
+            Within a source, the latest claim for that slot.</span></li>
+          <li class="reveal d4"><span class="n">02</span><span class="t"><b>Rank by priority</b>
+            A configured per-field list, e.g. manufacturer before supplier for
+            <code>name</code>, with a default list behind it.</span></li>
+          <li class="reveal d5"><span class="n">03</span><span class="t"><b>Look at the top tier only</b>
+            If every source at the winning rank agrees, that value is the answer:
+            <code>status: resolved</code>.</span></li>
+          <li class="reveal d6"><span class="n">04</span><span class="t"><b>Otherwise, stop</b>
+            Distinct values at equal rank means <code>status: needs_review</code> — and
+            <span class="r">value and winner are both nil</span>.</span></li>
+        </ol>
+      </div>
+      <div class="col">
+        <div class="callout reveal d5">
+          <div class="h">This is the change most likely to surprise a consumer</div>
+          <p>Earlier versions returned the top-ranked candidate even when the decision was contested.
+          A caller reading <code>.value</code> unconditionally now gets <b>nil</b> on contested
+          fields and must check <code>status</code>.</p>
+        </div>
+        <p class="p reveal d6" style="margin:28px 0 22px">The argument for it is simple: a plausible
+        guess presented as a fact is <b>worse than an absence</b>, because nothing downstream can
+        tell it was a guess. The candidates are still returned — the caller can see exactly who said
+        what and decide for itself.</p>
+        <div class="code light reveal d7"><span class="c"># contested field, priority cannot separate them</span>
+%{value: <span class="k">nil</span>, winner: <span class="k">nil</span>, status: <span class="k">:needs_review</span>,
+  candidates: [{<span class="s">"manufacturer"</span>, <span class="hl">300</span>}, {<span class="s">"supplier"</span>, <span class="hl">305</span>}]}
+</div>
+        <p class="p reveal d8" style="margin-top:20px;font-size:19px">Ties are broken by
+        <code style="font-family:var(--font-mono)">(rank, source, value)</code>, so two runs over the
+        same log always order the candidates identically.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">03 · Truth</div><div class="f-r">18</div>
+</section>
+
+<!-- ============ 19 · SECTION 04 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">04</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section four</span>
+    <h2 class="reveal d2">Two clocks</h2>
+    <p class="reveal d3">"What did the record say in March?" and "what was true in March?" are
+    <b>different questions with different answers</b>. Most systems conflate them. Keeping them
+    apart is the reason this rebuild happened.</p>
+  </div>
+</section>
+
+<!-- ============ 20 · TWO CLOCKS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">04 · Two clocks</div>
+  <h2 class="stitle reveal d1">Known-at and effective-at</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">A correction received in April can say a product name was wrong for one
+  week in February. Both facts are true simultaneously, and a query must be able to ask for either.</p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w45">
+        <table class="tbl">
+          <tr><th style="width:210px">Clock</th><th>Question it answers</th></tr>
+          <tr class="reveal d3"><td>known_at</td>
+            <td><b>What information had reached Ingot by this moment?</b> An RFC3339 timestamp
+            assigned by the server. Clients cannot choose it.</td></tr>
+          <tr class="reveal d4"><td>effective_at</td>
+            <td><b>What did the sources say was true on this date?</b> An ISO date, supplied by the
+            source, describing the world rather than the system.</td></tr>
+        </table>
+        <div class="callout reveal d5" style="margin-top:34px">
+          <div class="h">The audit property</div>
+          <p>Asking with a March <code>known_at</code> returns the old answer <b>even after the April
+          correction exists</b> — because in March, Ingot had not received it. That is what makes the
+          history defensible rather than merely stored.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="clocks">
+          <div class="clock-row reveal d5">
+            <div class="cl-head"><span class="cl-name">known_at = 2026-03-15</span>
+              <span class="cl-q">before the correction</span></div>
+            <div class="axis">
+              <div class="cap" style="left:0">FEB</div><div class="cap" style="left:33%">MAR</div>
+              <div class="cap" style="left:66%">APR</div>
+              <div class="tick" style="left:33%"></div><div class="tick" style="left:66%"></div>
+              <div class="bar grow" style="left:0;width:52%"></div>
+            </div>
+            <p class="p" style="margin-top:40px;font-size:19px">Returns the <b>original</b> name for
+            every date. The correction does not exist yet.</p>
+          </div>
+          <div class="clock-row reveal d6">
+            <div class="cl-head"><span class="cl-name">known_at = 2026-04-20</span>
+              <span class="cl-q">after the correction</span></div>
+            <div class="axis">
+              <div class="cap" style="left:0">FEB</div><div class="cap" style="left:33%">MAR</div>
+              <div class="cap" style="left:66%">APR</div>
+              <div class="tick" style="left:33%"></div><div class="tick" style="left:66%"></div>
+              <div class="bar ghost grow" style="left:0;width:14%"></div>
+              <div class="bar grow" style="left:14%;width:12%"></div>
+              <div class="bar ghost grow" style="left:26%;width:60%"></div>
+            </div>
+            <p class="p" style="margin-top:40px;font-size:19px">Returns the <b>corrected</b> name for
+            that one week in February, and the original everywhere else.</p>
+          </div>
+        </div>
+        <div class="code light reveal d7" style="margin-top:30px;font-size:18px">GET /v1/products/422156
+    ?known_at=<span class="k">2026-03-15T00:00:00Z</span>   <span class="c"># the system clock</span>
+    &amp;effective_at=<span class="k">2026-02-10</span>        <span class="c"># the world clock</span>
+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">04 · Two clocks</div><div class="f-r">20</div>
+</section>
+
+<!-- ============ 21 · INTERVALS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">04 · Two clocks</div>
+  <h2 class="stitle reveal d1">Half-open intervals, and why order matters</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w45">
+        <div class="code reveal d2" style="font-size:24px;text-align:center;padding:38px 20px">valid_from  &le;  date  &lt;  valid_to</div>
+        <p class="p reveal d3" style="margin-top:26px">Every fact carries an interval. It is
+        <b>half-open</b>: inclusive at the start, exclusive at the end. Two consecutive intervals
+        meet exactly once, with no gap and no overlap, and <code>valid_to: null</code> means "still
+        applicable".</p>
+        <div class="callout reveal d4" style="margin-top:28px">
+          <div class="h">Why half-open, always</div>
+          <p>Inclusive-end intervals force every consumer to decide whether a boundary date belongs
+          to the old fact or the new one — and different consumers decide differently. One
+          convention, enforced at the contract, removes an entire class of off-by-one disputes.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d4" style="margin-bottom:18px">Selection happens before clustering</div>
+        <p class="p reveal d5">This is the subtle part. The projection does not fold the whole log
+        and then filter. It:</p>
+        <ol class="steps" style="margin-top:12px">
+          <li class="reveal d5"><span class="n">01</span><span class="t">Filters to what was
+            <b>known</b> at the requested timestamp.</span></li>
+          <li class="reveal d6"><span class="n">02</span><span class="t">Collects every valid-time
+            <b>boundary</b> in that set, up to the requested date.</span></li>
+          <li class="reveal d7"><span class="n">03</span><span class="t">Walks the boundaries in
+            order, <b>re-reconciling identity at each one</b>, so keys evolve the way they actually
+            evolved.</span></li>
+        </ol>
+        <div class="callout reveal d8" style="margin-top:24px;border-left-color:var(--ink)">
+          <div class="h">What that buys</div>
+          <p>A future-dated revision cannot hide the record that currently applies, and a bounded
+          withdrawal hides a record <b>only inside its interval</b> — the prior revision reappears on
+          either side.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">04 · Two clocks</div><div class="f-r">21</div>
+</section>
+
+<!-- ============ 22 · SECTION 05 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">05</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section five</span>
+    <h2 class="reveal d2">Stewardship</h2>
+    <p class="reveal d3">The engine deliberately leaves decisions unmade. Somebody has to make them
+    — and the system has to be able to prove <b>who decided what, on what evidence</b>.</p>
+  </div>
+</section>
+
+<!-- ============ 23 · REVIEW CASES ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">05 · Stewardship</div>
+  <h2 class="stitle reveal d1">A decision is bound to the evidence for it</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Four-eyes approval is easy to implement badly: count two clicks, apply
+  the change. That is not enough, because <b>the world moves between the two clicks</b>.</p>
+
+  <div class="body">
+    <div class="cards c3">
+      <div class="card reveal d3"><div class="num">01</div><h4>Open the case</h4>
+        <p>A conflict produces a case that snapshots the <b>exact</b> members, claims and event
+        offset the steward is looking at — then hashes it.</p>
+        <p style="margin-top:16px">The case is state in the log, not memory in a web session.</p></div>
+      <div class="card reveal d4"><div class="num">02</div><h4>Endorse it</h4>
+        <p>Each endorsement names the <b>authenticated principal</b> — taken from the credential, never
+        from a name in the request body — plus the offset they saw.</p>
+        <p style="margin-top:16px">Two <b>distinct</b> principals are required for a merge, split or
+        suppression. One suffices for an attribute pick.</p></div>
+      <div class="card fill reveal d5"><div class="num">03</div><h4>Recheck, then apply</h4>
+        <p>The second approval recomputes the scoped evidence under the writer lock and compares
+        digests. Unrelated events may have advanced the log — that is fine.</p>
+        <p style="margin-top:16px"><b>Changed evidence makes the case stale</b> and the decision is
+        refused. You approve what you actually saw.</p></div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">05 · Stewardship</div><div class="f-r">23</div>
+</section>
+
+<!-- ============ 24 · SECTION 06 ============ -->
+<section class="slide">
+  <div class="div-block wipe"></div>
+  <div class="div-num">06</div>
+  <div class="div-title">
+    <span class="kicker reveal d1">Section six</span>
+    <h2 class="reveal d2">The service</h2>
+    <p class="reveal d3">A pure fold is a lovely thing that cannot answer an HTTP request in
+    millisecond time. Everything from here is about <b>making the fold fast without letting it stop
+    being the truth</b>.</p>
+  </div>
+</section>
+
+<!-- ============ 25 · PERSISTENCE ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">06 · The service</div>
+  <h2 class="stitle reveal d1">One log, twelve disposable tables</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w45">
+        <span class="tag reveal d2">Authoritative</span>
+        <div class="h3 reveal d2" style="margin:14px 0 18px">The event log</div>
+        <p class="p reveal d3">Append-only, stored as <b>jsonb</b> — not an opaque binary blob. You
+        can read the history with SQL, and the payload does not depend on a serialisation format
+        that only one language understands.</p>
+        <p class="p reveal d4" style="margin-top:18px"><code style="font-family:var(--font-mono)">recorded_at</code>
+        is a real <code style="font-family:var(--font-mono)">timestamptz</code>;
+        <code style="font-family:var(--font-mono)">valid_from</code> and
+        <code style="font-family:var(--font-mono)">valid_to</code> are real date columns. The two
+        clocks are indexable, not buried in JSON.</p>
+        <div class="callout reveal d5" style="margin-top:28px">
+          <div class="h">The test that keeps it honest</div>
+          <p>"Rebuilding from the event log reproduces records, tombstones, and key bindings." If
+          that ever fails, a read model has quietly become a source of truth.</p>
+        </div>
+      </div>
+      <div class="col">
+        <span class="tag reveal d3">Disposable</span>
+        <div class="h3 reveal d3" style="margin:14px 0 18px">The read models</div>
+        <p class="p reveal d4">Twelve indexed tables — golden records, identity members, code
+        ownership, redirects, current claims, review cases, tombstones, source-record views and
+        more. Every one can be <b>truncated and replayed</b>.</p>
+        <p class="p reveal d5" style="margin-top:18px">They replaced a single serialised state
+        snapshot. The snapshot was simple but had to be rewritten whole; these are queryable, so
+        legacy-id resolution is a recursive CTE walking the redirect chain instead of a fold in
+        application memory.</p>
+        <div class="callout reveal d6" style="margin-top:28px;border-left-color:var(--ink)">
+          <div class="h">The rule that makes it safe</div>
+          <p>Nothing here is authoritative. If a projection is wrong, you delete it and rebuild —
+          you never repair it in place, because there is nothing to repair <b>against</b>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">06 · The service</div><div class="f-r">25</div>
+</section>
+
+<!-- ============ 26 · BOOT + API ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">06 · The service</div>
+  <h2 class="stitle reveal d1">Boot order, readiness, and the surface</h2>
+  <div class="head-rule draw"></div>
+
+  <div class="body tight">
+    <div class="cols">
+      <div class="col w45">
+        <div class="h3 reveal d2" style="margin-bottom:18px">Nothing serves before it is ready</div>
+        <p class="p reveal d3">The bootstrap child's <code style="font-family:var(--font-mono)">init/1</code>
+        blocks until migration <i>and</i> projection recovery finish. Because supervisors start
+        children in list order and it sits before the listeners, <b>no socket can bind against a
+        half-migrated schema</b>.</p>
+        <table class="tbl compact reveal d4" style="margin-top:26px">
+          <tr><th style="width:150px">Endpoint</th><th>Means</th></tr>
+          <tr><td>/health</td><td>The process is alive. Nothing more.</td></tr>
+          <tr><td>/ready</td><td>Schema present <b>and</b> projection offset equals the event
+            offset. Returns <span class="r">503</span> while projections trail the log.</td></tr>
+        </table>
+        <p class="p reveal d5" style="margin-top:22px;font-size:20px">Container and compose
+        healthchecks both gate on <code style="font-family:var(--font-mono)">/ready</code>, so an
+        instance that is catching up is never sent traffic.</p>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d4" style="margin-bottom:18px">The HTTP surface</div>
+        <table class="tbl compact reveal d5">
+          <tr><th style="width:78px">Verb</th><th>Path</th></tr>
+          <tr><td style="color:var(--red)">PUT</td>
+            <td class="mono" style="font-size:18px">/v1/source-records/{source}/{ref}<br>
+            <span style="padding-left:22px">/revisions/{revision}</span></td></tr>
+          <tr><td>GET</td><td class="mono" style="font-size:18px">/v1/source-records/{source}/{ref}</td></tr>
+          <tr><td>GET</td><td class="mono" style="font-size:18px">/v1/products/{legacy_id}</td></tr>
+          <tr><td>GET</td><td class="mono" style="font-size:18px">/v1/products/by-code/{scheme}/{value}</td></tr>
+          <tr><td>GET</td><td class="mono" style="font-size:18px">/v1/identities/{key}</td></tr>
+          <tr><td>GET</td><td class="mono" style="font-size:18px">/v1/metadata</td></tr>
+          <tr><td style="color:var(--red)">POST</td><td class="mono" style="font-size:18px">/v1/dry-run · /v1/cutover</td></tr>
+        </table>
+        <p class="p reveal d7" style="margin-top:22px;font-size:20px">Every read accepts
+        <code style="font-family:var(--font-mono)">?known_at=</code> and
+        <code style="font-family:var(--font-mono)">?effective_at=</code>. A contract test executes the
+        documented examples and asserts OpenAPI declares every implemented route, so <b>the docs
+        cannot drift silently</b>.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">06 · The service</div><div class="f-r">26</div>
+</section>
+
+<!-- ============ 27 · PARITY + CI ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">06 · The service</div>
+  <h2 class="stitle reveal d1">How the project knows it is right</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">For a system whose entire value is being trustworthy about contested
+  data, the verification story <b>is</b> the product story.</p>
+
+  <div class="body">
+    <div class="cards c4">
+      <div class="card reveal d3"><div class="num">540</div><h4>Tests, four suites</h4>
+        <p><b>291</b> engine · <b>121</b> API · <b>108</b> PHP · <b>20</b> viz. Run in CI across
+        Elixir 1.18–1.20 and PHP 8.3–8.5.</p></div>
+      <div class="card reveal d4"><div class="num">2×</div><h4>Independent implementations</h4>
+        <p>The PHP port is not a convenience wrapper — it is a <b>second opinion</b>. A shared
+        fixture is regenerated from the PHP engine and asserted against the API's expected output.</p></div>
+      <div class="card fill reveal d5"><div class="num">422156</div><h4>A real product's history</h4>
+        <p>The full delta history of an actual entity is a fixture, regenerable from the raw dump.
+        Synthetic data would not have found the cases that matter.</p></div>
+      <div class="card reveal d6"><div class="num">CI</div><h4>The recovery drill</h4>
+        <p>An image-smoke job builds the release, checks auth returns 401 then 200, <b>corrupts the
+        projection checkpoint on purpose</b>, restarts, and requires the instance to come back
+        ready.</p></div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">06 · The service</div><div class="f-r">27</div>
+</section>
+
+<!-- ============ 28 · WHERE IT STANDS ============ -->
+<section class="slide">
+  <div class="grid-lines"></div>
+  <div class="eyebrow reveal d1">Closing</div>
+  <h2 class="stitle reveal d1">Where it stands, and what is next</h2>
+  <div class="head-rule draw"></div>
+  <p class="lede reveal d2">Ingot is a production-pilot-shaped POC, not a live service. The engine
+  and the API are done and green; the remaining work is <b>displacing the system it replaces</b>.</p>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col w55">
+        <div class="h3 reveal d3" style="margin-bottom:18px">The cutover chain</div>
+        <p class="p reveal d3" style="margin-bottom:20px">Strictly sequential — each phase is blocked
+        by the one before it. And as of today the first one is blocked too.</p>
+        <table class="tbl compact reveal d4">
+          <tr><td style="color:var(--red)">P1</td><td><b>Claim-mapping spec</b> — every legacy field,
+            plus the translator into engine claims. <span class="r">Now blocked on the barcode
+            key-stability fix</span> — writing the mapping first would bake the bug in.</td></tr>
+          <tr><td style="color:var(--ink-3)">P2</td><td>Whole-product parity harness, at scale</td></tr>
+          <tr><td style="color:var(--ink-3)">P3</td><td>Close parity gaps until divergences are zero
+            or explained</td></tr>
+          <tr><td style="color:var(--ink-3)">P4</td><td>Backfill, identifier lifecycle, search index —
+            still shadow</td></tr>
+          <tr><td style="color:var(--ink-3)">P5</td><td>Cut over reads</td></tr>
+          <tr><td style="color:var(--ink-3)">P6</td><td>Cut over writes, retire the delta machinery</td></tr>
+        </table>
+        <div class="callout reveal d5" style="margin-top:30px;border-left-color:var(--ink)">
+          <div class="h">Everything on the right is written down, not quietly carried</div>
+          <p>Which is the same instinct as <code>needs_review</code> — applied to the codebase
+          instead of the data.</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="h3 reveal d5" style="margin-bottom:18px">Known debts</div>
+        <div class="callout reveal d6" style="border-left-color:var(--red)">
+          <div class="h">A grade with no consumer <span style="color:var(--red)">— P0</span></div>
+          <p>The barcode bridge grade is defined and documented as suspect, but nothing enforces it,
+          and <code>has_spine?/1</code> lets a surrogate key follow a transferred GTIN. Slide 15.</p>
+        </div>
+        <div class="callout reveal d6" style="margin-top:20px">
+          <div class="h">A seam with no producer</div>
+          <p>The runtime scheme registry is implemented, validated and tested — but nothing loads
+          one. Every production path passes <code>nil</code>. Either wire it to a config file or
+          remove the threading until something needs it.</p>
+        </div>
+        <div class="callout reveal d7" style="margin-top:24px;border-left-color:var(--ink)">
+          <div class="h">A heavy runtime image</div>
+          <p>Based on <code>postgres:16-bookworm</code> just to get <code>psql</code> — a whole
+          database server shipped for one client binary.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="f-rule"></div>
+  <div class="f-l">Closing</div><div class="f-r">28</div>
+</section>
+
+</main>
+</div>
+
+<div class="pager" id="pager">01 / 27</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard, wheel, touch. The stage is scaled by
+   a single transform — slides never reflow.
+   =========================================== */
+class SlidePresentation{
+  constructor(){
+    this.slides=Array.from(document.querySelectorAll('.slide'));
+    this.stage=document.getElementById('deckStage');
+    this.pager=document.getElementById('pager');
+    this.progress=document.getElementById('progress');
+    this.current=0;
+    this.setupStageScale();
+    this.setupKeyboardNav();
+    this.setupWheelNav();
+    this.setupTouchNav();
+    this.show(0);
+  }
+
+  /* Fit the 1920x1080 stage into the window, letterboxing as needed. */
+  setupStageScale(){
+    const scale=()=>{
+      const f=Math.min(window.innerWidth/1920,window.innerHeight/1080);
+      const x=(window.innerWidth-1920*f)/2, y=(window.innerHeight-1080*f)/2;
+      this.stage.style.transform=`translate(${x}px, ${y}px) scale(${f})`;
+    };
+    scale();
+    window.addEventListener('resize',scale);
+  }
+
+  setupKeyboardNav(){
+    document.addEventListener('keydown',e=>{
+      if(e.target.getAttribute('contenteditable')==='true')return;
+      if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next()}
+      if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev()}
+      if(e.key==='Home'){e.preventDefault();this.show(0)}
+      if(e.key==='End'){e.preventDefault();this.show(this.slides.length-1)}
+    });
+  }
+
+  setupWheelNav(){
+    let lock=false;
+    window.addEventListener('wheel',e=>{
+      if(lock||Math.abs(e.deltaY)<24)return;
+      lock=true; e.deltaY>0?this.next():this.prev();
+      setTimeout(()=>lock=false,650);
+    },{passive:true});
+  }
+
+  setupTouchNav(){
+    let x0=null,y0=null;
+    window.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+    window.addEventListener('touchend',e=>{
+      if(x0===null)return;
+      const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+      if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) dx<0?this.next():this.prev();
+      x0=y0=null;
+    },{passive:true});
+  }
+
+  next(){this.show(this.current+1)}
+  prev(){this.show(this.current-1)}
+
+  show(i){
+    this.current=Math.max(0,Math.min(i,this.slides.length-1));
+    this.slides.forEach((s,n)=>{
+      s.classList.toggle('active',n===this.current);
+      s.classList.toggle('visible',n===this.current);
+    });
+    const n=String(this.current+1).padStart(2,'0');
+    this.pager.textContent=`${n} / ${this.slides.length}`;
+    this.progress.style.width=((this.current+1)/this.slides.length*100)+'%';
+  }
+}
+const deck=new SlidePresentation();
+
+/* ===========================================
+   INLINE EDITING
+   Hover the top-left hotzone or press E. Edits
+   persist to localStorage; Ctrl+S downloads a
+   copy of the edited file.
+   =========================================== */
+class InlineEditor{
+  constructor(){
+    this.isActive=false;
+    this.key='ingot-walkthrough-edits';
+    this.selector='h1,h2,h3,h4,p,td,th,li .t,.card p,.cap,.cl-name,.cl-q,.s-v,.s-n,.tag,.kicker,.num,.h';
+    this.restore();
+  }
+  targets(){return document.querySelectorAll(this.selector)}
+  toggleEditMode(){
+    this.isActive=!this.isActive;
+    document.body.classList.toggle('editing',this.isActive);
+    document.getElementById('editToggle').classList.toggle('active',this.isActive);
+    this.targets().forEach(el=>{
+      el.setAttribute('contenteditable',this.isActive?'true':'false');
+      if(this.isActive) el.addEventListener('blur',this.save,{once:true});
+    });
+    if(!this.isActive) this.persist();
+  }
+  save=()=>this.persist();
+  persist(){
+    const data={};
+    document.querySelectorAll('.slide').forEach((s,i)=>{data[i]=s.innerHTML});
+    try{localStorage.setItem(this.key,JSON.stringify(data))}catch(e){}
+  }
+  restore(){
+    let raw=null;
+    try{raw=localStorage.getItem(this.key)}catch(e){}
+    if(!raw)return;
+    try{
+      const data=JSON.parse(raw);
+      document.querySelectorAll('.slide').forEach((s,i)=>{if(data[i])s.innerHTML=data[i]});
+    }catch(e){}
+  }
+  export(){
+    /* Strip editing state, then hand back a clean standalone file. */
+    const clone=document.documentElement.cloneNode(true);
+    clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+    clone.querySelector('body').classList.remove('editing');
+    const blob=new Blob(['<!DOCTYPE html>\n'+clone.outerHTML],{type:'text/html'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='ingot-walkthrough.html';
+    a.click();
+  }
+}
+const editor=new InlineEditor();
+
+/* Toggle: click, hotzone hover with a grace period, or the E key.
+   The 400ms timeout is required — pointer-events:none on the button
+   otherwise breaks the hover chain before it can be clicked. */
+const hotzone=document.querySelector('.edit-hotzone');
+const editToggle=document.getElementById('editToggle');
+let hideTimeout=null;
+const showBtn=()=>{clearTimeout(hideTimeout);editToggle.classList.add('show')};
+const hideBtn=()=>{hideTimeout=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show')},400)};
+
+hotzone.addEventListener('mouseenter',showBtn);
+hotzone.addEventListener('mouseleave',hideBtn);
+editToggle.addEventListener('mouseenter',()=>clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave',hideBtn);
+editToggle.addEventListener('click',()=>editor.toggleEditMode());
+hotzone.addEventListener('click',()=>editor.toggleEditMode());
+
+document.addEventListener('keydown',e=>{
+  if((e.key==='e'||e.key==='E')&&e.target.getAttribute('contenteditable')!=='true'){
+    editor.toggleEditMode();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();editor.persist();editor.export()}
+});
+</script>
+</body>
+</html>
