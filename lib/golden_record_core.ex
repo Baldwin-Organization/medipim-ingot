@@ -880,8 +880,12 @@ defmodule IdentityLedger do
         {key, multiple}, {m, n, split} ->
           prior = Map.get(original, key, MapSet.new())
 
+          # Sorting first makes the tie-break total: Enum.max_by keeps the FIRST maximum, so
+          # equal-ranked clusters resolve to the lowest code signature whatever order they arrived in.
           {keep_cluster, _} =
-            Enum.max_by(multiple, fn {c, _} -> {has_spine?(c), MapSet.size(MapSet.intersection(c, prior))} end)
+            multiple
+            |> Enum.sort_by(fn {c, _} -> Enum.sort(c) end)
+            |> Enum.max_by(fn {c, _} -> keeper_rank(c, prior) end)
 
           {into, m, n} =
             multiple
@@ -919,6 +923,7 @@ defmodule IdentityLedger do
     proposed_keys = for {keys, _cluster} <- proposals, key <- keys, into: MapSet.new(), do: key
     touched = MapSet.union(assigned_keys, proposed_keys)
     retracted = for {key, _} <- original, not MapSet.member?(touched, key), do: key
+    live = Map.drop(members, retracted)
 
     %{
       minted: Enum.reverse(minted),
@@ -926,9 +931,28 @@ defmodule IdentityLedger do
       split: Enum.reverse(split),
       proposals: proposals,
       conflicts: conflicts,
+      swaps: national_swaps(original, live),
       retracted: Enum.sort(retracted),
-      members: Map.drop(members, retracted)
+      members: live
     }
+  end
+
+  # An established key that LOSES a national code has changed what it denotes, even though it
+  # survived reconciliation. Gaining one is an alias and stays quiet; losing one is the signature
+  # of a barcode transfer or a mis-keyed upstream record, and a person should see it.
+  defp national_swaps(original, live) do
+    original
+    |> Enum.flat_map(fn {key, prior} ->
+      case Map.fetch(live, key) do
+        :error ->
+          []
+
+        {:ok, now} ->
+          lost = MapSet.difference(national_codes(prior), national_codes(now))
+          if MapSet.size(lost) == 0, do: [], else: [{key, Enum.sort(lost), Enum.sort(now)}]
+      end
+    end)
+    |> Enum.sort()
   end
 
   defp build_events(old_members, outcome, at) do
@@ -964,6 +988,11 @@ defmodule IdentityLedger do
         }
       end)
 
+    identity_swaps =
+      Enum.map(outcome.swaps, fn {key, lost, now} ->
+        %Events.ConflictFlagged{subject: {:identity_swap, key}, candidates: [lost, now], recorded_at: at}
+      end)
+
     retractions =
       Enum.map(outcome.retracted, fn key ->
         %Events.IdentityRetracted{key: key, codes: Map.get(old_members, key, MapSet.new()), recorded_at: at}
@@ -971,7 +1000,9 @@ defmodule IdentityLedger do
 
     mints ++
       reactivations ++
-      splits ++ proposals ++ identity_conflicts ++ retractions ++ keeps_changed(old_members, outcome, at)
+      splits ++
+      proposals ++
+      identity_conflicts ++ identity_swaps ++ retractions ++ keeps_changed(old_members, outcome, at)
   end
 
   defp keeps_changed(old_members, outcome, at) do
@@ -1011,7 +1042,30 @@ defmodule IdentityLedger do
     |> Enum.sort_by(&elem(&1, 0))
   end
 
-  defp has_spine?(cluster), do: Enum.any?(cluster, fn {scheme, _} -> scheme == :gtin end)
+  @doc false
+  # Which cluster KEEPS the key when one key's codes split across several clusters.
+  #
+  # The old rule was "whichever side holds a GTIN". That is backwards: a barcode is explicitly
+  # reassignable — NHSBSA publishes a GTIN Transfer Tracking Log of codes moving between packs —
+  # so a barcode following a product to a new pack would drag the surrogate key with it, silently
+  # re-pointing every downstream reference. National codes are assigned once and never reissued,
+  # so they, not the barcode, say which cluster CONTINUES what the key already meant.
+  #
+  # Ranked highest-first: national codes retained from the prior members, then other non-barcode
+  # codes retained, then total overlap, then the cluster's own national weight (the CNK-outranks-
+  # GTIN rule LegacyXref spells out) for a split with no prior overlap at all.
+  def keeper_rank(cluster, prior) do
+    shared = MapSet.intersection(cluster, prior)
+
+    {grade_count(shared, :national), grade_count(shared, :none), MapSet.size(shared),
+     grade_count(cluster, :national)}
+  end
+
+  defp grade_count(codes, grade),
+    do: Enum.count(codes, fn {scheme, _} -> CodeRegistry.bridge_grade(scheme) == grade end)
+
+  defp national_codes(codes),
+    do: codes |> Enum.filter(fn {scheme, _} -> CodeRegistry.national_grade?(scheme) end) |> MapSet.new()
 
   # Works for any lane prefix ("SK_7", "SUB_3", "DSC_12" — the trailing integer is the counter).
   defp key_num(key), do: key |> String.split("_") |> List.last() |> String.to_integer()

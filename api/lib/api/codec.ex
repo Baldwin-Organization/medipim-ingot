@@ -28,6 +28,9 @@ defmodule Api.Codec do
   @atom_vocabulary_modules [
     CodeRegistry,
     Codes,
+    # ConflictFlagged subject tags (:identity_conflict, :identity_swap) live only here, and a
+    # cold rebuild can decode them before any write has loaded the module.
+    IdentityLedger,
     Lanes,
     Relations,
     SourceRecords,
