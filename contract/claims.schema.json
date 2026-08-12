@@ -38,6 +38,12 @@
       "format": "date",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
     },
+    "validTo": {
+      "description": "Exclusive end of the fact's valid-time interval. Must be later than valid_from.",
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
     "identityClaim": {
       "description": "Node claim: a source's listing (ref) asserts a set of codes. The clustering input — identity-class codes bridge listings into one identity. Slot: (source, ref), last-wins. An empty codes array retracts that source/ref listing.",
       "type": "object",
@@ -58,7 +64,8 @@
           "description": "Entity lane of this record. Usually derived from the codes' schemes (one claim, one lane — mixing lanes rejects); required only when every code is lane-neutral (the engine-minted 'uuid' scheme).",
           "enum": ["product", "substance", "description", "media"]
         },
-        "valid_from": { "$ref": "#/$defs/validFrom" }
+        "valid_from": { "$ref": "#/$defs/validFrom" },
+        "valid_to": { "$ref": "#/$defs/validTo" }
       }
     },
     "attributeClaim": {
@@ -75,7 +82,8 @@
           "minLength": 1
         },
         "value": { "type": ["string", "number", "boolean"] },
-        "valid_from": { "$ref": "#/$defs/validFrom" }
+        "valid_from": { "$ref": "#/$defs/validFrom" },
+        "valid_to": { "$ref": "#/$defs/validTo" }
       }
     },
     "mediaClaim": {
@@ -96,7 +104,8 @@
           "description": "Optional; 'primary' or 'secondary'. Engine behavior today: any value other than 'primary' (or absence) means secondary.",
           "enum": ["primary", "secondary"]
         },
-        "valid_from": { "$ref": "#/$defs/validFrom" }
+        "valid_from": { "$ref": "#/$defs/validFrom" },
+        "valid_to": { "$ref": "#/$defs/validTo" }
       }
     },
     "groupingClaim": {
@@ -111,7 +120,8 @@
           "description": "The legacy system's own product id.",
           "type": "integer"
         },
-        "valid_from": { "$ref": "#/$defs/validFrom" }
+        "valid_from": { "$ref": "#/$defs/validFrom" },
+        "valid_to": { "$ref": "#/$defs/validTo" }
       }
     },
     "edgeClaim": {
@@ -128,7 +138,8 @@
           "minLength": 1
         },
         "to": { "$ref": "#/$defs/code" },
-        "valid_from": { "$ref": "#/$defs/validFrom" }
+        "valid_from": { "$ref": "#/$defs/validFrom" },
+        "valid_to": { "$ref": "#/$defs/validTo" }
       }
     }
   }

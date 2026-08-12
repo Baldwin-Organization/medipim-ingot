@@ -41,4 +41,33 @@ defmodule SurvivorshipPolicyTest do
     p2 = rank.(MapSet.new(["X"]))
     assert Survivorship.decide("name", entries, p2).winner == "X"
   end
+
+  test "an equal-rank disagreement has no made-up winner and is independent of input order" do
+    policy = Priority.new(%{}, [])
+
+    entries = [
+      e("source-b", "Beta", 2),
+      e("source-a", "Alpha", 1),
+      e("source-c", "Gamma", 3)
+    ]
+
+    expected = %{
+      value: nil,
+      winner: nil,
+      status: :needs_review,
+      candidates: [{"source-a", "Alpha"}, {"source-b", "Beta"}, {"source-c", "Gamma"}]
+    }
+
+    assert Survivorship.decide("name", entries, policy) == expected
+    assert Survivorship.decide("name", Enum.reverse(entries), policy) == expected
+  end
+
+  test "equal-rank sources that agree still resolve" do
+    policy = Priority.new(%{}, [])
+    decision = Survivorship.decide("name", [e("source-b", "Same", 2), e("source-a", "Same", 1)], policy)
+
+    assert decision.value == "Same"
+    assert decision.winner == "source-a"
+    assert decision.status == :resolved
+  end
 end

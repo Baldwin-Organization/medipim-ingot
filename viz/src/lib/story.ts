@@ -6,10 +6,12 @@ export interface CandidateView {
   value: string | number;
 }
 
+export type ClaimKind = "identity" | "attribute" | "media" | "identity_evidence";
+
 export interface ClaimView {
   order: number;
   source: string;
-  kind: "identity" | "attribute" | "media";
+  kind: ClaimKind;
   date: string;
   // identity
   ref?: string;
@@ -22,6 +24,12 @@ export interface ClaimView {
   asset?: string;
   target?: string;
   uri?: string;
+  // identity_evidence — a steward's recorded reason for merging
+  left?: string;
+  right?: string;
+  relation?: string;
+  by?: string;
+  reason?: string | null;
 }
 
 export interface AttributeView {
@@ -103,9 +111,80 @@ export interface OldWayScene {
   steps: OldWayStep[];
 }
 
+// ── one upstream record, revised over time ────────────────────────────────────────────────────────
+// A record is addressed by {source, ref}. Each revision stores its COMPLETE snapshot, so `changed`
+// is a diff the exporter computed against the previous revision — the browser diffs nothing.
+export type RecordOperation = "replace" | "patch" | "withdraw" | "reactivate";
+
+export interface RecordFact {
+  slot: string;
+  kind: ClaimKind;
+  changed: boolean;
+  ref?: string;
+  codes?: string[];
+  code?: string;
+  field?: string;
+  value?: string | number;
+  asset?: string;
+  target?: string;
+  uri?: string;
+}
+
+export interface RevisionView {
+  revision: string;
+  operation: RecordOperation;
+  active: boolean;
+  recordedAt: string;
+  validFrom: string;
+  validTo: string | null;
+  facts: RecordFact[];
+}
+
+export interface RecordStep {
+  id: string;
+  date: string;
+  revisions: RevisionView[]; // every revision so far — nothing is ever replaced in place
+  current: string; // the revision governing this beat
+  boundKey: string | null; // the permanent record→key binding, remembered even while withdrawn
+  golden: GoldenView[]; // empty while the record is withdrawn: nothing is published
+}
+
+export interface RecordScene {
+  label: string;
+  tiers: TierView[];
+  steps: RecordStep[];
+}
+
+// ── two clocks: what we knew, and when it was true ────────────────────────────────────────────────
+// Every cell is the engine's own answer for one (known_at, effective_at) pair.
+export interface ClockCell {
+  knownAt: string;
+  effectiveAt: string;
+  revision: string | null; // which revision governed that answer
+  key: string | null;
+  value: string | null; // null when no record applied
+}
+
+export interface ClockStep {
+  id: string;
+  knownAt: string;
+  effectiveAt: string;
+}
+
+export interface ClocksScene {
+  label: string;
+  revisions: RevisionView[];
+  knownAxis: string[];
+  effectiveAxis: string[];
+  cells: ClockCell[];
+  steps: ClockStep[];
+}
+
 export interface StoryData {
   oldWay: OldWayScene;
   claims: EngineScene;
   priority: EngineScene;
+  record: RecordScene;
+  clocks: ClocksScene;
   mistake: EngineScene;
 }

@@ -1,6 +1,6 @@
 defmodule Api.StewardRouter do
   @moduledoc """
-  The Steward surface (`STEWARD_API_TOKEN` as Bearer, or HTTP Basic for the browser):
+  The Steward surface (individual Bearer credentials, or HTTP Basic for the browser):
   `GET /v1/queue`, `POST /v1/decisions` (JSON), and the minimal HTML queue page at `/` with
   plain form posts to `/decide` — no JS build, same engine decisions underneath.
   """
@@ -17,8 +17,12 @@ defmodule Api.StewardRouter do
   end
 
   post "/v1/decisions" do
-    {status, body} = Api.Steward.decide(conn.body_params)
-    json(conn, status, body)
+    if conn.assigns.auth_scheme == :bearer do
+      {status, body} = Api.Steward.decide(conn.body_params, conn.assigns.steward_principal)
+      json(conn, status, body)
+    else
+      json(conn, 403, %{error: "JSON decisions require an individual Bearer credential"})
+    end
   end
 
   # ── the minimal queue page ──────────────────────────────────────────────────
@@ -27,21 +31,40 @@ defmodule Api.StewardRouter do
 
     conn
     |> put_resp_content_type("text/html")
-    |> send_resp(200, page(Api.Steward.page_data(), conn.query_params["notice"], form_base(conn)))
+    |> send_resp(
+      200,
+      page(
+        Api.Steward.queue(),
+        conn.query_params["notice"],
+        form_base(conn),
+        Api.Auth.csrf_token(conn.assigns.steward_principal)
+      )
+    )
   end
 
   post "/decide" do
-    {status, body} = conn.body_params |> form_to_decision() |> Api.Steward.decide()
+    if conn.assigns.auth_scheme == :basic and
+         Api.Auth.valid_csrf?(conn.assigns.steward_principal, conn.body_params["_csrf_token"]) do
+      {status, body} =
+        conn.body_params
+        |> form_to_decision()
+        |> Api.Steward.decide(conn.assigns.steward_principal)
 
-    notice =
-      case status do
-        200 -> "applied #{body[:applied]}"
-        _ -> "rejected (#{status}): #{inspect(body)}"
-      end
+      notice =
+        case status do
+          200 -> "applied #{body[:applied]}"
+          _ -> "rejected (#{status}): #{inspect(body)}"
+        end
 
-    conn
-    |> put_resp_header("location", "#{steward_path(conn)}?notice=#{URI.encode_www_form(notice)}")
-    |> send_resp(303, "")
+      conn
+      |> put_resp_header(
+        "location",
+        "#{steward_path(conn)}?notice=#{URI.encode_www_form(notice)}"
+      )
+      |> send_resp(303, "")
+    else
+      json(conn, 403, %{error: "invalid or missing CSRF token"})
+    end
   end
 
   match _ do
@@ -55,18 +78,33 @@ defmodule Api.StewardRouter do
       "kind" => "split",
       "key" => p["key"],
       "codes" => split_codes(p["codes"]),
-      "by" => p["by"],
+      "case_id" => p["case_id"],
+      "evidence_offset" => parse_offset(p["evidence_offset"]),
       "reason" => p["reason"]
     }
 
   defp form_to_decision(%{"keys" => keys} = p) when is_binary(keys),
-    do: Map.put(p, "keys", String.split(keys, "+", trim: true))
+    do:
+      p
+      |> Map.put("keys", String.split(keys, "+", trim: true))
+      |> Map.update("evidence_offset", nil, &parse_offset/1)
 
-  defp form_to_decision(p), do: p
+  defp form_to_decision(p), do: Map.update(p, "evidence_offset", nil, &parse_offset/1)
 
   defp split_codes(codes) when is_list(codes), do: codes
   defp split_codes(codes) when is_binary(codes), do: String.split(codes, ~r/[\s,]+/, trim: true)
   defp split_codes(_), do: []
+
+  defp parse_offset(offset) when is_integer(offset), do: offset
+
+  defp parse_offset(offset) when is_binary(offset) do
+    case Integer.parse(offset) do
+      {integer, ""} -> integer
+      _ -> nil
+    end
+  end
+
+  defp parse_offset(_), do: nil
 
   # mounted under /steward by the front router — Location must include the mount
   defp steward_path(%Plug.Conn{script_name: []}), do: "/"
@@ -180,16 +218,20 @@ defmodule Api.StewardRouter do
             <div class="muted">endorsed by <b><%= h(m.proposal.by) %></b><%= if m.proposal.reason do %> — “<%= h(m.proposal.reason) %>”<% end %> · awaiting a second steward</div>
           <% end %>
           <form method="post" action="<%= base %>/decide" class="inline">
+            <input type="hidden" name="_csrf_token" value="<%= h(csrf) %>"/>
             <input type="hidden" name="kind" value="approve_merge"/>
+            <input type="hidden" name="case_id" value="<%= h(m.case_id) %>"/>
+            <input type="hidden" name="evidence_offset" value="<%= h(m.evidence_offset) %>"/>
             <input type="hidden" name="keys" value="<%= h(Enum.join(m.keys, "+")) %>"/>
-            <input type="text" name="by" placeholder="your name" required/>
             <input type="text" name="reason" placeholder="reason (optional)"/>
             <button class="go"><%= if m.proposal, do: "approve merge (2nd steward)", else: "propose — same product" %></button>
           </form>
           <form method="post" action="<%= base %>/decide" class="inline">
+            <input type="hidden" name="_csrf_token" value="<%= h(csrf) %>"/>
             <input type="hidden" name="kind" value="reject_merge"/>
+            <input type="hidden" name="case_id" value="<%= h(m.case_id) %>"/>
+            <input type="hidden" name="evidence_offset" value="<%= h(m.evidence_offset) %>"/>
             <input type="hidden" name="keys" value="<%= h(Enum.join(m.keys, "+")) %>"/>
-            <input type="text" name="by" placeholder="your name" required/>
             <input type="text" name="reason" placeholder="reason (optional)"/>
             <button class="danger">reject — two products</button>
           </form>
@@ -203,11 +245,13 @@ defmodule Api.StewardRouter do
             <%= for c <- a.candidates do %><code><%= h(c.source) %> says <%= h(c.value) %></code><% end %>
           </div>
           <form method="post" action="<%= base %>/decide">
+            <input type="hidden" name="_csrf_token" value="<%= h(csrf) %>"/>
             <input type="hidden" name="kind" value="resolve_attribute"/>
+            <input type="hidden" name="case_id" value="<%= h(a.case_id) %>"/>
+            <input type="hidden" name="evidence_offset" value="<%= h(a.evidence_offset) %>"/>
             <input type="hidden" name="key" value="<%= h(a.key) %>"/>
             <input type="hidden" name="field" value="<%= h(a.field) %>"/>
             <input type="text" name="value" placeholder="the correct value" required/>
-            <input type="text" name="by" placeholder="your name" required/>
             <input type="text" name="reason" placeholder="reason (optional)"/>
             <button class="go">pick</button>
           </form>
@@ -223,43 +267,23 @@ defmodule Api.StewardRouter do
         <div class="item">
           <div><b><%= h(r.key) %></b> <span class="muted">absorbed <%= h(Enum.join(r.merged_from, ", ")) %></span></div>
           <form method="post" action="<%= base %>/decide">
+            <input type="hidden" name="_csrf_token" value="<%= h(csrf) %>"/>
             <input type="hidden" name="kind" value="split"/>
+            <input type="hidden" name="case_id" value="<%= h(r.case_id) %>"/>
+            <input type="hidden" name="evidence_offset" value="<%= h(r.evidence_offset) %>"/>
             <input type="hidden" name="key" value="<%= h(r.key) %>"/>
             <%= for c <- r.codes do %>
               <label class="pick"><input type="checkbox" name="codes[]" value="<%= h(c.code) %>"/><code><%= h(c.code) %></code>
                 <span class="muted">claimed by <%= h(Enum.join(c.sources, ", ")) %></span></label>
             <% end %>
-            <input type="text" name="by" placeholder="your name" required/>
             <input type="text" name="reason" placeholder="reason (optional)"/>
             <button class="danger">split the selected out</button>
           </form>
         </div>
       <% end %>
-
-      <details>
-        <summary>Manual repairs — split any key</summary>
-        <%= for k <- queue.manual do %>
-          <details>
-            <summary><b><%= h(k.key) %></b> <span class="muted">(<%= length(k.codes) %> codes)</span></summary>
-            <div class="item">
-              <form method="post" action="<%= base %>/decide">
-                <input type="hidden" name="kind" value="split"/>
-                <input type="hidden" name="key" value="<%= h(k.key) %>"/>
-                <%= for c <- k.codes do %>
-                  <label class="pick"><input type="checkbox" name="codes[]" value="<%= h(c.code) %>"/><code><%= h(c.code) %></code>
-                    <span class="muted">claimed by <%= h(Enum.join(c.sources, ", ")) %></span></label>
-                <% end %>
-                <input type="text" name="by" placeholder="your name" required/>
-                <input type="text" name="reason" placeholder="reason (optional)"/>
-                <button class="danger">split the selected out</button>
-              </form>
-            </div>
-          </details>
-        <% end %>
-      </details>
     </body>
     </html>
     """,
-    [:queue, :notice, :base]
+    [:queue, :notice, :base, :csrf]
   )
 end

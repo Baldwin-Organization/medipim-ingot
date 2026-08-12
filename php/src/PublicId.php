@@ -18,7 +18,7 @@ final class PublicId
      * Canonical public id of `scheme` for `key` (by source priority), plus its aliases, or null.
      *
      * @param list<array<string,mixed>> $log
-     * @return array{canonical: array{0: string, 1: string}, aliases: list<array{0: string, 1: string}>}|null
+     * @return array<string,mixed>|null
      */
     public static function canonical(string $scheme, string $key, array $log, Priority|callable $priority): ?array
     {
@@ -29,9 +29,14 @@ final class PublicId
                 $codes[] = $code;
             }
         }
+        usort($codes, static fn (array $a, array $b): int => strcmp(Codes::key($a), Codes::key($b)));
 
         if ($codes === []) {
             return null;
+        }
+
+        if (count($codes) === 1) {
+            return ['canonical' => $codes[0], 'aliases' => []];
         }
 
         $idclaims = self::identityClaims($log);
@@ -43,18 +48,29 @@ final class PublicId
             }
         }
 
-        $winner = $entries === []
-            ? $codes[0]
-            : Survivorship::decide($scheme, $entries, $priority)['value'];
-
-        $aliases = [];
-        foreach ($codes as $code) {
-            if ($code !== $winner) {
-                $aliases[] = $code;
-            }
+        if ($entries === []) {
+            return [
+                'canonical' => null,
+                'aliases' => $codes,
+                'status' => 'needs_review',
+                'candidates' => array_map(static fn (array $code): array => [null, $code], $codes),
+            ];
         }
 
-        return ['canonical' => $winner, 'aliases' => $aliases];
+        $decision = Survivorship::decide($scheme, $entries, $priority);
+        if ($decision['status'] === 'needs_review') {
+            return [
+                'canonical' => null,
+                'aliases' => $codes,
+                'status' => 'needs_review',
+                'candidates' => $decision['candidates'],
+            ];
+        }
+
+        return [
+            'canonical' => $decision['value'],
+            'aliases' => array_values(array_filter($codes, static fn (array $code): bool => $code !== $decision['value'])),
+        ];
     }
 
     /**

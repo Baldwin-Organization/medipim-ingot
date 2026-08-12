@@ -13,7 +13,7 @@ defmodule Api.E2eTruthTest do
   @fixture Path.expand("../../test/ingest/fixtures/medipim_be_422156.json", __DIR__)
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 
@@ -68,22 +68,26 @@ defmodule Api.E2eTruthTest do
     assert Enum.any?(by_code["products"], &(&1["key"] == key))
   end
 
-  test "replaying the backfill is byte-identical; rebuild! confirms the snapshot from zero" do
+  test "replaying the backfill is byte-identical; rebuild! confirms projections from zero" do
     envelope_map = @fixture |> File.read!() |> JSON.decode!()
     request(:post, "/v1/backfill/envelopes", %{envelopes: [envelope_map]})
 
-    snapshot = fn ->
-      %{rows: [[offset, state]]} =
-        Postgrex.query!(Api.DB, ~s(SELECT "offset", state FROM snapshots WHERE id = 1), [])
+    checkpoint = fn ->
+      %{rows: [[offset, payload]]} =
+        Postgrex.query!(
+          Api.DB,
+          ~s(SELECT "offset", payload::text FROM projection_checkpoints WHERE name = 'main'),
+          []
+        )
 
-      {offset, state}
+      {offset, payload}
     end
 
-    before = snapshot.()
+    before = checkpoint.()
     request(:post, "/v1/backfill/envelopes", %{envelopes: [envelope_map]})
-    assert snapshot.() == before, "a replayed envelope must not change the stored snapshot"
+    assert checkpoint.() == before, "a replayed envelope must not change the checkpoint"
 
-    # the disposable-snapshot guarantee holds over the full realistic log
+    # the disposable-projection guarantee holds over the full realistic log
     assert {:ok, {:ok, offset}} = Api.Store.rebuild!()
     assert offset == elem(before, 0)
   end

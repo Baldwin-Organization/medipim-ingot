@@ -1,6 +1,6 @@
 # POST /v1/dry-run (bead gr-rlq), end to end through the router: the full pipeline runs
 # uncommitted and answers with the migration report. Pinned here: (a) a dry-run commits NOTHING
-# (events + snapshots byte-identical), (b) dry-run-then-submit coherence — the verdicts a dry-run
+# (events + projections byte-identical), (b) dry-run-then-submit coherence — the verdicts a dry-run
 # predicts are exactly what a real POST /v1/claims of the same batch produces, (c) the report
 # sections and counts on a contrived batch with a known conflict, merge candidate, code collision
 # and mint, (d) the product token gates the endpoint. async: false — shared tables.
@@ -11,7 +11,7 @@ defmodule Api.DryRunTest do
   import Plug.Conn
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 
@@ -65,21 +65,25 @@ defmodule Api.DryRunTest do
   }
 
   describe "POST /v1/dry-run — commits nothing" do
-    test "events and snapshots are byte-identical after the call; state unchanged" do
+    test "events and checkpoints are byte-identical after the call; state unchanged" do
       establish!()
 
       tables = fn ->
         %{rows: events} =
           Postgrex.query!(
             Api.DB,
-            ~s(SELECT "offset", type, recorded_at, payload FROM events ORDER BY "offset"),
+            ~s(SELECT "offset", type, recorded_at, payload::text FROM events ORDER BY "offset"),
             []
           )
 
-        %{rows: snapshots} =
-          Postgrex.query!(Api.DB, ~s(SELECT "offset", state FROM snapshots), [])
+        %{rows: checkpoints} =
+          Postgrex.query!(
+            Api.DB,
+            ~s(SELECT name, "offset", payload::text FROM projection_checkpoints),
+            []
+          )
 
-        {events, snapshots}
+        {events, checkpoints}
       end
 
       before_tables = tables.()
@@ -108,7 +112,10 @@ defmodule Api.DryRunTest do
       state = Api.Store.state()
       assert dry["counts"]["mints"] == 1
       assert map_size(state.ledger.members) == 3
-      assert [%Events.ConflictFlagged{subject: {:merge, keys}}] = Api.State.open_flags(state)
+
+      assert %Events.ConflictFlagged{subject: {:merge, keys}} =
+               Enum.find(Api.State.open_flags(state), &match?({:merge, _}, &1.subject))
+
       assert [%{"keys" => ^keys}] = dry["merge_candidates"]
     end
 

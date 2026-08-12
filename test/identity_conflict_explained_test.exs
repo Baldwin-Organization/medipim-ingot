@@ -32,25 +32,65 @@ defmodule IdentityConflictExplainedTest do
       assert product_has_code?(result, {:gtin, "5012345678900"})
     end
 
-    # The reason the "identity guarding" toggle exists. NOT built yet (see bead gr-ake), so this is
-    # skipped — it documents, in plain words, the behaviour we want once guarding is switched on.
-    @tag :skip
     test "WHEN two shops share a barcode but give DIFFERENT national codes, THEN the system must NOT silently merge them" do
       # ── INPUT (in plain words) ────────────────────────────────────────────────
       #   Shop A says:  "national code 111, barcode 5012345678900."
       #   Shop B says:  "national code 222, barcode 5012345678900."
       #   Same barcode, but two different national codes — a contradiction: a single product
       #   cannot truthfully have two different national codes.
-      result =
-        run([
-          a_source_says("Shop A", national_code: "111", barcode: "5012345678900"),
-          a_source_says("Shop B", national_code: "222", barcode: "5012345678900")
-        ])
+      claims = [
+        a_source_says("Shop A", national_code: "111", barcode: "5012345678900"),
+        a_source_says("Shop B", national_code: "222", barcode: "5012345678900")
+      ]
+
+      results = [run(claims), run(Enum.reverse(claims))]
 
       # ── EXPECTED OUTPUT, with guarding ON (the behaviour we want) ──────────────
       #   The system does NOT glue 111 and 222 into one product. It keeps them as TWO products
       #   and flags the clash so a person can decide. (Better to under-merge and ask than to
       #   silently fuse two real products into one.)
+      for result <- results do
+        assert number_of_products(result) == 2
+        assert a_clash_was_flagged?(result)
+      end
+
+      assert Enum.map(results, &product_codes/1) |> Enum.uniq() |> length() == 1
+    end
+
+    test "WHEN a trusted steward confirms the two national codes are aliases, THEN the held match can merge" do
+      result =
+        run([
+          a_source_says("Shop A", national_code: "111", barcode: "5012345678900"),
+          a_source_says("Shop B", national_code: "222", barcode: "5012345678900"),
+          trusted_evidence(:same, {:cnk, "111"}, {:cnk, "222"})
+        ])
+
+      assert number_of_products(result) == 1
+      refute a_clash_was_flagged?(result)
+      assert product_has_code?(result, {:cnk, "111"})
+      assert product_has_code?(result, {:cnk, "222"})
+    end
+
+    test "WHEN a trusted steward says two otherwise compatible national codes are distinct, THEN they stay apart" do
+      result =
+        run([
+          claim(
+            :"Shop A",
+            :identity,
+            %{ref: "Shop A", codes: [{:cnk, "111"}, {:gtin, "5012345678900"}]},
+            @today,
+            @today
+          ),
+          claim(
+            :"Shop B",
+            :identity,
+            %{ref: "Shop B", codes: [{:pzn, "222"}, {:gtin, "5012345678900"}]},
+            @today,
+            @today
+          ),
+          trusted_evidence(:distinct, {:cnk, "111"}, {:pzn, "222"})
+        ])
+
       assert number_of_products(result) == 2
       assert a_clash_was_flagged?(result)
     end
@@ -67,6 +107,10 @@ defmodule IdentityConflictExplainedTest do
       |> Enum.reject(&is_nil/1)
 
     claim(String.to_atom(name), :identity, %{ref: name, codes: codes}, @today, @today)
+  end
+
+  defp trusted_evidence(relation, left, right) do
+    claim(:steward, :identity_evidence, %{relation: relation, left: left, right: right}, @today, @today)
   end
 
   defp run(claims) do
@@ -89,7 +133,19 @@ defmodule IdentityConflictExplainedTest do
     products |> Enum.flat_map(& &1.variants) |> Enum.any?(&(Codes.canonicalize(code) in &1.codes))
   end
 
-  defp a_clash_was_flagged?(%{log: log}), do: PublicId.collisions(:cnk, log) != []
+  defp a_clash_was_flagged?(%{log: log}) do
+    Enum.any?(log, fn
+      %Events.ConflictFlagged{subject: {:identity_conflict, {:gtin, _}}} -> true
+      _ -> false
+    end)
+  end
+
+  defp product_codes(%{products: products}) do
+    products
+    |> Enum.flat_map(& &1.variants)
+    |> Enum.map(& &1.codes)
+    |> Enum.sort()
+  end
 
   defp stamp(events, start),
     do: {Enum.map(Enum.with_index(events, start), fn {e, i} -> %{e | order: i} end), start + length(events)}

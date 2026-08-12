@@ -14,6 +14,7 @@ use Ingot\PublicId;
 use Ingot\Substrate;
 use Ingot\Survivorship;
 use Ingot\Sets;
+use Ingot\Stewardship;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -90,6 +91,23 @@ final class EngineTest extends TestCase
         [$res] = $this->stamp($res, $o);
 
         return [array_merge($c, $res), $this->fold($res, IdentityLedger::new())];
+    }
+
+    /**
+     * Explicit reviewed override of the automatic unique-id hold.
+     *
+     * @param list<array<string,mixed>> $log
+     * @return array{0: list<array<string,mixed>>, 1: LedgerState}
+     */
+    private function stewardMerge(array $log, LedgerState $ledger): array
+    {
+        $keys = array_keys($ledger->members);
+        sort($keys, SORT_STRING);
+        $orders = array_column($log, 'order');
+        $start = ($orders === [] ? 0 : max($orders)) + 1;
+        [$events] = $this->stamp(Stewardship::approveMerge($ledger->members, $keys, 'steward', 'd2'), $start);
+
+        return [array_merge($log, $events), $this->fold($events, $ledger)];
     }
 
     /** @return array<string,mixed> a claim assoc array */
@@ -207,6 +225,67 @@ final class EngineTest extends TestCase
         self::assertCount(3, $d['candidates']);
     }
 
+    public function test_shared_barcode_with_different_national_ids_is_held_and_flagged(): void
+    {
+        $claims = [
+            $this->claim('shop-b', 'identity', ['ref' => 'B', 'codes' => [['cnk', '222'], ['gtin', '5012345678900']]]),
+            $this->claim('shop-a', 'identity', ['ref' => 'A', 'codes' => [['cnk', '111'], ['gtin', '5012345678900']]]),
+        ];
+
+        foreach ([$claims, array_reverse($claims)] as $ordered) {
+            [$log, $ledger] = $this->resolve($ordered);
+            self::assertCount(2, $ledger->members);
+
+            $flagged = false;
+            foreach ($log as $event) {
+                if (
+                    ($event['type'] ?? null) === Events::TYPE_CONFLICT_FLAGGED
+                    && ($event['subject'][0] ?? null) === 'identity_conflict'
+                ) {
+                    $flagged = true;
+                }
+            }
+            self::assertTrue($flagged);
+        }
+    }
+
+    public function test_trusted_same_evidence_overrides_the_provisional_hold(): void
+    {
+        [$log, $ledger] = $this->resolve([
+            $this->claim('shop-a', 'identity', ['ref' => 'A', 'codes' => [['cnk', '111'], ['gtin', '5012345678900']]]),
+            $this->claim('shop-b', 'identity', ['ref' => 'B', 'codes' => [['cnk', '222'], ['gtin', '5012345678900']]]),
+            $this->claim('steward', 'identity_evidence', [
+                'relation' => 'same',
+                'left' => ['cnk', '111'],
+                'right' => ['cnk', '222'],
+            ]),
+        ]);
+
+        self::assertCount(1, $ledger->members);
+        foreach ($log as $event) {
+            self::assertNotSame('identity_conflict', $event['subject'][0] ?? null);
+        }
+    }
+
+    public function test_trusted_distinct_evidence_holds_an_otherwise_compatible_match(): void
+    {
+        [$log, $ledger] = $this->resolve([
+            $this->claim('shop-a', 'identity', ['ref' => 'A', 'codes' => [['cnk', '111'], ['gtin', '5012345678900']]]),
+            $this->claim('shop-b', 'identity', ['ref' => 'B', 'codes' => [['pzn', '222'], ['gtin', '5012345678900']]]),
+            $this->claim('steward', 'identity_evidence', [
+                'relation' => 'distinct',
+                'left' => ['cnk', '111'],
+                'right' => ['pzn', '222'],
+            ]),
+        ]);
+
+        self::assertCount(2, $ledger->members);
+        self::assertNotEmpty(array_filter(
+            $log,
+            static fn (array $event): bool => ($event['subject'][0] ?? null) === 'identity_conflict',
+        ));
+    }
+
     // ── code collisions ───────────────────────────────────────────────────────────
 
     public function test_grouping_pointing_at_two_products_is_contested(): void
@@ -281,13 +360,22 @@ final class EngineTest extends TestCase
 
     public function test_cnk_canonical_by_priority_with_alias(): void
     {
-        [$log] = $this->resolve([
+        [$log, $ledger] = $this->resolve([
             $this->claim('manufacturer', 'identity', ['ref' => 'A', 'codes' => [['cnk', '0111'], ['gtin', '5001']]]),
             $this->claim('supplier', 'identity', ['ref' => 'B', 'codes' => [['cnk', '0222'], ['gtin', '5001']]]),
         ]);
+        self::assertCount(2, $ledger->members);
+        [$log, $ledger] = $this->stewardMerge($log, $ledger);
+
+        $claims = array_values(array_filter(
+            $log,
+            static fn (array $event): bool => ($event['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED
+        ));
+        $replay = IdentityLedger::decide($ledger, ['reconcile', Cluster::variants(Substrate::current($claims)), 'd2']);
+        self::assertNotContains(Events::TYPE_IDENTITY_SPLIT, array_column($replay, 'type'));
+        self::assertCount(1, $this->fold($replay, $ledger)->members);
 
         // resolve the key owning gtin:5001
-        $ledger = $this->fold($log, IdentityLedger::new());
         $key = null;
         foreach ($ledger->members as $k => $codes) {
             if (Sets::member($codes, ['gtin', '5001'])) {
@@ -299,6 +387,38 @@ final class EngineTest extends TestCase
         $result = PublicId::canonical('cnk', $key, $log, $this->priority);
         self::assertSame(['cnk', '0111'], $result['canonical'], 'manufacturer outranks supplier for cnk');
         self::assertSame([['cnk', '0222']], $result['aliases']);
+    }
+
+    public function test_equal_priority_cnk_disagreement_has_no_canonical_and_is_order_independent(): void
+    {
+        $claims = [
+            $this->claim('source_b', 'identity', ['ref' => 'B', 'codes' => [['cnk', '0222'], ['gtin', '5001']]]),
+            $this->claim('source_a', 'identity', ['ref' => 'A', 'codes' => [['cnk', '0111'], ['gtin', '5001']]]),
+        ];
+
+        $expected = [
+            'canonical' => null,
+            'aliases' => [['cnk', '0111'], ['cnk', '0222']],
+            'status' => 'needs_review',
+            'candidates' => [
+                ['source_a', ['cnk', '0111']],
+                ['source_b', ['cnk', '0222']],
+            ],
+        ];
+
+        foreach ([$claims, array_reverse($claims)] as $ordered) {
+            [$log, $ledger] = $this->resolve($ordered);
+            [$log, $ledger] = $this->stewardMerge($log, $ledger);
+            $key = null;
+            foreach ($ledger->members as $candidateKey => $codes) {
+                if (Sets::member($codes, ['gtin', '5001'])) {
+                    $key = $candidateKey;
+                }
+            }
+
+            self::assertNotNull($key);
+            self::assertSame($expected, PublicId::canonical('cnk', $key, $log, Priority::new([], [])));
+        }
     }
 
     public function test_no_cnk_collision_in_normal_case(): void

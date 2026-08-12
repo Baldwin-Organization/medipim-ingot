@@ -38,6 +38,49 @@ defmodule Api.Views do
     }
   end
 
+  def feed_event(%Events.SourceRecordRevised{} = e),
+    do: %{
+      offset: e.order,
+      type: "source_record_#{e.operation}",
+      source: e.source,
+      ref: e.ref,
+      revision: e.revision,
+      status: if(e.active, do: "active", else: "withdrawn"),
+      date: e.recorded_at
+    }
+
+  def feed_event(%Events.SourceRecordKeyBound{} = e),
+    do: %{
+      offset: e.order,
+      type: "source_record_key_bound",
+      source: e.source,
+      ref: e.ref,
+      lane: e.lane,
+      key: e.key,
+      date: e.recorded_at
+    }
+
+  def feed_event(%Events.ReviewCaseOpened{} = e),
+    do: %{
+      offset: e.order,
+      type: "review_case_opened",
+      case_id: e.case_id,
+      subject: subject(e.subject),
+      evidence_offset: e.evidence_offset,
+      date: e.recorded_at
+    }
+
+  def feed_event(%Events.ReviewCaseEndorsed{} = e),
+    do: %{
+      offset: e.order,
+      type: "review_case_endorsed",
+      case_id: e.case_id,
+      principal: e.principal,
+      evidence_offset: e.evidence_offset,
+      reason: e.reason,
+      date: e.recorded_at
+    }
+
   def feed_event(%Events.IdentityMinted{} = e),
     do: %{offset: e.order, type: "minted", key: e.key, codes: codes(e.codes), date: e.recorded_at}
 

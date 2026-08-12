@@ -70,11 +70,67 @@ jobs:
       - name: Get deps
         run: mix deps.get
 
+      - name: Audit retired dependencies
+        run: mix hex.audit
+
+      - name: Reject unused dependencies
+        run: mix deps.unlock --check-unused
+
       - name: Check formatting
         run: mix format --check-formatted
 
       - name: Test
         run: mix test
+
+  image-smoke:
+    name: Release image smoke
+    runs-on: ubuntu-latest
+    needs: api
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build and start the release stack
+        run: docker compose -f api/docker-compose.yml up -d --build --wait
+
+      - name: Exercise liveness, readiness, auth, and metadata
+        run: |
+          curl --fail --silent http://localhost:4000/health
+          curl --fail --silent http://localhost:4000/ready
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            http://localhost:4000/v1/metadata)" = 401
+          curl --fail --silent \
+            -H 'Authorization: Bearer local-product-token-change-me-000001' \
+            http://localhost:4000/v1/metadata
+
+      - name: Recover projections before rebinding listeners
+        run: |
+          curl --fail --silent \
+            -X PUT \
+            -H 'Authorization: Bearer local-product-token-change-me-000001' \
+            -H 'Content-Type: application/json' \
+            --data '{"operation":"replace","claims":[{"kind":"identity","codes":["supplier_ref:ci-recovery"]}]}' \
+            http://localhost:4000/v1/source-records/ci/recovery/revisions/1
+          docker compose -f api/docker-compose.yml exec -T db \
+            psql -U postgres -d golden_record_api -v ON_ERROR_STOP=1 \
+            -c "UPDATE projection_checkpoints SET \"offset\" = 0 WHERE name = 'main'"
+          docker compose -f api/docker-compose.yml restart api
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:4000/ready; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Print container logs
+        if: always()
+        run: docker compose -f api/docker-compose.yml logs
+
+      - name: Stop release stack
+        if: always()
+        run: docker compose -f api/docker-compose.yml down -v
 
   php:
     name: PHP tests (${{ matrix.php }})
@@ -106,6 +162,9 @@ jobs:
       # PHP suite runs standalone — no Elixir needed in this job.
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Audit dependencies
+        run: composer audit --locked --no-interaction
 
       - name: Test
         run: ./vendor/bin/phpunit --no-coverage

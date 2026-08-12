@@ -47,6 +47,13 @@ final class Substrate
                 }
 
                 return $data;
+            case 'identity_evidence':
+                if (isset($data['left'], $data['right'])) {
+                    $data['left'] = Codes::canonicalize($data['left']);
+                    $data['right'] = Codes::canonicalize($data['right']);
+                }
+
+                return $data;
             case 'grouping':
             case 'attribute':
                 if (isset($data['code'])) {
@@ -97,6 +104,7 @@ final class Substrate
 
         return match ($claim['kind']) {
             'identity' => [$s, 'identity', $d['ref']],
+            'identity_evidence' => [$s, 'identity_evidence', $d['left'], $d['right']],
             'grouping' => [$s, 'grouping', $d['code']],
             'attribute' => [$s, 'attr', $d['code'], $d['field']],
             'media' => [$s, 'media', $d['asset'], $d['target']],

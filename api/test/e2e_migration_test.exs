@@ -12,9 +12,10 @@ defmodule Api.E2eMigrationTest do
   import Plug.Conn
 
   @fixtures Path.expand("../../test/ingest/fixtures", __DIR__)
+  @shadow_oracle Path.expand("fixtures/medipim_shadow_window.expected.json", __DIR__)
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 
@@ -59,12 +60,59 @@ defmodule Api.E2eMigrationTest do
     %{rows: events} =
       Postgrex.query!(
         Api.DB,
-        ~s(SELECT "offset", type, payload FROM events ORDER BY "offset"),
+        ~s(SELECT "offset", type, payload::text FROM events ORDER BY "offset"),
         []
       )
 
-    %{rows: snapshots} = Postgrex.query!(Api.DB, ~s(SELECT "offset", state FROM snapshots), [])
-    {events, snapshots}
+    %{rows: projections} =
+      Postgrex.query!(
+        Api.DB,
+        """
+        SELECT 'checkpoint', name, payload::text FROM projection_checkpoints
+        UNION ALL
+        SELECT 'golden', key, payload::text FROM golden_records
+        ORDER BY 1, 2
+        """,
+        []
+      )
+
+    {events, projections}
+  end
+
+  # The PHP oracle and API allocate different product/media surrogate keys. Normalize the HTTP
+  # document to their stable semantic intersection: status, canonical codes, full attribute
+  # decisions, and the media source/URI multiset. API clocks, route legacy_id, merged_from, media
+  # role (not exposed here), and all surrogate keys are deliberately excluded. The generated
+  # fixture carries the same normalization description.
+  defp shadow_view(legacy_id) do
+    body = request(:get, "/v1/products/#{legacy_id}") |> decoded()
+
+    attributes =
+      body["attributes"]
+      |> Enum.map(fn attribute ->
+        candidates =
+          attribute["candidates"]
+          |> Enum.map(&Map.take(&1, ["source", "value"]))
+          |> Enum.sort_by(&{&1["source"] || "", JSON.encode!(&1["value"])})
+
+        attribute
+        |> Map.take(["field", "value", "winner", "status"])
+        |> Map.put("candidates", candidates)
+      end)
+      |> Enum.sort_by(& &1["field"])
+
+    media =
+      body["media"]
+      |> Enum.map(&Map.take(&1, ["source", "uri"]))
+      |> Enum.sort_by(&{&1["source"] || "", JSON.encode!(&1["uri"])})
+
+    %{
+      "status" => body["status"],
+      "codes" => Enum.sort(body["codes"]),
+      "attributes" => attributes,
+      "media_count" => length(media),
+      "media" => media
+    }
   end
 
   test "dry-run catches the naive mapping; the fixed mapping cuts over; the read API serves both entities" do
@@ -212,6 +260,34 @@ defmodule Api.E2eMigrationTest do
     queue = decoded(request(:get, "/steward/v1/queue", nil, "test-steward-token"))
     assert queue["open"] == 4
     refute Enum.any?(queue["attributes"], &(&1["field"] == "name:fr"))
+  end
+
+  test "shadow parity stays exact through a source refresh and a late-arriving correction" do
+    oracle = @shadow_oracle |> File.read!() |> JSON.decode!() |> Map.fetch!("phases")
+    batch = fixed_mapping()
+    assert decoded(request(:post, "/v1/cutover", %{claims: batch}))["committed"]
+    assert shadow_view(422_156) == oracle["baseline"]
+
+    refreshed =
+      Enum.map(batch, fn
+        %{"kind" => "attribute", "field" => "name:fr"} = claim ->
+          Map.put(claim, "value", "Nom rafraîchi")
+
+        claim ->
+          claim
+      end)
+
+    assert decoded(request(:post, "/v1/cutover", %{claims: refreshed}))["committed"]
+    assert shadow_view(422_156) == oracle["source_refresh"]
+
+    late =
+      Enum.find(refreshed, fn claim ->
+        claim["kind"] == "attribute" and claim["field"] == "name:fr"
+      end)
+      |> Map.merge(%{"value" => "Correction arrivée en retard", "valid_from" => "2024-01-01"})
+
+    assert request(:post, "/v1/claims", %{claims: [late]}).status == 200
+    assert shadow_view(422_156) == oracle["late_arriving_correction"]
   end
 
   test "cutover requires the product token" do

@@ -28,10 +28,20 @@ const ACTIONS: Record<string, StepAction> = {
   "priority/color-tie": { label: "Import: white vs ivory arrive", kind: "import" },
   "priority/steward-pick": { label: "Steward: resolve the colour tie", kind: "steward" },
 
-  // 5 — the guard
+  // 4 — the record keeps changing
+  "record/v2-patch": { label: "Revision 2: the supplier patches the weight", kind: "import" },
+  "record/v3-withdraw": { label: "Revision 3: the supplier delists it", kind: "import" },
+  "record/v4-reactivate": { label: "Revision 4: it returns with new barcodes", kind: "import" },
+
+  // 6 — two clocks
+  "clocks/before-correction": { label: "Ask about 5 February — from March", kind: "watch" },
+  "clocks/after-correction": { label: "Ask the same question again in April", kind: "watch" },
+  "clocks/window-closed": { label: "Ask about 10 February instead", kind: "watch" },
+
+  // 7 — the guard
   "guard/bridge": { label: "Import: the same barcode arrives on both", kind: "import" },
 
-  // 6 — the mistake is cheap
+  // 8 — the mistake is cheap
   "mistake/wrong-merge": { label: "Steward: approve the merge", kind: "steward" },
   "mistake/contradiction": { label: "Look closer at the fused weights", kind: "watch" },
   "mistake/split": { label: "Steward: split BOLT back out", kind: "steward" },

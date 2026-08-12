@@ -53,4 +53,41 @@ final class SurvivorshipPolicyTest extends TestCase
         // P2: X on-product -> B penalised -> X wins. Same claims, different context, different winner.
         self::assertSame('X', Survivorship::decide('name', $entries, $rank(['X']))['winner']);
     }
+
+    public function test_equal_rank_disagreement_has_no_made_up_winner_and_is_order_independent(): void
+    {
+        $policy = Priority::new([], []);
+        $entries = [
+            self::e('source-b', 'Beta', 2),
+            self::e('source-a', 'Alpha', 1),
+            self::e('source-c', 'Gamma', 3),
+        ];
+
+        $expected = [
+            'value' => null,
+            'winner' => null,
+            'status' => 'needs_review',
+            'candidates' => [
+                ['source-a', 'Alpha'],
+                ['source-b', 'Beta'],
+                ['source-c', 'Gamma'],
+            ],
+        ];
+
+        self::assertSame($expected, Survivorship::decide('name', $entries, $policy));
+        self::assertSame($expected, Survivorship::decide('name', array_reverse($entries), $policy));
+    }
+
+    public function test_equal_rank_sources_that_agree_still_resolve(): void
+    {
+        $decision = Survivorship::decide(
+            'name',
+            [self::e('source-b', 'Same', 2), self::e('source-a', 'Same', 1)],
+            Priority::new([], [])
+        );
+
+        self::assertSame('Same', $decision['value']);
+        self::assertSame('source-a', $decision['winner']);
+        self::assertSame('resolved', $decision['status']);
+    }
 }

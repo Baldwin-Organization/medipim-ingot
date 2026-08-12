@@ -38,11 +38,15 @@ defmodule ClaimsValidator do
   Returns `{:ok, warnings}` when every claim is structurally valid, or `{:error, errors}` when
   any claim rejects — one finding per offending field, shaped `%{index, field, error}`.
   """
-  def validate(claims) when is_list(claims) do
+  def validate(claims), do: validate(claims, [])
+
+  def validate(claims, opts) when is_list(claims) do
+    registry = Keyword.get(opts, :scheme_registry)
+
     findings =
       claims
       |> Enum.with_index()
-      |> Enum.flat_map(fn {claim, index} -> claim_findings(claim, index) end)
+      |> Enum.flat_map(fn {claim, index} -> claim_findings(claim, index, registry) end)
 
     case Enum.split_with(findings, &match?({:error, _}, &1)) do
       {[], warnings} -> {:ok, Enum.map(warnings, fn {:warning, w} -> w end)}
@@ -50,66 +54,66 @@ defmodule ClaimsValidator do
     end
   end
 
-  def validate(_),
+  def validate(_, _opts),
     do: {:error, [%{index: nil, field: nil, error: "claims must be a list"}]}
 
   # ── one claim ───────────────────────────────────────────────────────────────
-  defp claim_findings(%{"kind" => kind} = claim, index) when kind in @kinds do
-    fields(kind, claim, index) ++ valid_from(claim, index)
+  defp claim_findings(%{"kind" => kind} = claim, index, registry) when kind in @kinds do
+    fields(kind, claim, index, registry) ++ temporal_interval(claim, index)
   end
 
-  defp claim_findings(%{"kind" => kind}, index),
+  defp claim_findings(%{"kind" => kind}, index, _registry),
     do: [error(index, "kind", "unknown kind #{inspect(kind)}")]
 
-  defp claim_findings(_, index),
+  defp claim_findings(_, index, _registry),
     do: [error(index, nil, "claim must be an object with a kind")]
 
   # ── per-kind required fields (spec: "Claim shape" + contract/claims.schema.json) ─
-  defp fields("identity", claim, index) do
+  defp fields("identity", claim, index, registry) do
     non_empty_string(claim, "source", index) ++
       non_empty_string(claim, "ref", index) ++
-      codes(claim, index) ++
+      codes(claim, index, registry) ++
       entity(claim, index) ++
-      lane_findings(claim, index)
+      lane_findings(claim, index, registry)
   end
 
-  defp fields("attribute", claim, index) do
+  defp fields("attribute", claim, index, registry) do
     non_empty_string(claim, "source", index) ++
-      code(claim, "code", index) ++
+      code(claim, "code", index, registry) ++
       non_empty_string(claim, "field", index) ++
       scalar(claim, "value", index)
   end
 
-  defp fields("media", claim, index) do
+  defp fields("media", claim, index, registry) do
     non_empty_string(claim, "source", index) ++
       non_empty_string(claim, "asset", index) ++
-      code(claim, "target", index) ++
+      code(claim, "target", index, registry) ++
       non_empty_string(claim, "uri", index) ++
       role(claim, index)
   end
 
-  defp fields("grouping", claim, index) do
+  defp fields("grouping", claim, index, registry) do
     non_empty_string(claim, "source", index) ++
-      code(claim, "code", index) ++
+      code(claim, "code", index, registry) ++
       integer(claim, "product", index)
   end
 
-  defp fields("edge", claim, index) do
+  defp fields("edge", claim, index, registry) do
     non_empty_string(claim, "source", index) ++
-      code(claim, "from", index) ++
-      code(claim, "to", index) ++
-      relation(claim, index)
+      code(claim, "from", index, registry) ++
+      code(claim, "to", index, registry) ++
+      relation(claim, index, registry)
   end
 
   # ── lane & relation rules (gr-dig) ──────────────────────────────────────────
   # Identity codes mixing two lanes reject — a claim cannot be a product AND a substance. The
   # check runs only when every code parses (code findings already cover malformed ones).
-  defp lane_findings(%{"codes" => [_ | _] = list}, index) do
-    parsed = Enum.map(list, &CanonicalClaims.parse_code/1)
+  defp lane_findings(%{"codes" => [_ | _] = list}, index, registry) do
+    parsed = Enum.map(list, &CanonicalClaims.parse_code(&1, registry))
 
     with true <- Enum.all?(parsed, &match?({:ok, _}, &1)) do
       parsed
-      |> Enum.map(fn {:ok, {scheme, _}} -> Lanes.lane_of_scheme(scheme) end)
+      |> Enum.map(fn {:ok, {scheme, _}} -> Lanes.lane_of_scheme(scheme, registry) end)
       |> Enum.reject(&is_nil/1)
       |> Enum.uniq()
       |> case do
@@ -130,7 +134,7 @@ defmodule ClaimsValidator do
     end
   end
 
-  defp lane_findings(_claim, _index), do: []
+  defp lane_findings(_claim, _index, _registry), do: []
 
   defp entity(claim, index) do
     case claim do
@@ -147,7 +151,7 @@ defmodule ClaimsValidator do
       # its own, so it MUST name one. Without this, Lanes.of_claim/1 silently defaults it to
       # :product (the contract makes entity required exactly here).
       %{"codes" => [_ | _] = list} ->
-        if lane_neutral_codes?(list) do
+        if lane_neutral_codes?(list, nil) do
           [error(index, "entity", "entity is required when every code is the lane-neutral uuid scheme")]
         else
           []
@@ -160,10 +164,10 @@ defmodule ClaimsValidator do
 
   # True only when every code parses AND every code's scheme is lane-neutral (`:uuid` today —
   # Lanes.lane_of_scheme/1 returns nil). Malformed codes are already reported by codes/2.
-  defp lane_neutral_codes?(list) do
+  defp lane_neutral_codes?(list, registry) do
     Enum.all?(list, fn raw ->
-      case CanonicalClaims.parse_code(raw) do
-        {:ok, {scheme, _}} -> Lanes.lane_of_scheme(scheme) == nil
+      case CanonicalClaims.parse_code(raw, registry) do
+        {:ok, {scheme, _}} -> Lanes.lane_of_scheme(scheme, registry) == nil
         _ -> false
       end
     end)
@@ -171,10 +175,10 @@ defmodule ClaimsValidator do
 
   # The relation must exist in the registry AND its lane signature must hold (the design's
   # contract rule: a mismatched endpoint is an error, not a warning).
-  defp relation(claim, index) do
+  defp relation(claim, index, registry) do
     with %{"relation" => name} when is_binary(name) <- claim,
-         {:ok, rel} <- Relations.parse(name) do
-      signature(claim, rel, index)
+         {:ok, rel} <- Relations.parse(name, registry) do
+      signature(claim, rel, index, registry)
     else
       %{"relation" => value} -> [error(index, "relation", "unknown relation #{inspect(value)}")]
       :error -> [error(index, "relation", "unknown relation #{inspect(claim["relation"])}")]
@@ -182,17 +186,29 @@ defmodule ClaimsValidator do
     end
   end
 
-  defp signature(claim, rel, index) do
-    with {:ok, from} <- CanonicalClaims.parse_code(Map.get(claim, "from", "")),
-         {:ok, to} <- CanonicalClaims.parse_code(Map.get(claim, "to", "")) do
-      if Relations.valid_signature?(rel, from, to) do
+  defp signature(claim, rel, index, registry) do
+    with {:ok, from} <- CanonicalClaims.parse_code(Map.get(claim, "from", ""), registry),
+         {:ok, to} <- CanonicalClaims.parse_code(Map.get(claim, "to", ""), registry) do
+      if Relations.valid_signature?(rel, from, to, registry) do
         []
       else
+        signature =
+          case registry do
+            %SchemeRegistry{} ->
+              case SchemeRegistry.relation(registry, rel) do
+                {:ok, relation} -> {relation.from, relation.to}
+                :error -> Relations.signatures()[rel]
+              end
+
+            nil ->
+              Relations.signatures()[rel]
+          end
+
         [
           error(
             index,
             "relation",
-            "edge endpoints do not satisfy #{inspect(rel)}'s lane signature #{inspect(Relations.signatures()[rel])}"
+            "edge endpoints do not satisfy #{inspect(rel)}'s lane signature #{inspect(signature)}"
           )
         ]
       end
@@ -237,10 +253,10 @@ defmodule ClaimsValidator do
     end
   end
 
-  defp codes(claim, index) do
+  defp codes(claim, index, registry) do
     case claim do
       %{"codes" => list} when is_list(list) ->
-        Enum.flat_map(list, &code_findings(&1, "codes", index))
+        Enum.flat_map(list, &code_findings(&1, "codes", index, registry))
 
       %{"codes" => value} ->
         [
@@ -256,40 +272,45 @@ defmodule ClaimsValidator do
     end
   end
 
-  defp code(claim, field, index) do
+  defp code(claim, field, index, registry) do
     case claim do
-      %{^field => raw} -> code_findings(raw, field, index)
+      %{^field => raw} -> code_findings(raw, field, index, registry)
       _ -> [error(index, field, "#{field} is required")]
     end
   end
 
   # A code is one "scheme:value" string, split on the FIRST colon, both halves non-empty.
-  defp code_findings(raw, field, index) when is_binary(raw) do
+  defp code_findings(raw, field, index, registry) when is_binary(raw) do
     case String.split(raw, ":", parts: 2) do
       [scheme, value] when scheme != "" and value != "" ->
-        scheme_advisories(scheme, value, raw, field, index)
+        scheme_advisories(scheme, value, raw, field, index, registry)
 
       _ ->
         [error(index, field, ~s(code must be "scheme:value", got #{inspect(raw)}))]
     end
   end
 
-  defp code_findings(raw, field, index),
+  defp code_findings(raw, field, index, _registry),
     do: [error(index, field, ~s(code must be a "scheme:value" string, got #{inspect(raw)}))]
 
   # ── semantic advisories — the engine accepts all of these (warnings, never errors) ─
-  defp scheme_advisories(scheme, value, raw, field, index) do
-    case CodeRegistry.engine_scheme(scheme) do
-      engine when is_atom(engine) and engine in @gtin_family ->
-        gtin_advisories(engine, value, raw, field, index)
+  defp scheme_advisories(scheme, value, raw, field, index, registry) do
+    declared = match?(%SchemeRegistry.Scheme{}, registry && SchemeRegistry.scheme(registry, scheme))
 
-      :cnk ->
-        cnk_advisories(value, raw, field, index)
-
-      engine when is_atom(engine) ->
+    case {declared, CodeRegistry.engine_scheme(scheme)} do
+      {true, _engine} ->
         []
 
-      _unknown ->
+      {false, engine} when is_atom(engine) and engine in @gtin_family ->
+        gtin_advisories(engine, value, raw, field, index)
+
+      {false, :cnk} ->
+        cnk_advisories(value, raw, field, index)
+
+      {false, engine} when is_atom(engine) ->
+        []
+
+      {false, _unknown} ->
         [
           warning(
             index,
@@ -401,20 +422,39 @@ defmodule ClaimsValidator do
     end
   end
 
-  # valid_from is optional on every kind; when present it must be an ISO 8601 DATE (no time).
-  defp valid_from(claim, index) do
-    case claim do
-      %{"valid_from" => raw} when is_binary(raw) ->
-        case Date.from_iso8601(raw) do
-          {:ok, _date} -> []
-          {:error, _} -> [error(index, "valid_from", "valid_from must be an ISO date, got #{inspect(raw)}")]
-        end
+  # Validity is a half-open source-effective interval: [valid_from, valid_to).
+  defp temporal_interval(claim, index) do
+    from = parse_date(claim, "valid_from", index)
+    until_date = parse_date(claim, "valid_to", index)
+    findings = elem(from, 1) ++ elem(until_date, 1)
 
-      %{"valid_from" => raw} ->
-        [error(index, "valid_from", "valid_from must be an ISO date, got #{inspect(raw)}")]
+    case {elem(from, 0), elem(until_date, 0)} do
+      {%Date{} = first, %Date{} = last} ->
+        if Date.before?(first, last),
+          do: findings,
+          else: findings ++ [error(index, "valid_to", "valid_to must be later than valid_from")]
 
       _ ->
-        []
+        findings
+    end
+  end
+
+  defp parse_date(claim, field, index) do
+    case Map.fetch(claim, field) do
+      :error ->
+        {nil, []}
+
+      {:ok, nil} when field == "valid_to" ->
+        {nil, []}
+
+      {:ok, raw} when is_binary(raw) ->
+        case Date.from_iso8601(raw) do
+          {:ok, date} -> {date, []}
+          {:error, _} -> {nil, [error(index, field, "#{field} must be an ISO date, got #{inspect(raw)}")]}
+        end
+
+      {:ok, raw} ->
+        {nil, [error(index, field, "#{field} must be an ISO date, got #{inspect(raw)}")]}
     end
   end
 

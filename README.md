@@ -5,10 +5,10 @@ many codes (EAN/GTIN, CNK, MPN, supplier refs), codes come from **multiple sourc
 contradict each other**, and a **priority list** resolves the conflicts into a clean, unique,
 **event-sourced** golden record.
 
-It is an *explainer*, not a production system: a dependency-free **Mix project** (stdlib only —
-the built-in `JSON` module means no `Jason`). The engine is pure data + functions (no GenServers —
-there's no runtime state to manage), and history is first-class because the system of record is an
-append-only event log.
+The repository now contains both a dependency-free pure engine and a Postgres-backed API shaped
+for a production pilot. It is still a POC, not a live service. The engine remains pure data +
+functions (no GenServers); the API stores an append-only JSON event log and disposable indexed
+read models.
 
 ## Layout
 
@@ -23,20 +23,33 @@ at the repo root.
 | `docs/HISTORY_ENVELOPE.md` | The contract-C spec the ingest consumes. |
 | `api/` | The Product API for medipim — Plug+Bandit + Postgres service over the engine (`docs/API.md`). |
 | `viz/` | The guided story demo + time machine (Astro + React; see `viz/README.md`). |
-| `test/` | ExUnit suites (72 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
+| `test/` | ExUnit suites (291 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
 | `golden_record_ddd.exs` | DDD + event-sourced walkthrough — event log, golden as a fold, time travel, conflicts, verdicts. |
 | `golden_record_stress.exs` | Stress tests — multiple products + JSON, code collision → shared, 3-way contradictions, media re-homing. |
 | `golden_record_api.exs` | Customer-facing layer — ATC collections, CNK public identity, the read API. |
 | `golden_record.exs` | The original pre-DDD procedural version (standalone; kept for comparison). |
 
 ```sh
-mix test                            # the suites (72 tests)
+mix test                            # the engine suites
 mix test --cover                    # with coverage
 mix run golden_record_ddd.exs       # the guided tour
 mix run golden_record_stress.exs    # the hard cases
 mix run golden_record_api.exs       # collections, CNK, the read API
 elixir golden_record.exs            # the standalone pre-DDD version
 ```
+
+## Try the API story
+
+`api/README.md` walks through three executable examples:
+
+1. **Clean merge:** two listings share strong identity evidence and become one stable identity.
+2. **Contradiction:** equally trusted sources disagree, so Ingot returns no arbitrary winner and
+   opens an evidence-bound review case.
+3. **Late correction:** a supplier corrects February data in July; `effective_at` chooses the
+   real-world date while `known_at` reproduces what Ingot knew before or after July.
+
+The exact request bodies are also in `contract/api_examples.json`, and
+`api/test/contract_test.exs` executes them against the real routes.
 
 ## Git hooks
 

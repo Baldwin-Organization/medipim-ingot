@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ingot.dev/contract/steward_decision.schema.json",
+  "title": "Ingot evidence-bound steward decision",
+  "description": "The actor is never accepted from this body; the individual Bearer credential supplies the principal.",
+  "type": "object",
+  "required": ["kind"],
+  "properties": {
+    "kind": {
+      "enum": ["approve_merge", "reject_merge", "resolve_attribute", "split", "suppress"]
+    },
+    "case_id": { "type": "string" },
+    "evidence_offset": { "type": "integer", "minimum": 0 },
+    "reason": { "type": "string" },
+    "keys": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "key": { "type": "string" },
+    "field": { "type": "string" },
+    "value": { "type": ["string", "number", "boolean"] },
+    "codes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[^:]+:.+$" }
+    },
+    "from": { "type": "string", "pattern": "^[^:]+:.+$" },
+    "to": { "type": "string", "pattern": "^[^:]+:.+$" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "kind": { "enum": ["approve_merge", "reject_merge"] } }
+      },
+      "then": {
+        "required": ["case_id", "evidence_offset", "keys"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "resolve_attribute" } }
+      },
+      "then": {
+        "required": ["case_id", "evidence_offset", "key", "field", "value"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "split" } }
+      },
+      "then": {
+        "required": ["case_id", "evidence_offset", "key", "codes"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "kind": { "const": "suppress" } }
+      },
+      "then": {
+        "required": ["from", "to"]
+      }
+    }
+  ]
+}

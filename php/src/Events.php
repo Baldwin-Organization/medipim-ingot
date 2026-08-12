@@ -149,4 +149,41 @@ final class Events
             'order' => $order,
         ];
     }
+
+    /** @param list<string> $keys */
+    public static function mergeProposed(
+        array $keys,
+        string $by,
+        mixed $recordedAt,
+        ?string $reason = null,
+        ?int $order = null,
+    ): array {
+        return [
+            'type' => self::TYPE_MERGE_PROPOSED,
+            'keys' => $keys,
+            'by' => $by,
+            'reason' => $reason,
+            'recorded_at' => $recordedAt,
+            'order' => $order,
+        ];
+    }
+
+    public static function conflictResolved(
+        array $subject,
+        mixed $decision,
+        string $by,
+        mixed $recordedAt,
+        ?string $reason = null,
+        ?int $order = null,
+    ): array {
+        return [
+            'type' => self::TYPE_CONFLICT_RESOLVED,
+            'subject' => $subject,
+            'decision' => $decision,
+            'by' => $by,
+            'reason' => $reason,
+            'recorded_at' => $recordedAt,
+            'order' => $order,
+        ];
+    }
 }

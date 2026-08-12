@@ -7,9 +7,14 @@ defmodule Api.StewardCliTest do
   import Plug.Conn
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     Mix.shell(Mix.Shell.Process)
-    on_exit(fn -> Mix.shell(Mix.Shell.IO) end)
+
+    on_exit(fn ->
+      Mix.shell(Mix.Shell.IO)
+      System.delete_env("STEWARD_API_TOKEN")
+    end)
+
     :ok
   end
 
@@ -59,20 +64,17 @@ defmodule Api.StewardCliTest do
   end
 
   describe "argv parsing (Mix.Tasks.Steward.Decide.parse/1)" do
-    test "approve_merge with keys, by and reason" do
+    test "approve_merge with keys and reason" do
       assert {:ok,
               %{
                 "kind" => "approve_merge",
                 "keys" => ["SK_1", "SK_2"],
-                "by" => "sam",
                 "reason" => "same product"
               }} =
                Mix.Tasks.Steward.Decide.parse([
                  "approve_merge",
                  "--keys",
                  "SK_1+SK_2",
-                 "--by",
-                 "sam",
                  "--reason",
                  "same product"
                ])
@@ -87,7 +89,7 @@ defmodule Api.StewardCliTest do
                 "value" => "ivory"
               }} =
                Mix.Tasks.Steward.Decide.parse(
-                 ~w(resolve_attribute --key SK_1 --field color --value ivory --by sam)
+                 ~w(resolve_attribute --key SK_1 --field color --value ivory)
                )
 
       assert {:ok, %{"kind" => "split", "codes" => ["gtin:1", "cnk:2"]}} =
@@ -96,14 +98,12 @@ defmodule Api.StewardCliTest do
                  "--key",
                  "SK_1",
                  "--codes",
-                 "gtin:1 cnk:2",
-                 "--by",
-                 "sam"
+                 "gtin:1 cnk:2"
                ])
     end
 
     test "garbage argv is a usage error, not a decision" do
-      assert {:error, "usage:" <> _} = Mix.Tasks.Steward.Decide.parse(["--by", "sam"])
+      assert {:error, "usage:" <> _} = Mix.Tasks.Steward.Decide.parse([])
       assert {:error, "usage:" <> _} = Mix.Tasks.Steward.Decide.parse(["split", "--bogus", "x"])
     end
   end
@@ -118,9 +118,9 @@ defmodule Api.StewardCliTest do
       assert output =~ "needs two distinct stewards"
 
       # first decide endorses
-      Mix.Tasks.Steward.Decide.run(
-        ~w(approve_merge --keys #{k1}+#{k2} --by sam --reason verified)
-      )
+      System.put_env("STEWARD_API_TOKEN", "test-steward-token")
+
+      Mix.Tasks.Steward.Decide.run(~w(approve_merge --keys #{k1}+#{k2} --reason verified))
 
       assert map_size(Api.Store.state().ledger.members) == 2
 
@@ -129,11 +129,12 @@ defmodule Api.StewardCliTest do
 
       # the same steward again is refused — the task surfaces the engine's verdict
       assert_raise Mix.Error, fn ->
-        Mix.Tasks.Steward.Decide.run(~w(approve_merge --keys #{k1}+#{k2} --by sam))
+        Mix.Tasks.Steward.Decide.run(~w(approve_merge --keys #{k1}+#{k2}))
       end
 
       # a second steward fuses
-      Mix.Tasks.Steward.Decide.run(~w(approve_merge --keys #{k1}+#{k2} --by alex))
+      System.put_env("STEWARD_API_TOKEN", "test-alex-token")
+      Mix.Tasks.Steward.Decide.run(~w(approve_merge --keys #{k1}+#{k2}))
       assert map_size(Api.Store.state().ledger.members) == 1
     end
   end

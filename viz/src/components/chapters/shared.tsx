@@ -32,6 +32,15 @@ function claimBody(c: ClaimView) {
       </>
     );
   }
+  // A steward's approved merge asserts its own evidence claim — the reason lands in the log too.
+  if (c.kind === "identity_evidence") {
+    return (
+      <>
+        asserts {c.left && <Chip code={c.left} />} and {c.right && <Chip code={c.right} />} are the{" "}
+        <b>{c.relation ?? "same"}</b> product
+      </>
+    );
+  }
   return (
     <>
       attaches <b>{c.asset}</b> to {c.target && <Chip code={c.target} />}

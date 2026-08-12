@@ -132,6 +132,8 @@ final class Catalog
             $distinct[self::scalarKey($e['value'])] = true;
         }
         if (count($distinct) > 1) {
+            $base['value'] = null;
+            $base['winner'] = null;
             $base['status'] = 'needs_review';
         }
 
