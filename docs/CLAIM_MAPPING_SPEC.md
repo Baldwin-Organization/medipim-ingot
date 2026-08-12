@@ -37,35 +37,41 @@ Only `name` and `seoName` are localised in the fixtures.
 ## The anchor gap — over half the attribute events never become claims
 
 An attribute event only becomes a claim if its `(legacy_entity, source)` pair has an **anchor**: a
-code contributed by an identity event *from that same source*. `ClaimMapping.canonical/2` skips the
-event when the anchor is nil.
+code contributed by an identity event from that same source. `ClaimMapping.canonical/2` skips the
+event when the anchor is nil. **108 of the 200 attribute events in the fixtures — 54% — are lost
+this way**, and for two different reasons that need separating.
 
-Four of the nine sources in the fixtures never emit an identity event at all:
+### Sources that never identify anything
 
-| source | events | fields it contributes | outcome |
-|---|---|---|---|
-| `4996` | 70 | the four sales-price aggregates | all dropped |
-| `2` | 22 | `name`, `status`, `tax`, `pharmacistPrice`, `conservation`, `ospId`, `ospCategory`, `officialDeletionAt` | all dropped |
-| `888` | 14 | `publicPrice`, `status`, `ttcPrice`, `popularity`, `numericDistribution`, `yearlyAverageSales` | all dropped |
-| `5480` | 2 | `packageQuantity`, `packagingUnit` | all dropped |
+| source | events | fields |
+|---|---|---|
+| `4996` | 70 | the four sales-price aggregates |
+| `5480` | 3 | `packageQuantity`, `packagingUnit` |
 
-**108 of the 200 attribute events in the fixtures — 54% — never reach a claim.**
+These never emit an identity event at all. They are analytics and pricing providers: they report
+*about* a product without ever saying which product, so there is nothing to address their facts
+to. A claim is about a code; these have none.
 
-Two different harms hide behind that one number:
+### Sources whose history is erased when they delist
 
-- **Nine fields disappear entirely**, including `averageSalesPrice`, the highest-volume field in
-  either fixture. Those are marked *dropped* in the table below.
-- **Worse, and invisible:** sources `2` and `888` assert fields that anchored sources *also* assert
-  — `name`, `status`, `tax`, `publicPrice`. The field still appears in the golden record, so
-  nothing looks wrong, but a competing candidate has been removed from survivorship. A field can
-  resolve cleanly to one source's value precisely because a disagreeing source was silently
-  discarded.
+| source | events | fields |
+|---|---|---|
+| `2` | 22 | `name`, `status`, `tax`, `pharmacistPrice`, `conservation`, `ospId`, `ospCategory`, `officialDeletionAt` |
+| `888` | 14 | `publicPrice`, `status`, `ttcPrice`, `popularity`, `numericDistribution`, `yearlyAverageSales` |
 
-This is a design gap, not a bug in the fold: an attribute claim is addressed by *code*, and a
-source with no codes has nothing to address it to. These four are analytics and pricing providers
-— they report *about* a product without claiming to identify it. Resolving it means deciding
-whether such a source may anchor to the entity's codes as contributed by *other* sources, which
-couples its facts to another source's identity assertion. Tracked as `gr-4iu`.
+These two **do** assert codes. They held them for years and then removed them — they delisted the
+product. Because the fold keeps only the final code set, an empty final set drops the listing, and
+with it *every attribute that source ever asserted*, retroactively. Source 2 priced this product
+from 2021 to 2026; none of it survives.
+
+That is a history bug rather than an addressing question, and it is the more dangerous of the two:
+sources `2` and `888` assert `name`, `status`, `tax` and `publicPrice`, which anchored sources
+*also* assert. The field still appears in the golden record, so nothing looks wrong — but a
+competing candidate has been removed from survivorship. A field can resolve cleanly to one
+source's value precisely because the source that disagreed was silently discarded.
+
+Both are tracked as `gr-4iu`. The delisting half is fixed by interval-aware anchoring (`gr-blb`);
+the no-code half is a contract violation that should be refused rather than swallowed.
 
 ## Attribute fields observed
 
