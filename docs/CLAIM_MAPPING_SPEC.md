@@ -74,8 +74,18 @@ the backfill report and the fix belongs upstream.
 
 | reason | events | who |
 |---|---|---|
-| `source_held_no_code` | 87 | `4996` and `5480`, which never assert a code at all; plus a handful from sources speaking before their first identity event |
-| `unsourced` | 28 | entity-scoped events at a moment when the entity carried no codes |
+| `source_held_no_code` | 73 | `4996` and `5480` — they never assert a code anywhere in either fixture |
+| `source_held_no_code` | 11 | sources that *do* identify the product, but spoke outside the window they held codes |
+| `source_held_no_code` | 3 | attributes stated at the exact instant their source delisted |
+
+The first group is **settled, not outstanding**. `4996` reports the four sales-price aggregates and
+`5480` reports packaging, and neither ever names a code for the product it is describing. Under the
+rule at the top of this section there is nothing to attach their facts to, so they are refused —
+loudly, in the ingest report, which is the part that was actually wrong before.
+
+The other two groups are small and open: `gr-4iu` asks whether a source's codes may reach backwards
+to facts it stated before identifying, and `gr-gh0` covers three events that land on the wrong side
+of a period boundary.
 
 **Effect on the fixtures:** attribute claims went from 92 to 228, and 8 of the 9 sources now reach
 claims rather than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
