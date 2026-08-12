@@ -80,7 +80,8 @@ defmodule ClaimMapping do
 
     %{
       claims: envelopes |> canonical(folded) |> CanonicalClaims.to_engine!() |> stamp(),
-      shared: folded |> listing_codes() |> shared_codes()
+      shared: folded |> listing_codes() |> shared_codes(),
+      rejected: rejected(envelopes)
     }
   end
 
@@ -96,18 +97,22 @@ defmodule ClaimMapping do
   defp canonical(envelopes, folded) do
     periods = listing_periods(envelopes)
     listing_codes = listing_codes(folded)
-    entity_codes = union_by_entity(listing_codes)
 
-    listing_primary = Map.new(listing_codes, fn {k, set} -> {k, primary(Enum.sort(set))} end)
-    entity_primary = Map.new(entity_codes, fn {e, set} -> {e, primary(Enum.sort(set))} end)
-
-    # A sourced event anchors ONLY to its own listing's primary code; if that listing folded to
-    # empty (delisted), the event is skipped rather than re-homed onto another source's code.
-    # Only genuinely unsourced events fall back to the entity-level primary.
-    anchor = fn
-      entity, nil -> Map.get(entity_primary, entity)
-      entity, source -> Map.get(listing_primary, {entity, source})
-    end
+    # A claim is ABOUT a code — cnk, ean, cn. There is no such thing as a claim without one, so
+    # the anchor is the code the asserting source itself held AT THE TIME it spoke, read out of
+    # that listing's periods. Three things follow, and each fixes a real hole:
+    #
+    #   * A source that later delisted keeps everything it said while it did hold codes. The old
+    #     final-state fold erased a source's entire history the moment its last code went away.
+    #   * A source that never asserted a code anchors to nothing. It used to be dropped in
+    #     silence; now it is rejected, because an unaddressable claim is not worth keeping and
+    #     the upstream should hear about it.
+    #   * An unsourced event no longer borrows the entity's primary code. Manufacturing a link
+    #     the source never made is the same error as merging two keys because a barcode matched.
+    # ...and it links to ONE OR MORE of them, not one. So there is no "which code do we pick"
+    # heuristic here at all: emit a claim per code the source held. An image carrying three EANs
+    # links to three products, and a claim survives a split by attaching wherever its code went.
+    codes_at = &codes_at(periods, &1, &2, &3)
 
     # Deterministic emission order — Map/MapSet iteration order is otherwise unspecified, which
     # would let stamp/1's tie-break (and primary/1's pick among equals) drift between runs/versions.
@@ -146,12 +151,11 @@ defmodule ClaimMapping do
       for env <- envelopes,
           ev <- env.events,
           ev.kind == :attribute,
-          a = anchor.(env.legacy_entity, ev.source),
-          a != nil do
+          code <- codes_at.(env.legacy_entity, ev.source, ev.recorded_at) do
         %{
           "kind" => "attribute",
           "source" => ev.source,
-          "code" => CanonicalClaims.code_string(a),
+          "code" => CanonicalClaims.code_string(code),
           "field" => field_dim(ev),
           "value" => attribute_value(ev.data.value),
           "valid_from" => ev.valid_from,
@@ -166,12 +170,11 @@ defmodule ClaimMapping do
           ev.op in [:set, :add],
           ev.data.value != nil,
           not Map.has_key?(@lane_collections, ev.data.collection),
-          a = anchor.(env.legacy_entity, ev.source),
-          a != nil do
+          code <- codes_at.(env.legacy_entity, ev.source, ev.recorded_at) do
         %{
           "kind" => "member_of",
           "source" => ev.source,
-          "code" => CanonicalClaims.code_string(a),
+          "code" => CanonicalClaims.code_string(code),
           "collection" => ev.data.collection,
           "member" => to_string(ev.data.value),
           "valid_from" => ev.valid_from,
@@ -186,35 +189,38 @@ defmodule ClaimMapping do
       |> Enum.flat_map(fn {{entity, source, collection}, %{ids: ids, last: last}} ->
         {scheme, lane, relation} = Map.fetch!(@lane_collections, collection)
 
-        case anchor.(entity, nil) do
-          nil ->
-            []
+        for id <- Enum.sort(ids) do
+          {vf, at} = Map.fetch!(last, id)
 
-          a ->
-            for id <- Enum.sort(ids) do
-              {vf, at} = Map.fetch!(last, id)
-
-              [
-                %{
-                  "kind" => "identity",
-                  "source" => source,
-                  "ref" => "#{collection}:#{id}",
-                  "codes" => ["#{scheme}:#{id}"],
-                  "entity" => lane,
-                  "valid_from" => vf || at,
-                  "recorded_at" => at
-                },
-                %{
-                  "kind" => "edge",
-                  "source" => source,
-                  "from" => "#{scheme}:#{id}",
-                  "relation" => relation,
-                  "to" => CanonicalClaims.code_string(a),
-                  "valid_from" => vf || at,
-                  "recorded_at" => at
-                }
-              ]
+          # One edge per product code the source held: the same image reaches every product it
+          # was listed against, rather than only whichever code primary/1 happened to prefer.
+          edges =
+            for code <- codes_at.(entity, nil, at) do
+              %{
+                "kind" => "edge",
+                "source" => source,
+                "from" => "#{scheme}:#{id}",
+                "relation" => relation,
+                "to" => CanonicalClaims.code_string(code),
+                "valid_from" => vf || at,
+                "recorded_at" => at
+              }
             end
+
+          # The lane entity exists whether or not it currently reaches a product — an asset with
+          # no live edge is orphaned, not deleted, and the edges come back when the codes do.
+          [
+            %{
+              "kind" => "identity",
+              "source" => source,
+              "ref" => "#{collection}:#{id}",
+              "codes" => ["#{scheme}:#{id}"],
+              "entity" => lane,
+              "valid_from" => vf || at,
+              "recorded_at" => at
+            }
+            | edges
+          ]
         end
       end)
 
@@ -293,6 +299,68 @@ defmodule ClaimMapping do
 
   defp append_period([], codes, at), do: [%{from: at, to: nil, codes: codes}]
 
+  @doc false
+  # Half-open: from inclusive, to exclusive, nil to means still applicable.
+  def covers?(%{from: from, to: to}, at), do: at >= from and (is_nil(to) or at < to)
+
+  @doc false
+  # The identifiers a claim is about, as of the instant it was made.
+  #
+  # A SOURCED event is about the codes that source itself held then. If it held none, it has
+  # identified nothing and the event is refused.
+  #
+  # An UNSOURCED event is scoped to the legacy entity, and the entity id is an identifier in its
+  # own right — that is exactly what grouping claims make first-class. So it is about every code
+  # the entity carried at that instant, across listings. This is not the same as borrowing another
+  # source's code: the event never claimed to come from a source at all.
+  def codes_at(periods, entity, nil, at) do
+    periods
+    |> Enum.filter(fn {{e, _source}, _} -> e == entity end)
+    |> Enum.flat_map(fn {_key, ps} ->
+      case Enum.find(ps, &covers?(&1, at)) do
+        %{codes: codes} -> MapSet.to_list(codes)
+        nil -> []
+      end
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  def codes_at(periods, entity, source, at) do
+    case Enum.find(Map.get(periods, {entity, source}, []), &covers?(&1, at)) do
+      %{codes: codes} -> Enum.sort(codes)
+      nil -> []
+    end
+  end
+
+  @doc """
+  Events that cannot become claims, with the reason.
+
+  A claim is about one or more identifiers. An event whose source held no code when it spoke has
+  nothing to be about, so it is refused rather than dropped quietly — the count belongs in the
+  backfill report, and the fix belongs upstream.
+  """
+  def rejected(envelopes) when is_list(envelopes) do
+    periods = listing_periods(envelopes)
+
+    for env <- envelopes,
+        ev <- env.events,
+        ev.kind in [:attribute, :edge],
+        codes_at(periods, env.legacy_entity, ev.source, ev.recorded_at) == [] do
+      %{
+        entity: env.legacy_entity,
+        source: ev.source,
+        kind: ev.kind,
+        detail: rejection_detail(ev),
+        recorded_at: ev.recorded_at,
+        reason: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+      }
+    end
+  end
+
+  defp rejection_detail(%{kind: :attribute} = ev), do: field_dim(ev)
+  defp rejection_detail(%{kind: :edge} = ev), do: ev.data.collection
+
   # ── fold ──────────────────────────────────────────────────────────────────
 
   # Replay identity events into per-listing raw code-sets, keyed by medipim scheme name.
@@ -344,12 +412,6 @@ defmodule ClaimMapping do
   defp scheme_atom(scheme), do: CodeRegistry.scheme(scheme)
 
   # ── helpers ───────────────────────────────────────────────────────────────
-
-  defp union_by_entity(listing_codes) do
-    Enum.reduce(listing_codes, %{}, fn {{e, _s}, set}, acc ->
-      Map.update(acc, e, set, &MapSet.union(&1, set))
-    end)
-  end
 
   # primary code for anchoring: a national SHORT code (in @national_primary order) ▸ non-restricted
   # canonical GTIN ▸ any GTIN ▸ a 13-digit national code (acl13/cip13) ▸ lowest code. National
