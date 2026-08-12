@@ -860,60 +860,60 @@ img,video,canvas,svg{max-width:100%;max-height:100%}
   <div class="f-l">02 · Identity</div><div class="f-r">14</div>
 </section>
 
-<!-- ============ 15 · THE LIMIT OF THE GUARD (open defect) ============ -->
+<!-- ============ 15 · WHEN THE BARCODE MOVES ============ -->
 <section class="slide">
   <div class="grid-lines"></div>
-  <div class="eyebrow reveal d1">02 · Identity · the limit</div>
+  <div class="eyebrow reveal d1">02 · Identity</div>
   <h2 class="stitle reveal d1">When the barcode itself moves</h2>
   <div class="head-rule draw"></div>
-  <p class="lede reveal d2">NHSBSA publishes a <b>GTIN Transfer Tracking Log</b> — some 580 rows of
-  barcodes moving from one dm+d pack to another. A GTIN is not permanently bound to one product.
-  <span class="r">Ingot currently assumes it is.</span></p>
+  <p class="lede reveal d2">A barcode does not belong to one product forever. NHSBSA publishes a
+  list of about <b>580 barcodes that moved to a different pack</b> — because the pack changed size,
+  because the code was recorded against the wrong product, or because a company was bought.</p>
 
   <div class="body">
     <div class="cols">
       <div class="col w55">
-        <div class="h3 reveal d3" style="margin-bottom:16px">What a replay actually does</div>
+        <div class="h3 reveal d3" style="margin-bottom:16px">What happens today</div>
         <table class="tbl compact reveal d3">
-          <tr><th style="width:380px">Transfer, replayed against the engine</th><th>Result</th></tr>
+          <tr><th style="width:360px">One barcode, two packs</th><th>Result</th></tr>
           <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Both packs
-            still asserted, <b>no national codes</b><br>
-            <span style="color:var(--ink-3)">the UK dm+d case</span></td>
-            <td><span class="r">Fuses into one identity.</span> Silent — no flag.</td></tr>
+            still listed. <b>No national codes.</b><br>
+            <span style="color:var(--ink-3)">the UK case</span></td>
+            <td>Kept apart, and flagged.</td></tr>
           <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Both packs
-            still asserted, <b>different CNKs</b></td>
-            <td>Held and flagged. <b>The guard works.</b></td></tr>
-          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Old pack
-            drops the GTIN, new pack gains it —<br><b>both carry CNKs</b></td>
-            <td><span class="r">The key follows the barcode.</span> The old pack is re-keyed.</td></tr>
-          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">Old pack
-            identified <b>only</b> by the GTIN</td>
-            <td><span class="r">No events at all.</span> The key silently means something else.</td></tr>
+            still listed, with <b>different CNKs</b></td>
+            <td>Kept apart, and flagged.</td></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">The old pack
+            drops the barcode,<br>the new pack takes it</td>
+            <td>The key stays with the <b>old</b> pack.</td></tr>
+          <tr><td style="font-family:var(--font-body);white-space:normal;font-size:19px">The old pack
+            had <b>nothing but</b> the barcode</td>
+            <td><span class="r">Nothing happens.</span> Still open.</td></tr>
         </table>
-        <div class="code reveal d5" style="margin-top:14px;font-size:19px;padding:22px 34px"><span class="c"># row three — the realistic case, guard active</span>
-week 1   <span class="hl">SK_1</span> = {cnk:1111111, gtin:X}   <span class="c"># the 100 g pack</span>
-week 2   <span class="hl">SK_1</span> = {cnk:<span class="k">2222222</span>, gtin:X}   <span class="c"># a DIFFERENT pack</span>
-         SK_2 = {cnk:1111111}          <span class="c"># re-keyed</span>
-</div>
+        <div class="callout reveal d5" style="margin-top:22px">
+          <div class="h">The one still open</div>
+          <p>If a barcode was a product's <b>only</b> name, the log cannot tell the old product from
+          the new one. Nothing in the data distinguishes them. The source has to tell us when the
+          link ended — that is the next piece of work.</p>
+        </div>
       </div>
       <div class="col">
-        <div class="h3 reveal d4" style="margin-bottom:16px">Why, and what it costs</div>
-        <p class="p reveal d4"><code style="font-family:var(--font-mono)">has_spine?/1</code> is
-        literally <i>"does this cluster contain a GTIN"</i>, and it decides which side keeps the
-        surrogate key on a split. The registry already grades a barcode as a
-        <b>suspect</b> bridge — but nothing consumes that grade.</p>
-        <div class="callout reveal d5" style="margin-top:22px">
-          <div class="h">The four reasons are not one event</div>
-          <p><b>Used on a different pack</b> — an effective-time boundary.<br>
-          <b>Incorrectly recorded</b> — a <i>known</i>-time correction; the old link was never true.<br>
-          <b>Merger / takeover</b> — a supplier attribute. Identity must not move at all.<br>
-          <b>Invalidation / ended</b> — <code>valid_to</code> with no successor.</p>
-        </div>
+        <div class="h3 reveal d4" style="margin-bottom:16px">Two rules do the work</div>
+        <ol class="steps dense">
+          <li class="reveal d4"><span class="n">01</span><span class="t"><b>A barcode cannot join
+            two things that each have their own code</b>
+            If one side has nothing but a barcode, they still join — refusing would strand it.</span></li>
+          <li class="reveal d5"><span class="n">02</span><span class="t"><b>On a split, the key stays
+            with the side that keeps its national code</b>
+            National codes are issued once and never reused. Barcodes are reused, so they no longer
+            decide.</span></li>
+        </ol>
         <div class="callout reveal d6" style="margin-top:22px;border-left-color:var(--ink)">
-          <div class="h">The machinery already exists</div>
-          <p>Given <code>valid_to</code> on the old association, the projection answers <b>one</b>
-          identity before the transfer date and <b>two</b> after — both correct. An ingest
-          obligation, not a redesign.</p>
+          <div class="h">The four reasons are four different events</div>
+          <p><b>Used on a different pack</b> — the world changed on a date.<br>
+          <b>Recorded by mistake</b> — the old link was never true.<br>
+          <b>Merger or takeover</b> — the supplier changed, not the product.<br>
+          <b>Ended</b> — the link stops, with nothing taking its place.</p>
         </div>
       </div>
     </div>
@@ -1359,12 +1359,11 @@ week 2   <span class="hl">SK_1</span> = {cnk:<span class="k">2222222</span>, gti
     <div class="cols">
       <div class="col w55">
         <div class="h3 reveal d3" style="margin-bottom:18px">The cutover chain</div>
-        <p class="p reveal d3" style="margin-bottom:20px">Strictly sequential — each phase is blocked
-        by the one before it. And as of today the first one is blocked too.</p>
+        <p class="p reveal d3" style="margin-bottom:20px">One phase at a time. Each one waits for the
+        one before it.</p>
         <table class="tbl compact reveal d4">
           <tr><td style="color:var(--red)">P1</td><td><b>Claim-mapping spec</b> — every legacy field,
-            plus the translator into engine claims. <span class="r">Now blocked on the barcode
-            key-stability fix</span> — writing the mapping first would bake the bug in.</td></tr>
+            plus the translator into engine claims. <span class="r">Ready to start.</span></td></tr>
           <tr><td style="color:var(--ink-3)">P2</td><td>Whole-product parity harness, at scale</td></tr>
           <tr><td style="color:var(--ink-3)">P3</td><td>Close parity gaps until divergences are zero
             or explained</td></tr>
@@ -1382,20 +1381,20 @@ week 2   <span class="hl">SK_1</span> = {cnk:<span class="k">2222222</span>, gti
       <div class="col">
         <div class="h3 reveal d5" style="margin-bottom:18px">Known debts</div>
         <div class="callout reveal d6" style="border-left-color:var(--red)">
-          <div class="h">A grade with no consumer <span style="color:var(--red)">— P0</span></div>
-          <p>The barcode bridge grade is defined and documented as suspect, but nothing enforces it,
-          and <code>has_spine?/1</code> lets a surrogate key follow a transferred GTIN. Slide 15.</p>
+          <div class="h">One barcode case is still open</div>
+          <p>If a barcode was a product's only name, a transfer is invisible. The source has to tell
+          us when the link ended. Slide 15.</p>
         </div>
         <div class="callout reveal d6" style="margin-top:20px">
-          <div class="h">A seam with no producer</div>
-          <p>The runtime scheme registry is implemented, validated and tested — but nothing loads
-          one. Every production path passes <code>nil</code>. Either wire it to a config file or
-          remove the threading until something needs it.</p>
+          <div class="h">A part nobody uses yet</div>
+          <p>The runtime scheme registry is written, checked and tested — but nothing loads one.
+          Every real path passes <code>nil</code>. Either connect it to a config file, or take it
+          out until something needs it.</p>
         </div>
         <div class="callout reveal d7" style="margin-top:24px;border-left-color:var(--ink)">
           <div class="h">A heavy runtime image</div>
-          <p>Based on <code>postgres:16-bookworm</code> just to get <code>psql</code> — a whole
-          database server shipped for one client binary.</p>
+          <p>Built on <code>postgres:16-bookworm</code> just to get <code>psql</code> — a whole
+          database server shipped for one small tool.</p>
         </div>
       </div>
     </div>
