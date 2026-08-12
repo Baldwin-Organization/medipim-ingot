@@ -88,7 +88,7 @@ final class ClaimIngest
             $built = ClaimMapping::build($envelopes);
             // The live batch is the source's CURRENT truth, not a replay of its history: keep only
             // the last claim per slot (the cutover's `compact`), so re-running converges.
-            $compacted = Substrate::current($built['claims']);
+            $compacted = self::onLiveCodes(Substrate::current($built['claims']));
             $result = self::pipeline($store, $compacted, $built['shared'], $at, true);
 
             return self::summary($result['appended'] > 0 ? 1 : 0, 0, $result['appended'], $result['identity']);
@@ -96,6 +96,52 @@ final class ClaimIngest
     }
 
     // ── the shared reconcile pipeline ───────────────────────────────────────────
+
+    /**
+     * Drop claims addressed to a code no identity in this batch still asserts.
+     *
+     * Since claims carry intervals (gr-blb), compaction can keep the last claim for a slot whose
+     * code has since LEFT every listing — a barcode that moved to another pack. Such a claim is
+     * already unreachable: Survivorship::fieldDecisions only keeps attributes whose code is in an
+     * identity's member set, and a code-based read joins through code ownership, which no longer
+     * has a row. It cannot be projected by anything.
+     *
+     * Keeping it is not merely useless, it breaks convergence: winnow decides what is already
+     * stored by resolving a claim's code to a surrogate key, a departed code resolves to none, so
+     * the claim is invisible to that check and gets re-appended on every run (gr-xfw).
+     *
+     * Live only. The backfill path deliberately keeps the whole history, intervals and all.
+     *
+     * @param list<array<string,mixed>> $claims
+     * @return list<array<string,mixed>>
+     */
+    private static function onLiveCodes(array $claims): array
+    {
+        $live = [];
+        foreach ($claims as $c) {
+            if ($c['kind'] === 'identity') {
+                foreach ($c['data']['codes'] as $code) {
+                    $live[Codes::key($code)] = true;
+                }
+            }
+        }
+
+        $kept = [];
+        foreach ($claims as $c) {
+            if ($c['kind'] === 'identity') {
+                $kept[] = $c;
+                continue;
+            }
+            foreach (self::loadAnchors($c) as $code) {
+                if (!isset($live[Codes::key($code)])) {
+                    continue 2;
+                }
+            }
+            $kept[] = $c;
+        }
+
+        return $kept;
+    }
 
     /**
      * @param list<array<string,mixed>> $claims canonical engine claims (from ClaimMapping)

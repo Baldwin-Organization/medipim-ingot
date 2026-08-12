@@ -34,49 +34,56 @@ compete. Two sources disagreeing on `name:nl` is a contradiction; `name:nl` vers
 
 Only `name` and `seoName` are localised in the fixtures.
 
-## The anchor gap — over half the attribute events never become claims
+## What a claim is about
 
-An attribute event only becomes a claim if its `(legacy_entity, source)` pair has an **anchor**: a
-code contributed by an identity event from that same source. `ClaimMapping.canonical/2` skips the
-event when the anchor is nil. **108 of the 200 attribute events in the fixtures — 54% — are lost
-this way**, and for two different reasons that need separating.
+A claim is always about **one or more identifiers** — a cnk, an ean, a cn. It is never about a
+product in the abstract. `Substrate.slot/1` addresses an attribute by `(source, code, field)`, and
+an attribute reaches an identity only derivatively: `Survivorship.field_decisions/3` keeps the
+attributes whose code is in that identity's member set. The link is recomputed on every fold,
+which is why an attribute re-homes by itself through a merge or a split.
 
-### Sources that never identify anything
+Two things follow, and together they replaced a heuristic with a rule.
 
-| source | events | fields |
+### The identifiers are the ones the source held *when it spoke*
+
+`ClaimMapping.codes_at/4` reads them out of the listing's periods. Not the final code set, not
+another source's codes.
+
+A source that stocked a product for years and then delisted keeps everything it said while it did
+hold codes. Under the old final-state fold, an empty final set dropped the listing and erased that
+source's entire history — sources `2` and `888` lost 36 events between them that way, including
+`name`, `status`, `tax` and `publicPrice`, which other sources also assert. The field still
+appeared in the golden record; only a disagreeing candidate had quietly gone missing.
+
+### One claim per identifier, not one per listing
+
+There is no "which code do we anchor to". An event becomes one claim per code its source held, so
+an image carrying three EANs links to three products, and a claim survives a split by attaching
+wherever its code went. `primary/1` no longer takes part in anchoring at all.
+
+An **unsourced** event is scoped to the legacy entity, and the entity id is an identifier in its
+own right — that is what `grouping` claims make first-class. It is therefore about every code the
+entity carried at that instant, across listings. That is not borrowing another source's code: the
+event never claimed to come from a source.
+
+### An event that identifies nothing is refused
+
+`build/1` returns `rejected:` alongside `claims:`. There is no point keeping a claim that can
+never reach an identity, and no excuse for dropping it in silence either — the count belongs in
+the backfill report and the fix belongs upstream.
+
+| reason | events | who |
 |---|---|---|
-| `4996` | 70 | the four sales-price aggregates |
-| `5480` | 3 | `packageQuantity`, `packagingUnit` |
+| `source_held_no_code` | 87 | `4996` and `5480`, which never assert a code at all; plus a handful from sources speaking before their first identity event |
+| `unsourced` | 28 | entity-scoped events at a moment when the entity carried no codes |
 
-These never emit an identity event at all. They are analytics and pricing providers: they report
-*about* a product without ever saying which product, so there is nothing to address their facts
-to. A claim is about a code; these have none.
-
-### Sources whose history is erased when they delist
-
-| source | events | fields |
-|---|---|---|
-| `2` | 22 | `name`, `status`, `tax`, `pharmacistPrice`, `conservation`, `ospId`, `ospCategory`, `officialDeletionAt` |
-| `888` | 14 | `publicPrice`, `status`, `ttcPrice`, `popularity`, `numericDistribution`, `yearlyAverageSales` |
-
-These two **do** assert codes. They held them for years and then removed them — they delisted the
-product. Because the fold keeps only the final code set, an empty final set drops the listing, and
-with it *every attribute that source ever asserted*, retroactively. Source 2 priced this product
-from 2021 to 2026; none of it survives.
-
-That is a history bug rather than an addressing question, and it is the more dangerous of the two:
-sources `2` and `888` assert `name`, `status`, `tax` and `publicPrice`, which anchored sources
-*also* assert. The field still appears in the golden record, so nothing looks wrong — but a
-competing candidate has been removed from survivorship. A field can resolve cleanly to one
-source's value precisely because the source that disagreed was silently discarded.
-
-Both are tracked as `gr-4iu`. The delisting half is fixed by interval-aware anchoring (`gr-blb`);
-the no-code half is a contract violation that should be refused rather than swallowed.
+**Effect on the fixtures:** attribute claims went from 92 to 228, and 8 of the 9 sources now reach
+claims rather than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
 
 ## Attribute fields observed
 
-Counted from the raw envelopes. **Dropped** marks a field that never reaches a claim because of
-the anchor gap above.
+Counted from the raw envelopes. **Dropped** marks a field that still never reaches a claim,
+because every source asserting it identifies nothing (`4996`, `5480`).
 
 | field | n | value type(s) | localised | ops | dropped |
 |---|---|---|---|---|---|
@@ -97,7 +104,7 @@ the anchor gap above.
 | `medianSalesPrice` | 15 | number | — | set | **yes** |
 | `minimumSalesPrice` | 20 | number | — | set | **yes** |
 | `name` | 9 | null, string | yes | delete, set | — |
-| `numericDistribution` | 3 | null, number | — | delete, set | **yes** |
+| `numericDistribution` | 3 | null, number | — | delete, set | — |
 | `officialDeletionAt` | 3 | null, number | — | delete, set | — |
 | `offisanteId` | 3 | null, string | — | set | — |
 | `ospCategory` | 4 | null, string | — | delete, set | — |
@@ -105,7 +112,7 @@ the anchor gap above.
 | `packageQuantity` | 2 | string | — | set | — |
 | `packagingUnit` | 1 | string | — | set | **yes** |
 | `pharmacistPrice` | 13 | null, number | — | delete, set | — |
-| `popularity` | 3 | null, number | — | delete, set | **yes** |
+| `popularity` | 3 | null, number | — | delete, set | — |
 | `prescription` | 2 | boolean | — | set | — |
 | `publicPageIdentifier` | 3 | string | — | set | — |
 | `publicPrice` | 8 | null, number | — | delete, set | — |
@@ -114,7 +121,7 @@ the anchor gap above.
 | `status` | 17 | null, string | — | delete, set | — |
 | `tax` | 11 | null, number | — | delete, set | — |
 | `tradeInRefundValue` | 2 | null, number | — | set | — |
-| `ttcPrice` | 3 | null, number | — | delete, set | **yes** |
+| `ttcPrice` | 3 | null, number | — | delete, set | — |
 | `weight` | 3 | number, string | — | set | — |
 | `width` | 2 | number | — | set | — |
 | `yearlyAverageSales` | 2 | null, number | — | delete, set | **yes** |

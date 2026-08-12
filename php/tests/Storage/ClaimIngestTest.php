@@ -5,7 +5,13 @@ declare(strict_types=1);
 namespace Ingot\Tests\Storage;
 
 use Ingot\Api;
+use Ingot\ClaimMapping;
+use Ingot\Catalog;
 use Ingot\Codes;
+use Ingot\IdentityLedger;
+use Ingot\EnvelopeLoader;
+use Ingot\Priority;
+use Ingot\Substrate;
 use Ingot\Storage\ClaimIngest;
 use Ingot\Storage\InMemoryClaimStore;
 use Ingot\Storage\Schema;
@@ -85,6 +91,55 @@ final class ClaimIngestTest extends TestCase
         self::assertSame($afterFirst, $store->maxSeq());
 
         self::assertSame('SK_1', $store->resolveKey(self::cnkKey()));
+    }
+
+    public function test_a_claim_on_a_departed_code_is_dropped_from_live_and_changes_nothing(): void
+    {
+        // gr-xfw. Listing 44 carried gtin:03282770049374 and the barcode later moved. Since claims
+        // carry intervals, compaction keeps the last claim for that slot even though no identity
+        // asserts the code any more.
+        //
+        // Dropping it from the live write is safe because the claim is ALREADY unreachable: an
+        // attribute reaches a product only via Survivorship, which keeps attributes whose code is
+        // in an identity's member set. Prove that rather than assert it — the projection must be
+        // identical whether or not the departed claims are present.
+        $departed = ['gtin', '03282770049374'];
+
+        $store = new InMemoryClaimStore();
+        ClaimIngest::live($store, [self::rawEnvelope()]);
+        $log = $store->log();
+        $withoutDeparted = self::project($log);
+
+        $env = EnvelopeLoader::loadBang(self::FIXTURE);
+        $reintroduced = [];
+        foreach (Substrate::current(ClaimMapping::build([$env])['claims']) as $c) {
+            if (($c['data']['code'] ?? null) === $departed) {
+                $reintroduced[] = $c;
+            }
+        }
+        self::assertNotEmpty($reintroduced, 'fixture no longer exercises a departed code');
+
+        $withDeparted = self::project(array_merge($log, $reintroduced));
+
+        self::assertEquals($withoutDeparted, $withDeparted, 'the departed-code claims change nothing');
+    }
+
+    /** Members from the log's identity events, then the catalogue projection over them. */
+    private static function project(array $log): array
+    {
+        $ledger = IdentityLedger::new();
+        foreach ($log as $event) {
+            $ledger = IdentityLedger::evolve($ledger, $event);
+        }
+
+        $claims = [];
+        foreach ($log as $event) {
+            if (($event['type'] ?? null) === null && isset($event['kind'])) {
+                $claims[] = $event;
+            }
+        }
+
+        return Catalog::project($ledger->members, Substrate::current($claims), Priority::new([], []), ['attr' => [], 'product' => []]);
     }
 
     public function test_schema_statements_apply_the_prefix(): void

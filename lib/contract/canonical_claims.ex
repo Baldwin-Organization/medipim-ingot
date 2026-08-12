@@ -155,6 +155,8 @@ defmodule CanonicalClaims do
   defp valid_from(m, at), do: recorded_at(m, at)
 
   defp valid_to(%{"valid_to" => raw}) when is_binary(raw), do: Date.from_iso8601!(raw)
+  # The backfill flavor carries contract-C unix seconds, the same as valid_from above.
+  defp valid_to(%{"valid_to" => vt}) when not is_nil(vt), do: vt
   defp valid_to(_m), do: nil
 
   defp asserted(source, kind, data, map, at) do

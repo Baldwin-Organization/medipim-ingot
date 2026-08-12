@@ -137,12 +137,15 @@ defmodule CanonicalClaimsTest do
       canonical = ClaimMapping.canonical_claims([env])
 
       assert canonical == [
+               # An identity claim now covers a PERIOD of the listing's code set, so it carries
+               # valid_to. One period here — the set never changed — so the interval is open.
                %{
                  "kind" => "identity",
                  "source" => "A",
                  "ref" => "99:A",
                  "codes" => ["cnk:1000001"],
                  "valid_from" => 10,
+                 "valid_to" => nil,
                  "recorded_at" => 10
                },
                %{
@@ -151,6 +154,7 @@ defmodule CanonicalClaimsTest do
                  "code" => "cnk:1000001",
                  "product" => 99,
                  "valid_from" => 10,
+                 "valid_to" => nil,
                  "recorded_at" => 10
                },
                %{

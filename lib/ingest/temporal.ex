@@ -89,7 +89,10 @@ defmodule Temporal do
     claims =
       Enum.map(raw_claims, fn claim ->
         date = to_date(claim.recorded_at)
-        %{claim | recorded_at: date, valid_from: date}
+        # valid_to is the one field that is NOT collapsed onto recorded_at: an identity claim now
+        # covers a period, and its end is a real second clock value that has to cross the boundary
+        # too. Leaving it as an epoch put a Date and an integer on the same claim.
+        %{claim | recorded_at: date, valid_from: date, valid_to: claim.valid_to && to_date(claim.valid_to)}
       end)
 
     dates = claims |> Enum.map(& &1.recorded_at) |> Enum.uniq() |> Enum.sort(Date)

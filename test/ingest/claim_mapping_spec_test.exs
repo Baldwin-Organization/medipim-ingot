@@ -71,13 +71,62 @@ defmodule ClaimMappingSpecTest do
     end
   end
 
+  describe "a claim is about the identifiers its source held when it spoke" do
+    test "a source that later delisted keeps everything it said while it held codes", %{attrs: attrs} do
+      # Sources 2 and 888 held codes for years, then removed them. The old final-state fold
+      # erased their whole history the moment the last code went away.
+      sources = attrs |> Enum.map(& &1.source) |> MapSet.new()
+
+      assert MapSet.member?(sources, "2")
+      assert MapSet.member?(sources, "888")
+    end
+
+    test "an event becomes one claim per code its source held", %{attrs: attrs} do
+      # Listing 1035 held cnk + two gtins in its last period, so one event from it yields three
+      # claims — the same fact reachable from every identifier the source gave it.
+      by_event =
+        attrs
+        |> Enum.filter(&(&1.source == "1035"))
+        |> Enum.group_by(&{&1.data.field, &1.data.value, &1.valid_from})
+        |> Map.values()
+        |> Enum.map(&length/1)
+
+      assert Enum.max(by_event) > 1, "no event fanned out across its source's codes"
+    end
+
+    test "an event that identifies nothing is refused, not dropped" do
+      rejected = @fixtures |> Enum.map(&HistoryEnvelope.load!/1) |> ClaimMapping.rejected()
+
+      reasons = rejected |> Enum.map(& &1.reason) |> Enum.frequencies()
+      assert reasons[:source_held_no_code] > 0
+      assert reasons[:unsourced] > 0
+
+      # 4996 and 5480 never assert a code anywhere in either fixture.
+      never_identify =
+        rejected |> Enum.map(& &1.source) |> Enum.uniq() |> Enum.reject(&is_nil/1) |> Enum.sort()
+
+      assert "4996" in never_identify
+      assert "5480" in never_identify
+    end
+
+    test "every rejection carries a reason and enough to find the event" do
+      rejected = @fixtures |> Enum.map(&HistoryEnvelope.load!/1) |> ClaimMapping.rejected()
+
+      assert Enum.all?(rejected, fn r ->
+               is_integer(r.entity) and r.reason in [:unsourced, :source_held_no_code] and
+                 is_binary(r.detail) and is_integer(r.recorded_at)
+             end)
+    end
+  end
+
   describe "the spec table matches the fixtures" do
     test "every field the spec marks as reaching a claim actually does", %{attrs: attrs} do
       produced = attrs |> Enum.map(&(&1.data.field |> String.split(":") |> hd())) |> MapSet.new()
       {documented, dropped} = spec_table()
 
       assert MapSet.size(documented) == 38, "the spec table did not parse"
-      assert MapSet.size(dropped) == 9
+      # Only fields whose sole sources never identify anything: 4996 and 5480.
+      assert MapSet.size(dropped) == 6
 
       assert MapSet.difference(MapSet.difference(documented, dropped), produced)
              |> MapSet.to_list() == [],
@@ -90,6 +139,17 @@ defmodule ClaimMappingSpecTest do
 
       assert MapSet.intersection(dropped, produced) |> MapSet.to_list() == [],
              "the spec says these are dropped, but they now reach a claim — good news, update the spec"
+    end
+
+    test "the delisting half of the anchor gap is closed", %{attrs: attrs} do
+      # 92 -> 228 claims, 5 -> 8 sourced. Only 4996 and 5480 reach nothing, and they identify
+      # nothing. If these move, gr-4iu moved with them and the spec needs updating.
+      assert length(attrs) == 228
+
+      sourced = attrs |> Enum.map(& &1.source) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+      assert length(sourced) == 8
+      refute "4996" in sourced
+      refute "5480" in sourced
     end
 
     test "the anchor gap is real: four sources contribute no codes at all" do
@@ -107,20 +167,6 @@ defmodule ClaimMappingSpecTest do
       orphaned = MapSet.difference(asserting, anchored) |> Enum.map(&elem(&1, 1)) |> Enum.sort()
 
       assert orphaned == ["2", "4996", "5480", "888"]
-    end
-
-    test "over half the attribute events are dropped by the anchor gap", %{attrs: attrs} do
-      raw =
-        Enum.count(
-          for env <- Enum.map(@fixtures, &HistoryEnvelope.load!/1),
-              ev <- env.events,
-              ev.kind == :attribute,
-              do: 1
-        )
-
-      # 200 raw -> 92 claims. If this ratio moves, gr-4iu moved with it and the spec needs updating.
-      assert raw == 200
-      assert length(attrs) == 92
     end
   end
 
