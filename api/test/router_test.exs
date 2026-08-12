@@ -2,21 +2,70 @@
 # split. Endpoints themselves land with their own beads — here the surfaces 404 once authorized.
 
 defmodule Api.RouterTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Plug.Test
   import Plug.Conn
 
   @product "test-product-token"
   @steward "test-steward-token"
 
+  setup do
+    {:ok, :ok} = Api.Store.reset!()
+    :ok
+  end
+
   defp call(router, conn), do: router.call(conn, router.init([]))
   defp bearer(conn, token), do: put_req_header(conn, "authorization", "Bearer #{token}")
 
   describe "GET /health" do
-    test "is unauthenticated and reports the database" do
+    test "is an unauthenticated process-liveness check" do
       conn = call(Api.Router, conn(:get, "/health"))
       assert conn.status == 200
-      assert %{"status" => "ok", "db" => true} = JSON.decode!(conn.resp_body)
+      assert %{"status" => "ok"} = JSON.decode!(conn.resp_body)
+      assert [request_id] = get_resp_header(conn, "x-request-id")
+      assert byte_size(request_id) > 0
+    end
+
+    test "readiness checks the migrated database and reports projection lag" do
+      conn = call(Api.Router, conn(:get, "/ready"))
+      assert conn.status == 200
+
+      assert %{
+               "status" => "ready",
+               "db" => true,
+               "event_offset" => offset,
+               "projection_offset" => offset
+             } = JSON.decode!(conn.resp_body)
+    end
+
+    test "readiness rejects a projection checkpoint behind the event log" do
+      claim =
+        Substrate.claim(
+          :router_test,
+          :identity,
+          %{ref: "lag", codes: [{:cnk, "111"}]},
+          ~D[2026-03-01],
+          ~D[2026-03-01]
+        )
+
+      assert {:ok, :ok} =
+               Api.Store.append(fn _state, _conn -> {:ok, [claim], :ok} end)
+
+      Postgrex.query!(
+        Api.DB,
+        "UPDATE projection_checkpoints SET \"offset\" = 0 WHERE name = 'main'",
+        []
+      )
+
+      response = call(Api.Router, conn(:get, "/ready"))
+      assert response.status == 503
+
+      assert %{
+               "status" => "not_ready",
+               "db" => true,
+               "event_offset" => 1,
+               "projection_offset" => 0
+             } = JSON.decode!(response.resp_body)
     end
   end
 

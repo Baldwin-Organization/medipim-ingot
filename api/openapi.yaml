@@ -1,16 +1,14 @@
-# OpenAPI 3.1 spec for the golden-record service (api/) — bead gr-apb.
-# Matches the implemented routers; prose contract in docs/API.md.
+# Executable OpenAPI 3.1 contract for Ingot.
 openapi: 3.1.0
 info:
-  title: Golden Record Product API
-  version: 0.1.0
+  title: Ingot Golden Record API
+  version: 1.0.0-pilot
   description: |
-    The golden-record engine as a service for medipim. Two surfaces, separate tokens:
+    Deterministic golden records with source-record lifecycle, two-clock history, and
+    evidence-bound human review. Two surfaces use separate credentials:
 
-    * **Product API** (`/v1`) — medipim's machine-to-machine surface: backfill + live claims in;
-      golden records (by backwards-compatible **legacy medipim ID**), code resolution, as-of time
-      travel, and a change feed out. A claim that bridges two established identities produces a
-      **flagged merge proposal — never an automatic merge**.
+    * **Product API** (`/v1`) — source revisions and migration dry-runs in; golden records,
+      identity status, metadata, independent `known_at` / `effective_at` reads, and events out.
     * **Steward API** (`/steward`) — humans curating the conflicts the engine refuses to guess on:
       the open queue and four recorded decisions. Also a server-rendered HTML queue page.
 
@@ -25,25 +23,37 @@ tags:
   - name: product
     description: Product API — `PRODUCT_API_TOKEN`
   - name: steward
-    description: Steward API — `STEWARD_API_TOKEN` (Bearer, or HTTP Basic for the browser)
+    description: Steward API — individual Bearer or HTTP Basic credentials
 
 paths:
   /health:
     get:
       tags: [health]
       operationId: getHealth
-      summary: Liveness + database check (unauthenticated)
+      summary: Process liveness only (unauthenticated)
       responses:
         "200":
-          description: healthy
+          description: The API process can answer HTTP requests
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Health" }
+
+  /ready:
+    get:
+      tags: [health]
+      operationId: getReadiness
+      summary: Database schema and projection readiness (unauthenticated)
+      responses:
+        "200":
+          description: Database is reachable and projections match the event log
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
         "503":
-          description: database unreachable
+          description: Database unavailable, schema missing, or projections lagging
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Health" }
+              schema: { $ref: "#/components/schemas/Readiness" }
 
   /v1/backfill/envelopes:
     post:
@@ -98,6 +108,122 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationErrors" }
 
+  /v1/dry-run:
+    post:
+      tags: [product]
+      operationId: dryRunClaims
+      summary: Validate and simulate a claims batch without committing
+      security: [{ productToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../contract/claims.schema.json" }
+      responses:
+        "200":
+          description: deterministic migration report; `would_commit` says whether submission is valid
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DryRunReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/cutover:
+    post:
+      tags: [product]
+      operationId: cutoverClaims
+      summary: Commit a validated migration batch with convergent rerun semantics
+      security: [{ productToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../contract/claims.schema.json" }
+      responses:
+        "200":
+          description: committed migration report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DryRunReport" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationErrors" }
+
+  /v1/source-records/{source}/{ref}/revisions/{revision}:
+    put:
+      tags: [product]
+      operationId: putSourceRecordRevision
+      summary: Replace, patch, withdraw, or reactivate one atomic source record
+      security: [{ productToken: [] }]
+      parameters:
+        - { name: source, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+        - { name: revision, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../contract/source_record.schema.json" }
+      responses:
+        "200":
+          description: accepted revision, stable key, and lineage events
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SourceRecord" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationErrors" }
+
+  /v1/source-records/{source}/{ref}:
+    get:
+      tags: [product]
+      operationId: getSourceRecord
+      summary: Read one source record under independent knowledge and effective clocks
+      security: [{ productToken: [] }]
+      parameters:
+        - { name: source, in: path, required: true, schema: { type: string } }
+        - { name: ref, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/KnownAt" }
+        - { $ref: "#/components/parameters/EffectiveAt" }
+      responses:
+        "200":
+          description: selected source revision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SourceRecord" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/BadRequest" }
+
+  /v1/identities/{key}:
+    get:
+      tags: [product]
+      operationId: getIdentityStatus
+      summary: Inspect current identity status, redirects, codes, lane, and legacy ids
+      security: [{ productToken: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: current identity status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityStatus" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /v1/metadata:
+    get:
+      tags: [product]
+      operationId: getMetadata
+      summary: Scheme/relation registry, survivorship policy, review policy, and clock formats
+      security: [{ productToken: [] }]
+      responses:
+        "200":
+          description: active runtime metadata
+          content:
+            application/json:
+              schema: { type: object }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
   /v1/products/{legacy_id}:
     get:
       tags: [product]
@@ -118,6 +244,10 @@ paths:
           in: query
           required: false
           schema: { type: string, format: date }
+          deprecated: true
+          description: compatibility alias that sets both clocks to one date
+        - { $ref: "#/components/parameters/KnownAt" }
+        - { $ref: "#/components/parameters/EffectiveAt" }
       responses:
         "200":
           description: the resolved product
@@ -152,6 +282,8 @@ paths:
           required: true
           schema: { type: string }
           example: "1234567"
+        - { $ref: "#/components/parameters/KnownAt" }
+        - { $ref: "#/components/parameters/EffectiveAt" }
       responses:
         "200":
           description: canonical code + its carrier products
@@ -215,15 +347,15 @@ paths:
       operationId: postStewardDecision
       summary: Record a steward decision
       description: |
-        Four kinds, 1:1 onto the engine's stewardship operations, recorded in the event log with
-        `by`. A split immediately allocates the carved-out key its own legacy ID. Decisions appear
-        on the Product change feed like any other event.
-      security: [{ stewardToken: [] }, { stewardBasic: [] }]
+        The individual Bearer credential determines the actor. The body must identify the open
+        review case and captured evidence offset. Merge, split, and suppress require endorsements
+        from two distinct principals.
+      security: [{ stewardToken: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/Decision" }
+            schema: { $ref: "../contract/steward_decision.schema.json" }
       responses:
         "200":
           description: applied
@@ -234,6 +366,7 @@ paths:
                 properties:
                   applied: { type: string, example: approve_merge }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "409":
           description: stale — the state moved on; the body lists what is live now
           content:
@@ -243,13 +376,13 @@ paths:
                 properties:
                   error: { type: string }
                   live_keys: { type: array, items: { type: string } }
-        "422": { $ref: "#/components/responses/ValidationErrors" }
+        "422": { $ref: "#/components/responses/BadRequest" }
 
   /steward:
     get:
       tags: [steward]
       operationId: getStewardPage
-      summary: The HTML queue page (browser; HTTP Basic prompts for the token)
+      summary: The HTML queue page (browser; individual HTTP Basic credential)
       security: [{ stewardBasic: [] }, { stewardToken: [] }]
       responses:
         "200":
@@ -259,6 +392,20 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
 
 components:
+  parameters:
+    KnownAt:
+      name: known_at
+      in: query
+      required: false
+      description: knowledge cutoff; what Ingot had recorded by this instant
+      schema: { type: string, format: date-time }
+    EffectiveAt:
+      name: effective_at
+      in: query
+      required: false
+      description: real-world date for which facts must be valid
+      schema: { type: string, format: date }
+
   securitySchemes:
     productToken:
       type: http
@@ -267,11 +414,11 @@ components:
     stewardToken:
       type: http
       scheme: bearer
-      description: "`STEWARD_API_TOKEN` — cannot write product claims"
+      description: individual token from `STEWARD_CREDENTIALS_JSON`; determines the principal
     stewardBasic:
       type: http
       scheme: basic
-      description: any username, `STEWARD_API_TOKEN` as password (the browser path)
+      description: individual principal/password from `STEWARD_CREDENTIALS_JSON` (browser path)
 
   responses:
     Unauthorized:
@@ -281,6 +428,21 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: malformed or semantically invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: authenticated credential cannot perform this action
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: revision or idempotency conflict
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -308,9 +470,18 @@ components:
   schemas:
     Health:
       type: object
+      required: [status]
       properties:
-        status: { type: string, enum: [ok, degraded] }
+        status: { const: ok }
+
+    Readiness:
+      type: object
+      required: [status, db]
+      properties:
+        status: { type: string, enum: [ready, not_ready] }
         db: { type: boolean }
+        event_offset: { type: integer, minimum: 0 }
+        projection_offset: { type: integer, minimum: 0 }
 
     Error:
       type: object
@@ -351,6 +522,7 @@ components:
             entity lane — usually derived from the codes' schemes (mixing lanes rejects);
             required only when every code is the lane-neutral, engine-minted `uuid` scheme
         valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
 
     EdgeClaim:
       type: object
@@ -367,6 +539,7 @@ components:
         relation: { type: string, example: describes }
         to: { $ref: "#/components/schemas/CodeString" }
         valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
 
     AttributeClaim:
       type: object
@@ -379,6 +552,7 @@ components:
         value:
           oneOf: [{ type: string }, { type: number }, { type: boolean }]
         valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
 
     MediaClaim:
       type: object
@@ -391,6 +565,7 @@ components:
         role: { type: string, enum: [primary, secondary], default: secondary }
         uri: { type: string }
         valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
 
     GroupingClaim:
       type: object
@@ -401,6 +576,7 @@ components:
         code: { $ref: "#/components/schemas/CodeString" }
         product: { type: integer, description: the legacy entity this code belongs to }
         valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
 
     HistoryEnvelope:
       type: object
@@ -436,6 +612,57 @@ components:
               type: { const: merge_proposal }
               keys: { type: array, items: { type: string } }
 
+    DryRunReport:
+      type: object
+      required: [would_commit, counts, validation]
+      properties:
+        would_commit: { type: boolean }
+        counts: { type: object }
+        validation: { type: object }
+        submission: { type: object }
+        merge_candidates: { type: array, items: { type: object } }
+        conflicts: { type: array, items: { type: object } }
+        collisions: { type: array, items: { type: object } }
+        steward_queue: { $ref: "#/components/schemas/Queue" }
+        lineage: { type: array, items: { type: object } }
+
+    SourceRecord:
+      type: object
+      required: [source, ref, revision, operation, status, recorded_at, valid_from]
+      properties:
+        source: { type: string }
+        ref: { type: string }
+        revision: { type: string }
+        operation: { enum: [replace, patch, withdraw, reactivate] }
+        status: { enum: [active, withdrawn] }
+        key: { type: [string, "null"] }
+        legacy_id: { type: [integer, "null"] }
+        recorded_at: { type: string, format: date-time }
+        valid_from: { type: string, format: date }
+        valid_to: { type: [string, "null"], format: date }
+        known_at: { type: string, format: date-time }
+        effective_at: { type: string, format: date }
+        claims:
+          type: array
+          items:
+            type: object
+            description: materialized claim without route-derived source/ref fields
+
+    IdentityStatus:
+      type: object
+      required: [key, current_key, status, lane, codes, legacy_ids]
+      properties:
+        key: { type: string }
+        current_key: { type: string }
+        status: { enum: [active, merged, withdrawn] }
+        lane: { enum: [product, substance, description, media] }
+        codes:
+          type: array
+          items: { $ref: "#/components/schemas/CodeString" }
+        legacy_ids:
+          type: array
+          items: { type: integer }
+
     Attribute:
       type: object
       properties:
@@ -459,7 +686,7 @@ components:
       properties:
         legacy_id: { type: integer, example: 422156 }
         key: { type: string, example: SK_1 }
-        status: { type: string, enum: [active, merged, unknown] }
+        status: { type: string, enum: [active, merged, withdrawn, unknown] }
         merged_from:
           type: [string, "null"]
           description: set when this legacy ID belonged to a key merged into the answering one
@@ -481,6 +708,8 @@ components:
           type: string
           format: date
           description: present on time-travel reads
+        known_at: { type: string, format: date-time }
+        effective_at: { type: string, format: date }
 
     ChangesPage:
       type: object
@@ -498,7 +727,7 @@ components:
         offset: { type: integer }
         type:
           type: string
-          enum: [claim, minted, members_changed, merged, split, legacy_id_assigned, merge_proposal, flag, decision]
+          enum: [claim, source_record_replace, source_record_patch, source_record_withdraw, source_record_reactivate, source_record_key_bound, review_case_opened, review_case_endorsed, minted, members_changed, merged, split, legacy_id_assigned, merge_proposal, flag, decision]
         date: { type: string, format: date }
         key: { type: string }
         keys: { type: array, items: { type: string } }
@@ -522,6 +751,8 @@ components:
             type: object
             properties:
               type: { const: merge }
+              case_id: { type: string }
+              evidence_offset: { type: integer }
               keys: { type: array, items: { type: string } }
               members:
                 type: object
@@ -567,6 +798,8 @@ components:
           items:
             type: object
             properties:
+              case_id: { type: string }
+              evidence_offset: { type: integer }
               key: { type: string }
               merged_from: { type: array, items: { type: string } }
               codes:
@@ -585,6 +818,8 @@ components:
             type: object
             properties:
               type: { const: attribute }
+              case_id: { type: string }
+              evidence_offset: { type: integer }
               key: { type: string }
               field: { type: string }
               candidates:
@@ -597,41 +832,4 @@ components:
                       oneOf: [{ type: string }, { type: number }, { type: boolean }]
 
     Decision:
-      oneOf:
-        - title: approve_merge
-          type: object
-          required: [kind, keys, by]
-          properties:
-            kind: { const: approve_merge }
-            keys: { type: array, minItems: 2, items: { type: string } }
-            by: { type: string }
-        - title: reject_merge
-          type: object
-          required: [kind, keys, by]
-          properties:
-            kind: { const: reject_merge }
-            keys: { type: array, minItems: 2, items: { type: string } }
-            by: { type: string }
-        - title: resolve_attribute
-          type: object
-          required: [kind, key, field, value, by]
-          properties:
-            kind: { const: resolve_attribute }
-            key: { type: string }
-            field: { type: string }
-            value: { type: string }
-            by: { type: string }
-        - title: split
-          type: object
-          required: [kind, key, codes, by]
-          properties:
-            kind: { const: split }
-            key: { type: string }
-            codes:
-              type: array
-              minItems: 1
-              description: the codes to carve out into a fresh key (fresh legacy ID allocated)
-              items: { $ref: "#/components/schemas/CodeString" }
-            by: { type: string }
-      discriminator:
-        propertyName: kind
+      $ref: "../contract/steward_decision.schema.json"

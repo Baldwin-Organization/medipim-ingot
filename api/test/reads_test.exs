@@ -10,7 +10,7 @@ defmodule Api.ReadsTest do
   @fixture Path.expand("../../test/ingest/fixtures/medipim_be_422156.json", __DIR__)
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 

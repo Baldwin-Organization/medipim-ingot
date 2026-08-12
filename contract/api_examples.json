@@ -1,0 +1,115 @@
+{
+  "schema_version": "1",
+  "examples": {
+    "clean_merge": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/claims",
+        "body": {
+          "claims": [
+            {
+              "kind": "identity",
+              "source": "manufacturer",
+              "ref": "M-1",
+              "codes": ["cnk:1000001", "gtin:05012345678900"]
+            },
+            {
+              "kind": "identity",
+              "source": "supplier",
+              "ref": "S-1",
+              "codes": ["cnk:1000001", "supplier_ref:S-1"]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "identity_count": 1
+      }
+    },
+    "contradiction": {
+      "request": {
+        "method": "POST",
+        "path": "/v1/claims",
+        "body": {
+          "claims": [
+            {
+              "kind": "identity",
+              "source": "manufacturer",
+              "ref": "M-2",
+              "codes": ["cnk:1000002"]
+            },
+            {
+              "kind": "attribute",
+              "source": "manufacturer",
+              "code": "cnk:1000002",
+              "field": "color",
+              "value": "ivory"
+            },
+            {
+              "kind": "attribute",
+              "source": "supplier",
+              "code": "cnk:1000002",
+              "field": "color",
+              "value": "white"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "status": 200,
+        "attribute_status": "needs_review"
+      }
+    },
+    "late_correction": {
+      "requests": [
+        {
+          "method": "PUT",
+          "path": "/v1/source-records/supplier/P-3/revisions/1",
+          "body": {
+            "operation": "replace",
+            "valid_from": "2026-01-01",
+            "claims": [
+              {
+                "kind": "identity",
+                "codes": ["cnk:1000003"]
+              },
+              {
+                "kind": "attribute",
+                "code": "cnk:1000003",
+                "field": "name",
+                "value": "Old spelling"
+              }
+            ]
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/v1/source-records/supplier/P-3/revisions/2",
+          "body": {
+            "operation": "replace",
+            "base_revision": "1",
+            "valid_from": "2026-02-01",
+            "claims": [
+              {
+                "kind": "identity",
+                "codes": ["cnk:1000003"]
+              },
+              {
+                "kind": "attribute",
+                "code": "cnk:1000003",
+                "field": "name",
+                "value": "Corrected spelling"
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "status": 200,
+        "before_effective": "Old spelling",
+        "after_effective": "Corrected spelling"
+      }
+    }
+  }
+}

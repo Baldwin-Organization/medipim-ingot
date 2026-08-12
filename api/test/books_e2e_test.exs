@@ -13,7 +13,7 @@ defmodule Api.BooksE2eTest do
   @fixtures Path.expand("../../test/ingest/fixtures/books", __DIR__)
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 
@@ -40,12 +40,23 @@ defmodule Api.BooksE2eTest do
     %{rows: events} =
       Postgrex.query!(
         Api.DB,
-        ~s(SELECT "offset", type, payload FROM events ORDER BY "offset"),
+        ~s(SELECT "offset", type, payload::text FROM events ORDER BY "offset"),
         []
       )
 
-    %{rows: snapshots} = Postgrex.query!(Api.DB, ~s(SELECT "offset", state FROM snapshots), [])
-    {events, snapshots}
+    %{rows: projections} =
+      Postgrex.query!(
+        Api.DB,
+        """
+        SELECT 'checkpoint', name, payload::text FROM projection_checkpoints
+        UNION ALL
+        SELECT 'golden', key, payload::text FROM golden_records
+        ORDER BY 1, 2
+        """,
+        []
+      )
+
+    {events, projections}
   end
 
   test "books migrate through dry-run → cutover → reads; the 10/13 pair is ONE golden record" do

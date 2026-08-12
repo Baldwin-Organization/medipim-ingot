@@ -13,7 +13,7 @@ defmodule Api.StewardTest do
   import Plug.Conn
 
   setup do
-    Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+    {:ok, :ok} = Api.Store.reset!()
     :ok
   end
 
@@ -25,11 +25,71 @@ defmodule Api.StewardTest do
   end
 
   defp steward!(method, path, body \\ nil) do
+    actor = (body && (body[:by] || body["by"])) || "sam"
+    steward_as!(actor, method, path, body)
+  end
+
+  defp steward_as!(actor, method, path, body) do
+    token =
+      %{"sam" => "test-steward-token", "alex" => "test-alex-token", "kim" => "test-kim-token"}[
+        actor
+      ] || "test-steward-token"
+
+    body = if method == :post and path == "/steward/v1/decisions", do: with_case(body), else: body
+
     conn(method, path, body && JSON.encode!(body))
     |> then(&if(body, do: put_req_header(&1, "content-type", "application/json"), else: &1))
-    |> put_req_header("authorization", "Bearer test-steward-token")
+    |> put_req_header("authorization", "Bearer #{token}")
     |> then(&Api.Router.call(&1, Api.Router.init([])))
   end
+
+  defp with_case(%{kind: kind} = body),
+    do: with_case(Map.new(body, fn {k, v} -> {to_string(k), v} end), kind)
+
+  defp with_case(%{"kind" => kind} = body), do: with_case(body, kind)
+
+  defp with_case(body, kind) when kind in ["approve_merge", "reject_merge"] do
+    keys = Enum.sort(body["keys"])
+
+    case Enum.find(Api.Steward.queue().merges, &(Enum.sort(&1.keys) == keys)) do
+      nil ->
+        body
+
+      review ->
+        body
+        |> Map.put_new("case_id", review.case_id)
+        |> Map.put_new("evidence_offset", review.evidence_offset)
+    end
+  end
+
+  defp with_case(body, "resolve_attribute") do
+    case Enum.find(
+           Api.Steward.queue().attributes,
+           &(&1.key == body["key"] and &1.field == body["field"])
+         ) do
+      nil ->
+        body
+
+      review ->
+        body
+        |> Map.put_new("case_id", review.case_id)
+        |> Map.put_new("evidence_offset", review.evidence_offset)
+    end
+  end
+
+  defp with_case(body, "split") do
+    case Enum.find(Api.Steward.queue().repairs, &(&1.key == body["key"])) do
+      nil ->
+        body
+
+      review ->
+        body
+        |> Map.put_new("case_id", review.case_id)
+        |> Map.put_new("evidence_offset", review.evidence_offset)
+    end
+  end
+
+  defp with_case(body, _kind), do: body
 
   defp decoded(conn), do: JSON.decode!(conn.resp_body)
 
@@ -109,16 +169,21 @@ defmodule Api.StewardTest do
       assert Enum.sort(merge["keys"]) == [k1, k2]
       assert Map.keys(merge["members"]) |> Enum.sort() == [k1, k2]
 
-      # the CONNECTING CLAIM is named: the marketplace listing, each code tagged with its owner
-      assert [bridge] = merge["bridges"]
+      # The CONNECTING CLAIM is named. Under the unique-id guard, the held barcode can occur in
+      # both candidate clusters, so another contributing listing may also appear as evidence.
+      bridge = Enum.find(merge["bridges"], &(&1["source"] == "mkt"))
+      assert bridge
       assert bridge["source"] == "mkt"
       assert bridge["ref"] == "K"
-      owners = Map.new(bridge["codes"], &{&1["code"], &1["owner"]})
-      assert owners["gtin:05012345678900"] == k1
-      assert owners["gtin:08712345678906"] == k2
 
-      # no code is directly shared between the keys here — the bridge is the listing
-      assert merge["shared"] == []
+      assert bridge["codes"] |> Enum.map(& &1["code"]) |> Enum.sort() == [
+               "gtin:05012345678900",
+               "gtin:08712345678906"
+             ]
+
+      # The guard duplicates the held barcode across both candidate clusters so neither product
+      # loses the source evidence while the review is open.
+      assert merge["shared"] == ["gtin:08712345678906"]
     end
 
     test "shows attribute ties the permissive priority cannot settle" do
@@ -290,6 +355,17 @@ defmodule Api.StewardTest do
         })
 
       assert conn.status == 200
+      assert decoded(conn)["applied"] == "propose_split"
+
+      conn =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "split",
+          key: k1,
+          codes: ["gtin:08712345678906", "cnk:1000002"],
+          by: "alex"
+        })
+
+      assert conn.status == 200
 
       state = Api.Store.state()
       assert map_size(state.ledger.members) >= 2
@@ -314,7 +390,7 @@ defmodule Api.StewardTest do
       assert [%{"asset" => "dam:IMG-A"}] = body["media"]
     end
 
-    test "decisions against stale state answer 409 with what's live now" do
+    test "decisions without a review case answer 422" do
       conn =
         steward!(:post, "/steward/v1/decisions", %{
           kind: "approve_merge",
@@ -322,8 +398,8 @@ defmodule Api.StewardTest do
           by: "sam"
         })
 
-      assert conn.status == 409
-      assert %{"live_keys" => _} = decoded(conn)
+      assert conn.status == 422
+      assert decoded(conn)["error"] =~ "case_id"
 
       conn =
         steward!(:post, "/steward/v1/decisions", %{
@@ -333,12 +409,157 @@ defmodule Api.StewardTest do
           by: "sam"
         })
 
+      assert conn.status == 422
+      assert decoded(conn)["error"] =~ "case_id"
+    end
+
+    test "two live keys cannot be merged without an open merge case" do
+      product!(:post, "/v1/claims", %{
+        claims: [
+          %{kind: "identity", source: "a", ref: "A", codes: ["cnk:1000001"]},
+          %{kind: "identity", source: "b", ref: "B", codes: ["cnk:1000002"]}
+        ]
+      })
+
+      [k1, k2] = Api.Store.state().ledger.members |> Map.keys() |> Enum.sort()
+
+      conn =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "approve_merge",
+          keys: [k1, k2],
+          by: "sam"
+        })
+
+      assert conn.status == 422
+      assert decoded(conn)["error"] =~ "case_id"
+      assert map_size(Api.Store.state().ledger.members) == 2
+    end
+
+    test "a suppress decision across incompatible entity lanes is rejected" do
+      conn =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "suppress",
+          from: "media_id:IMAGE-1",
+          to: "cnk:1000001",
+          by: "sam"
+        })
+
+      assert conn.status == 422
+      assert decoded(conn)["error"] =~ "incompatible entity lanes"
+      assert Api.Store.state().review_cases == %{}
+    end
+
+    test "a decision against superseded review evidence answers 409" do
+      [k1, k2] = seed_bridged()
+      [review] = Api.Steward.queue().merges
+
+      product!(:post, "/v1/claims", %{
+        claims: [
+          %{
+            kind: "identity",
+            source: "late",
+            ref: "L",
+            codes: ["cnk:1000001", "gtin:09999999999999"]
+          }
+        ]
+      })
+
+      conn =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "approve_merge",
+          keys: [k1, k2],
+          case_id: review.case_id,
+          evidence_offset: review.evidence_offset,
+          by: "sam"
+        })
+
       assert conn.status == 409
+      assert decoded(conn)["error"] =~ "closed"
     end
 
     test "an unknown decision kind answers 422" do
       assert steward!(:post, "/steward/v1/decisions", %{kind: "delete_everything", by: "sam"}).status ==
                422
+    end
+
+    test "the credential determines the actor; a body cannot impersonate another steward" do
+      [k1, k2] = seed_bridged()
+
+      conn =
+        steward_as!("sam", :post, "/steward/v1/decisions", %{
+          kind: "approve_merge",
+          keys: [k1, k2],
+          by: "alex"
+        })
+
+      assert conn.status == 403
+      assert decoded(conn)["error"] =~ "authenticated principal"
+      assert Api.Store.state().proposals == %{}
+    end
+
+    test "suppress requires two credential-bound principals on the same evidence" do
+      product!(:post, "/v1/claims", %{
+        claims: [
+          %{
+            kind: "edge",
+            source: "catalog",
+            from: "text_id:D1",
+            relation: "describes",
+            to: "cnk:1000001"
+          }
+        ]
+      })
+
+      first =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "suppress",
+          from: "text_id:D1",
+          to: "cnk:1000001",
+          by: "sam"
+        })
+
+      assert first.status == 200
+      first_body = decoded(first)
+      assert first_body["applied"] == "propose_suppress"
+
+      same_actor =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "suppress",
+          from: "text_id:D1",
+          to: "cnk:1000001",
+          case_id: first_body["case_id"],
+          evidence_offset: first_body["evidence_offset"],
+          by: "sam"
+        })
+
+      assert same_actor.status == 422
+      assert decoded(same_actor)["error"] =~ "different authenticated principal"
+
+      second =
+        steward!(:post, "/steward/v1/decisions", %{
+          kind: "suppress",
+          from: "text_id:D1",
+          to: "cnk:1000001",
+          case_id: first_body["case_id"],
+          evidence_offset: first_body["evidence_offset"],
+          by: "alex"
+        })
+
+      assert second.status == 200
+      assert decoded(second)["applied"] == "suppress"
+
+      assert Enum.any?(Api.Store.state().current, fn {_slot, event} ->
+               case event do
+                 %Events.ClaimAsserted{
+                   kind: :edge,
+                   data: %{from: {:text_id, "D1"}, relation: :suppress, to: {:cnk, "1000001"}}
+                 } ->
+                   true
+
+                 _ ->
+                   false
+               end
+             end)
     end
   end
 
@@ -369,6 +590,12 @@ defmodule Api.StewardTest do
       [k1, k2] = seed_bridged()
 
       steward!(:post, "/steward/v1/decisions", %{kind: "approve_merge", keys: [k1, k2], by: "sam"})
+
+      steward!(:post, "/steward/v1/decisions", %{
+        kind: "approve_merge",
+        keys: [k1, k2],
+        by: "alex"
+      })
 
       all_codes =
         Api.Store.state().ledger.members[k1] |> Enum.sort() |> Enum.map(&Api.Views.code/1)
@@ -423,19 +650,47 @@ defmodule Api.StewardTest do
         by: "alex"
       })
 
+      [repair] = Api.Steward.queue().repairs
+
       conn =
         conn(
           :post,
           "/steward/decide",
-          "kind=split&key=#{k1}&codes[]=gtin%3A08712345678906&codes[]=cnk%3A1000002&by=sam"
+          URI.encode_query(%{
+            "_csrf_token" => Api.Auth.csrf_token("sam"),
+            "kind" => "split",
+            "key" => k1,
+            "case_id" => repair.case_id,
+            "evidence_offset" => repair.evidence_offset
+          }) <> "&codes[]=gtin%3A08712345678906&codes[]=cnk%3A1000002"
         )
         |> put_req_header("content-type", "application/x-www-form-urlencoded")
-        |> put_req_header("authorization", "Basic " <> Base.encode64("sam:test-steward-token"))
+        |> put_req_header("authorization", "Basic " <> Base.encode64("sam:sam-password"))
+        |> then(&Api.Router.call(&1, Api.Router.init([])))
+
+      assert conn.status == 303
+
+      conn =
+        conn(
+          :post,
+          "/steward/decide",
+          URI.encode_query(%{
+            "_csrf_token" => Api.Auth.csrf_token("alex"),
+            "kind" => "split",
+            "key" => k1,
+            "case_id" => repair.case_id,
+            "evidence_offset" => repair.evidence_offset
+          }) <> "&codes[]=gtin%3A08712345678906&codes[]=cnk%3A1000002"
+        )
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("authorization", "Basic " <> Base.encode64("alex:alex-password"))
         |> then(&Api.Router.call(&1, Api.Router.init([])))
 
       assert conn.status == 303
       state = Api.Store.state()
       assert map_size(state.ledger.members) == 2
+      assert Api.Steward.queue().repairs == []
+
       # the carved key is back on its own, with its own legacy id
       {carved, _} =
         Enum.find(state.ledger.members, fn {_k, codes} ->
@@ -447,9 +702,13 @@ defmodule Api.StewardTest do
   end
 
   describe "the HTML queue page" do
-    defp basic(conn),
+    defp basic(conn, principal \\ "sam"),
       do:
-        put_req_header(conn, "authorization", "Basic " <> Base.encode64("sam:test-steward-token"))
+        put_req_header(
+          conn,
+          "authorization",
+          "Basic " <> Base.encode64("#{principal}:#{principal}-password")
+        )
 
     test "renders the queue over HTTP Basic (the browser path)" do
       seed_bridged()
@@ -462,7 +721,7 @@ defmodule Api.StewardTest do
       # forms must post INSIDE the mount — a relative "decide" resolved to /decide (404)
       assert conn.resp_body =~ ~s(action="/steward/decide")
       refute conn.resp_body =~ ~s(action="decide")
-      assert conn.resp_body =~ "Manual repairs"
+      assert conn.resp_body =~ ~s(name="_csrf_token")
     end
 
     test "challenges without credentials so the browser prompts" do
@@ -471,16 +730,46 @@ defmodule Api.StewardTest do
       assert get_resp_header(conn, "www-authenticate") == [~s(Basic realm="steward")]
     end
 
+    test "rejects a browser decision without its CSRF token" do
+      [k1, k2] = seed_bridged()
+      [review] = Api.Steward.queue().merges
+
+      body =
+        URI.encode_query(%{
+          "kind" => "approve_merge",
+          "keys" => "#{k1}+#{k2}",
+          "case_id" => review.case_id,
+          "evidence_offset" => review.evidence_offset
+        })
+
+      conn =
+        conn(:post, "/steward/decide", body)
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> basic()
+        |> then(&Api.Router.call(&1, Api.Router.init([])))
+
+      assert conn.status == 403
+      assert Api.Store.state().proposals == %{}
+    end
+
     # gr-bb7: a form approve now ENDORSES (four-eyes) — the same two-steward dance as the JSON
     # API, through plain form posts. Note the keys value is form-encoded ("+" is a literal).
-    defp form_approve!(k1, k2, by, reason \\ nil) do
+    defp form_approve!(k1, k2, principal, reason \\ nil) do
+      [review] = Api.Steward.queue().merges
+
       body =
-        "kind=approve_merge&keys=#{URI.encode_www_form("#{k1}+#{k2}")}&by=#{by}" <>
-          if(reason, do: "&reason=#{URI.encode_www_form(reason)}", else: "")
+        URI.encode_query(%{
+          "_csrf_token" => Api.Auth.csrf_token(principal),
+          "kind" => "approve_merge",
+          "keys" => "#{k1}+#{k2}",
+          "case_id" => review.case_id,
+          "evidence_offset" => review.evidence_offset,
+          "reason" => reason || ""
+        })
 
       conn(:post, "/steward/decide", body)
       |> put_req_header("content-type", "application/x-www-form-urlencoded")
-      |> basic()
+      |> basic(principal)
       |> then(&Api.Router.call(&1, Api.Router.init([])))
     end
 
@@ -527,23 +816,22 @@ defmodule Api.StewardTest do
       assert conn.resp_body =~ "&lt;script&gt;alert(1)&lt;/script&gt;"
     end
 
-    test "escapes steward-supplied proposal by/reason — no stored XSS" do
+    test "escapes a steward-supplied proposal reason — no stored XSS" do
       [k1, k2] = seed_bridged()
 
-      # a single endorse leaves a pending proposal the page renders (by + reason)
+      # The actor comes from the credential; only the free-text reason is client supplied.
       assert steward!(:post, "/steward/v1/decisions", %{
                kind: "approve_merge",
                keys: [k1, k2],
-               by: "<b>mallory</b>",
+               by: "sam",
                reason: "<script>alert('xss')</script>"
              }).status == 200
 
       page = conn(:get, "/steward/") |> basic() |> then(&Api.Router.call(&1, Api.Router.init([])))
 
       refute page.resp_body =~ "<script>alert('xss')</script>"
-      refute page.resp_body =~ "<b>mallory</b>"
       assert page.resp_body =~ "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
-      assert page.resp_body =~ "&lt;b&gt;mallory&lt;/b&gt;"
+      assert page.resp_body =~ "endorsed by <b>sam</b>"
     end
 
     test "escapes ingested attribute values rendered on the page" do

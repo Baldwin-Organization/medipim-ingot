@@ -22,6 +22,6 @@ unless Enum.any?(1..50, fn _ ->
 end
 
 Api.Store.migrate!()
-Postgrex.query!(Api.DB, "TRUNCATE events, snapshots, backfill_seen, live_batches", [])
+{:ok, :ok} = Api.Store.reset!()
 
 ExUnit.start()

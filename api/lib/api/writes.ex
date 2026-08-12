@@ -98,6 +98,64 @@ defmodule Api.Writes do
   end
 
   @doc """
+  Atomically revise one upstream record identified by `{source, ref, revision}`.
+
+  Unlike `/claims`, this owns a complete source record: replace removes omissions, patch keeps
+  omissions, withdraw removes every contribution, and reactivate restores the durable key.
+  """
+  def source_record(source, ref, revision, params) when is_map(params) do
+    today = Date.utc_today()
+
+    with {:ok, operation} <- source_operation(params["operation"]),
+         {:ok, valid_from} <- source_valid_from(params["valid_from"], today),
+         {:ok, valid_to} <- source_valid_to(params["valid_to"]),
+         {:ok, claims, warnings} <-
+           source_claims(source, ref, revision, params, operation, valid_from),
+         {:ok, remove_slots} <- remove_slots(params["remove"] || []) do
+      Api.Store.append(fn state, _conn ->
+        recorded_at = DateTime.utc_now()
+        current = Map.get(state.source_records, {source, ref})
+
+        historical =
+          state.source_record_revisions
+          |> Map.get({source, ref}, [])
+          |> Enum.find(&(&1.revision == revision))
+
+        case SourceRecords.revise(historical || current,
+               source: source,
+               ref: ref,
+               revision: revision,
+               base_revision: params["base_revision"],
+               operation: operation,
+               claims: claims,
+               remove_slots: remove_slots,
+               valid_from: valid_from,
+               valid_to: valid_to,
+               recorded_at: recorded_at
+             ) do
+          {:replay, record} ->
+            {:ok, [], source_record_response(state, record, [], warnings, true)}
+
+          {:ok, record} ->
+            {events, identity_events, would_state} = source_record_pipeline(state, record)
+
+            {:ok, events,
+             source_record_response(would_state, record, identity_events, warnings, false)}
+
+          {:error, {status, error}} ->
+            {:error, {status, %{error: error}}}
+        end
+      end)
+    else
+      {:error, {status, error}} -> {:error, {status, %{error: error}}}
+      {:error, errors} when is_list(errors) -> {:error, {422, %{errors: errors}}}
+    end
+  end
+
+  def source_record(_source, _ref, _revision, _params),
+    do: {:error, {422, %{error: "body must be an object"}}}
+
+  @doc """
   The claims write UNCOMMITTED (gr-rlq, `POST /v1/dry-run`): the exact `claims/1` path —
   validate, dedupe per slot, fold-forward reconcile, legacy-id assignment — run against `state`
   without ever touching the store. Returns `{:ok, outcome}` where `outcome.summary` is precisely
@@ -151,11 +209,292 @@ defmodule Api.Writes do
   defp build_live_claims(claim_maps) do
     case ClaimsValidator.validate(claim_maps) do
       {:ok, warnings} ->
-        {:ok, CanonicalClaims.to_engine!(claim_maps, recorded_at: Date.utc_today()), warnings}
+        {:ok, CanonicalClaims.to_engine!(claim_maps, recorded_at: DateTime.utc_now()), warnings}
 
       {:error, errors} ->
         {:error, errors}
     end
+  end
+
+  defp source_record_pipeline(state, record) do
+    preview = Api.State.apply_event(state, %{record | order: state.offset + 1})
+    old_live = Api.State.current_claims(state)
+    live = Api.State.current_claims(preview)
+    reconcile_live = withdrawal_marker(record, live)
+    shared = shared_of(reconcile_live) |> MapSet.union(state.shared)
+    preferred = preferred_clusters(preview, reconcile_live, shared)
+
+    %{events: raw_identity_events, ledger: ledger} =
+      FinerClaims.fold_forward(
+        reconcile_live,
+        shared,
+        state.ledger,
+        [record.valid_from],
+        preferred
+      )
+
+    identity_events = Enum.map(raw_identity_events, &temporalize(&1, record))
+
+    withdrawal_flags =
+      Stewardship.detect_withdrawals(old_live, live, ledger.members, record.recorded_at)
+      |> Enum.map(&temporalize(&1, record))
+
+    attribute_flags =
+      Stewardship.detect(ledger.members, live, Api.Priority.current(), record.recorded_at)
+      |> Enum.map(&temporalize(&1, record))
+      |> changed_review_flags(state, [record] ++ identity_events ++ withdrawal_flags)
+
+    assignments =
+      LegacyIds.decide(product_members(ledger.members), live, state.assigned, record.recorded_at)
+
+    binding =
+      case Map.get(state.record_keys, {record.source, record.ref, source_lane(record)}) do
+        nil -> bind_record(record, ledger)
+        _key -> []
+      end
+
+    events =
+      [record] ++ identity_events ++ withdrawal_flags ++ attribute_flags ++ assignments ++ binding
+
+    stamped =
+      events
+      |> Enum.with_index(state.offset + 1)
+      |> Enum.map(fn {event, order} -> %{event | order: order} end)
+
+    {events, identity_events, Api.State.apply_all(state, stamped)}
+  end
+
+  defp withdrawal_marker(%Events.SourceRecordRevised{active: true}, live), do: live
+
+  defp withdrawal_marker(record, live) do
+    identity = Enum.find(record.claims, &(&1.kind == :identity))
+
+    marker = %{
+      identity
+      | data: %{identity.data | codes: []},
+        recorded_at: record.valid_from,
+        order: nil
+    }
+
+    live ++ [marker]
+  end
+
+  defp preferred_clusters(state, live, shared) do
+    identity_by_record =
+      live
+      |> Enum.filter(&(&1.kind == :identity and not is_nil(&1.record_ref)))
+      |> Map.new(&{{&1.source, &1.record_ref}, MapSet.new(&1.data.codes)})
+
+    clusters =
+      for lane <- Lanes.lanes(),
+          claims = Lanes.identity_claims(live, lane),
+          claims != [],
+          cluster <- Cluster.variants(claims ++ Lanes.identity_evidence(live, lane), shared),
+          do: cluster
+
+    Enum.reduce(state.record_keys, %{}, fn {{source, ref, _lane}, key}, acc ->
+      case Map.get(identity_by_record, {source, ref}) do
+        nil ->
+          acc
+
+        codes ->
+          case Enum.find(clusters, &MapSet.subset?(codes, &1)) do
+            nil ->
+              acc
+
+            cluster ->
+              Map.update(
+                acc,
+                cluster,
+                [Api.State.follow(state, key)],
+                &[Api.State.follow(state, key) | &1]
+              )
+          end
+      end
+    end)
+  end
+
+  defp bind_record(%Events.SourceRecordRevised{active: false}, _ledger), do: []
+
+  defp bind_record(record, ledger) do
+    identity = Enum.find(record.claims, &(&1.kind == :identity))
+    {:ok, lane} = Lanes.of_claim(identity)
+    codes = MapSet.new(identity.data.codes)
+
+    case Enum.find(ledger.members, fn {_key, members} -> MapSet.subset?(codes, members) end) do
+      {key, _} ->
+        [
+          %Events.SourceRecordKeyBound{
+            source: record.source,
+            ref: record.ref,
+            lane: lane,
+            key: key,
+            valid_from: record.valid_from,
+            valid_to: record.valid_to,
+            recorded_at: record.recorded_at
+          }
+        ]
+
+      nil ->
+        []
+    end
+  end
+
+  defp source_lane(%Events.SourceRecordRevised{claims: claims}) do
+    claims |> Enum.find(&(&1.kind == :identity)) |> Lanes.of_claim() |> elem(1)
+  end
+
+  defp source_record_response(state, record, identity_events, warnings, replayed) do
+    lane = source_lane(record)
+    key = Map.get(state.record_keys, {record.source, record.ref, lane})
+    key = if key, do: Api.State.follow(state, key)
+
+    %{
+      source: record.source,
+      ref: record.ref,
+      revision: record.revision,
+      operation: Atom.to_string(record.operation),
+      status: if(record.active, do: "active", else: "withdrawn"),
+      recorded_at: DateTime.to_iso8601(Bitemporal.to_datetime(record.recorded_at)),
+      valid_from: Date.to_iso8601(record.valid_from),
+      valid_to: record.valid_to && Date.to_iso8601(record.valid_to),
+      key: key,
+      legacy_id: key && Map.get(state.assigned, key),
+      replayed: replayed,
+      warnings: warnings,
+      events: Enum.map(identity_events, &event_view/1)
+    }
+  end
+
+  defp source_operation(operation)
+       when operation in ["replace", "patch", "withdraw", "reactivate"],
+       do: {:ok, String.to_existing_atom(operation)}
+
+  defp source_operation(operation),
+    do:
+      {:error,
+       {422,
+        "operation must be replace, patch, withdraw, or reactivate; got #{inspect(operation)}"}}
+
+  defp source_valid_from(nil, recorded_at), do: {:ok, recorded_at}
+
+  defp source_valid_from(raw, _recorded_at) when is_binary(raw) do
+    case Date.from_iso8601(raw) do
+      {:ok, date} -> {:ok, date}
+      _ -> {:error, {422, "valid_from must be an ISO date"}}
+    end
+  end
+
+  defp source_valid_from(_raw, _recorded_at),
+    do: {:error, {422, "valid_from must be an ISO date"}}
+
+  defp source_valid_to(nil), do: {:ok, nil}
+
+  defp source_valid_to(raw) when is_binary(raw) do
+    case Date.from_iso8601(raw) do
+      {:ok, date} -> {:ok, date}
+      _ -> {:error, {422, "valid_to must be an ISO date or null"}}
+    end
+  end
+
+  defp source_valid_to(_raw), do: {:error, {422, "valid_to must be an ISO date or null"}}
+
+  defp source_claims(source, ref, revision, params, operation, valid_from) do
+    raw =
+      case operation do
+        :patch -> params["upsert"] || params["claims"] || []
+        :withdraw -> params["claims"] || []
+        _ -> params["claims"] || []
+      end
+
+    if is_list(raw) do
+      maps =
+        Enum.map(raw, fn claim ->
+          claim
+          |> Map.put("source", source)
+          |> Map.put("valid_from", Date.to_iso8601(valid_from))
+          |> then(fn
+            %{"kind" => "identity"} = identity -> Map.put(identity, "ref", ref)
+            other -> other
+          end)
+        end)
+
+      case ClaimsValidator.validate(maps) do
+        {:ok, warnings} ->
+          claims =
+            maps
+            |> CanonicalClaims.to_engine!(recorded_at: valid_from)
+            |> Enum.map(&%{&1 | record_ref: ref, record_revision: revision})
+
+          {:ok, claims, warnings}
+
+        {:error, errors} ->
+          {:error, errors}
+      end
+    else
+      {:error, {422, "claims/upsert must be a list"}}
+    end
+  end
+
+  defp remove_slots(remove) when is_list(remove) do
+    remove
+    |> Enum.with_index()
+    |> Enum.reduce_while({:ok, []}, fn {selector, index}, {:ok, slots} ->
+      case remove_slot(selector) do
+        {:ok, slot} -> {:cont, {:ok, [slot | slots]}}
+        {:error, error} -> {:halt, {:error, {422, "remove[#{index}]: #{error}"}}}
+      end
+    end)
+    |> case do
+      {:ok, slots} -> {:ok, Enum.reverse(slots)}
+      error -> error
+    end
+  end
+
+  defp remove_slots(_), do: {:error, {422, "remove must be a list"}}
+
+  defp remove_slot(%{"kind" => "identity"}), do: {:ok, :identity}
+
+  defp remove_slot(%{"kind" => "grouping", "code" => code}),
+    do:
+      with(
+        {:ok, code} <- CanonicalClaims.parse_code(code),
+        do: {:ok, {:grouping, Codes.canonicalize(code)}}
+      )
+
+  defp remove_slot(%{"kind" => "attribute", "code" => code, "field" => field}),
+    do:
+      with(
+        {:ok, code} <- CanonicalClaims.parse_code(code),
+        do: {:ok, {:attr, Codes.canonicalize(code), field}}
+      )
+
+  defp remove_slot(%{"kind" => "media", "asset" => asset, "target" => target}),
+    do:
+      with(
+        {:ok, target} <- CanonicalClaims.parse_code(target),
+        do: {:ok, {:media, {:dam, asset}, Codes.canonicalize(target)}}
+      )
+
+  defp remove_slot(%{"kind" => "edge", "from" => from, "relation" => relation, "to" => to}) do
+    with {:ok, from} <- CanonicalClaims.parse_code(from),
+         {:ok, relation} <- Relations.parse(relation),
+         {:ok, to} <- CanonicalClaims.parse_code(to) do
+      {:ok, {:edge, Codes.canonicalize(from), relation, Codes.canonicalize(to)}}
+    else
+      _ -> {:error, "invalid edge selector"}
+    end
+  end
+
+  defp remove_slot(_), do: {:error, "unsupported or incomplete selector"}
+
+  defp temporalize(event, record) do
+    %{
+      event
+      | valid_from: record.valid_from,
+        valid_to: record.valid_to,
+        recorded_at: record.recorded_at
+    }
   end
 
   # Last claim per slot wins, batch order preserved — the cutover's compaction (see simulate/3).
@@ -224,7 +563,7 @@ defmodule Api.Writes do
       |> Enum.filter(&(&1.kind == :identity))
       |> Enum.map(& &1.recorded_at)
       |> Enum.uniq()
-      |> Enum.sort(Date)
+      |> Enum.sort(&(Bitemporal.compare(&1, &2) != :gt))
 
     %{events: identity_events, ledger: ledger} =
       FinerClaims.fold_forward(all, shared, state.ledger, new_dates)
@@ -232,8 +571,12 @@ defmodule Api.Writes do
     at = List.last(new_dates) || Date.utc_today()
     assignments = LegacyIds.decide(product_members(ledger.members), all, state.assigned, at)
 
+    attribute_flags =
+      Stewardship.detect(ledger.members, all, Api.Priority.current(), at)
+      |> changed_review_flags(state, new_claims ++ identity_events)
+
     # the store stamps real offsets in THIS order — the claims land exactly on their pre-stamps
-    {new_claims ++ identity_events ++ assignments, identity_events}
+    {new_claims ++ identity_events ++ attribute_flags ++ assignments, identity_events}
   end
 
   defp shared_of(claims) do
@@ -243,6 +586,30 @@ defmodule Api.Writes do
         ClaimMapping.shared?(code),
         into: MapSet.new(),
         do: code
+  end
+
+  defp changed_review_flags(flags, state, preceding_events) do
+    projected =
+      preceding_events
+      |> Enum.with_index(state.offset + 1)
+      |> Enum.map(fn {event, order} -> %{event | order: order} end)
+      |> then(&Api.State.apply_all(state, &1))
+
+    Enum.reject(flags, fn flag ->
+      with {:ok, evidence} <- Api.ReviewCases.evidence(projected, flag.subject),
+           latest when not is_nil(latest) <- latest_review(state, flag.subject) do
+        latest.evidence_digest == Api.ReviewCases.digest(evidence)
+      else
+        _ -> false
+      end
+    end)
+  end
+
+  defp latest_review(state, subject) do
+    state.review_cases
+    |> Map.values()
+    |> Enum.filter(&(&1.subject == subject))
+    |> Enum.max_by(& &1.evidence_offset, fn -> nil end)
   end
 
   # ── envelope decoding + idempotency ─────────────────────────────────────────
@@ -346,23 +713,26 @@ defmodule Api.Writes do
   end
 
   defp event_view(%Events.IdentityMinted{key: k, recorded_at: at}),
-    do: %{type: "minted", key: k, date: Date.to_iso8601(at)}
+    do: %{type: "minted", key: k, date: time_iso(at)}
 
   defp event_view(%Events.IdentityMembersChanged{key: k, recorded_at: at}),
-    do: %{type: "members_changed", key: k, date: Date.to_iso8601(at)}
+    do: %{type: "members_changed", key: k, date: time_iso(at)}
 
   defp event_view(%Events.IdentitiesMerged{from: from, into: into, recorded_at: at}),
-    do: %{type: "merged", from: from, into: into, date: Date.to_iso8601(at)}
+    do: %{type: "merged", from: from, into: into, date: time_iso(at)}
 
   defp event_view(%Events.IdentitySplit{key: k, into: into, recorded_at: at}),
-    do: %{type: "split", key: k, into: Enum.map(into, &elem(&1, 0)), date: Date.to_iso8601(at)}
+    do: %{type: "split", key: k, into: Enum.map(into, &elem(&1, 0)), date: time_iso(at)}
 
   defp event_view(%Events.IdentityRetracted{key: k, recorded_at: at}),
-    do: %{type: "retracted", key: k, date: Date.to_iso8601(at)}
+    do: %{type: "retracted", key: k, date: time_iso(at)}
 
   defp event_view(%Events.ConflictFlagged{subject: {:merge, keys}, recorded_at: at}),
-    do: %{type: "merge_proposal", keys: keys, date: Date.to_iso8601(at)}
+    do: %{type: "merge_proposal", keys: keys, date: time_iso(at)}
 
   defp event_view(%Events.ConflictFlagged{subject: subject, recorded_at: at}),
-    do: %{type: "flag", subject: inspect(subject), date: Date.to_iso8601(at)}
+    do: %{type: "flag", subject: inspect(subject), date: time_iso(at)}
+
+  defp time_iso(%Date{} = date), do: Date.to_iso8601(date)
+  defp time_iso(%DateTime{} = datetime), do: datetime |> DateTime.to_date() |> Date.to_iso8601()
 end
