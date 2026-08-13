@@ -714,15 +714,19 @@ defmodule Cluster do
         Enum.reduce(set, acc, fn code, by_code -> Map.update(by_code, code, [index], &[index | &1]) end)
       end)
 
+    signatures =
+      sets
+      |> Enum.with_index()
+      |> Map.new(fn {set, index} ->
+        {index, {unique_signature(set, unique_scheme?), code_signature(set)}}
+      end)
+
     ordinary =
       by_code
       |> Enum.reject(fn {code, _indexes} -> MapSet.member?(shared, code) end)
       |> Enum.flat_map(fn {code, indexes} ->
         indexes
-        |> Enum.sort_by(fn index ->
-          set = Enum.at(sets, index)
-          {unique_signature(set, unique_scheme?), code_signature(set)}
-        end)
+        |> Enum.sort_by(&Map.fetch!(signatures, &1))
         |> Enum.chunk_every(2, 1, :discard)
         |> Enum.map(fn [left, right] -> {0, code, left, right, false} end)
       end)
