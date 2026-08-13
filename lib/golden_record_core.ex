@@ -866,13 +866,14 @@ defmodule IdentityLedger do
     original = old_members
     conflicts = cluster_conflicts(clusters, shared)
     non_bridging = MapSet.union(shared, MapSet.new(conflicts, &elem(&1, 0)))
+    bare_index = bare_code_index(original, non_bridging)
 
     {assigns, members, next, minted, reactivated, proposals} =
       Enum.reduce(clusters, {[], old_members, next, [], [], []}, fn cluster,
                                                                     {assigns, m, n, minted, reactivated,
                                                                      proposals} ->
         candidates =
-          (overlapping_keys(original, cluster, non_bridging) ++ Map.get(preferred, cluster, []))
+          (overlapping_keys(bare_index, cluster, non_bridging) ++ Map.get(preferred, cluster, []))
           |> Enum.uniq()
           |> Enum.sort()
 
@@ -922,14 +923,16 @@ defmodule IdentityLedger do
           {Map.put(m, key, keep_cluster), n, [{key, Enum.reverse(into)} | split]}
       end)
 
+    # Reversed so that on a duplicate cluster the most recent assignment wins, exactly as the
+    # Enum.find_value scan over the prepend-built list did.
+    assigns_by_cluster = assigns |> Enum.reverse() |> Map.new()
+
     held_proposals =
       conflicts
       |> Enum.flat_map(fn {_code, carriers} ->
         keys =
           carriers
-          |> Enum.map(fn carrier ->
-            Enum.find_value(assigns, fn {cluster, key} -> if cluster == carrier, do: key end)
-          end)
+          |> Enum.map(&Map.get(assigns_by_cluster, &1))
           |> Enum.reject(&is_nil/1)
           |> Enum.uniq()
           |> Enum.sort()
@@ -1040,12 +1043,19 @@ defmodule IdentityLedger do
         do: %Events.IdentityMembersChanged{key: key, codes: outcome.members[key], recorded_at: at}
   end
 
-  defp overlapping_keys(members, cluster, shared) do
-    bare = MapSet.difference(cluster, shared)
+  # Inverted index (non-shared code -> [key]) built once per reconcile, so overlapping_keys is a
+  # union of lookups instead of a full members scan per cluster.
+  defp bare_code_index(members, shared) do
+    for {key, codes} <- members, code <- MapSet.difference(codes, shared), reduce: %{} do
+      acc -> Map.update(acc, code, [key], &[key | &1])
+    end
+  end
 
-    members
-    |> Enum.filter(fn {_k, codes} -> not MapSet.disjoint?(MapSet.difference(codes, shared), bare) end)
-    |> Enum.map(&elem(&1, 0))
+  defp overlapping_keys(bare_index, cluster, shared) do
+    cluster
+    |> MapSet.difference(shared)
+    |> Enum.flat_map(&Map.get(bare_index, &1, []))
+    |> Enum.uniq()
     |> Enum.sort()
   end
 
