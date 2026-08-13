@@ -1139,8 +1139,14 @@ defmodule Stewardship do
   under other sources. The steward needs visibility — the product lost evidence.
   """
   def detect_withdrawals(old_live, new_live, members, at) do
-    old_sources = sources_per_key(old_live, members)
-    new_sources = sources_per_key(new_live, members)
+    # code -> [key] built once; a held conflict can put one code in several keys' sets.
+    keys_by_code =
+      for {key, codes} <- members, code <- codes, reduce: %{} do
+        acc -> Map.update(acc, code, [key], &[key | &1])
+      end
+
+    old_sources = sources_per_key(old_live, keys_by_code)
+    new_sources = sources_per_key(new_live, keys_by_code)
 
     for {key, _codes} <- members,
         old = Map.get(old_sources, key, MapSet.new()),
@@ -1155,12 +1161,11 @@ defmodule Stewardship do
     end
   end
 
-  defp sources_per_key(live_claims, members) do
+  defp sources_per_key(live_claims, keys_by_code) do
     for claim <- live_claims,
         claim.kind == :identity,
         claim.data.codes != [],
-        {key, codes} <- members,
-        Enum.any?(claim.data.codes, &MapSet.member?(codes, &1)),
+        key <- claim.data.codes |> Enum.flat_map(&Map.get(keys_by_code, &1, [])) |> Enum.uniq(),
         reduce: %{} do
       acc -> Map.update(acc, key, MapSet.new([claim.source]), &MapSet.put(&1, claim.source))
     end
@@ -1386,8 +1391,25 @@ defmodule Catalog do
     media = Enum.filter(live_claims, &(&1.kind == :media))
     edges = Enum.filter(live_claims, &(&1.kind == :edge))
 
+    # Inverted code -> key maps, built once per projection so edge-endpoint resolution is a
+    # lookup instead of a scan over the lane's members per edge.
+    owners = %{
+      substance: owner_index(lanes.substance),
+      description: owner_index(lanes.description),
+      media: owner_index(lanes.media)
+    }
+
+    # Suppress edges with their description endpoint pre-resolved; the product-code side is the
+    # only part that varies per variant.
+    suppress_edges =
+      for s <- edges,
+          s.data.relation == :suppress,
+          do: {owner_key(owners.description, s.data.from), s.data.to}
+
     lanes.product
     |> Enum.map(fn {key, codes} ->
+      substances = resolve_substances(codes, edges, owners.substance)
+
       %{
         key: key,
         codes: Enum.sort(MapSet.to_list(codes)),
@@ -1395,10 +1417,11 @@ defmodule Catalog do
         product: resolve_product(key, codes, groups, priority, overrides.product),
         media:
           resolve_media(codes, media, priority) ++
-            resolve_depicted(codes, edges, lanes.media, attrs, priority),
+            resolve_depicted(codes, edges, lanes.media, owners.media, attrs, priority),
         categories: resolve_categories(codes, edges),
-        substances: resolve_substances(codes, edges, lanes.substance),
-        descriptions: resolve_descriptions(codes, edges, lanes, attrs, priority)
+        substances: substances,
+        descriptions:
+          resolve_descriptions(codes, lanes, owners, substances, suppress_edges, edges, attrs, priority)
       }
     end)
     |> Enum.group_by(& &1.product.value)
@@ -1472,10 +1495,10 @@ defmodule Catalog do
 
   # The substances this variant claims, via :contains edges — both hops resolve code → current
   # owner key at read time, so a substance merge converges every product's view with zero writes.
-  defp resolve_substances(codes, edges, sub_members) do
+  defp resolve_substances(codes, edges, sub_index) do
     edges
     |> Enum.filter(&(&1.data.relation == :contains and MapSet.member?(codes, &1.data.from)))
-    |> Enum.group_by(&owner(sub_members, &1.data.to))
+    |> Enum.group_by(&owner_key(sub_index, &1.data.to))
     |> Enum.map(fn {key, es} ->
       %{
         key: key,
@@ -1490,21 +1513,26 @@ defmodule Catalog do
   # descriptions tagged to any substance it contains — Relations.product_descriptions/0 is the
   # named traversal, never blanket closure. Each entry carries its provenance (`via` — WHY it is
   # on this page) and drops steward-suppressed pairings (gr-745) for THIS product only.
-  defp resolve_descriptions(codes, edges, lanes, attrs, priority) do
+  defp resolve_descriptions(codes, lanes, owners, substances, suppress_edges, edges, attrs, priority) do
     describes = Enum.filter(edges, &(&1.data.relation == :describes))
-    contained = MapSet.new(resolve_substances(codes, edges, lanes.substance), & &1.key)
+    contained = MapSet.new(substances, & &1.key)
+
+    suppressed_keys =
+      for {desc_key, to} <- suppress_edges, MapSet.member?(codes, to), into: MapSet.new(), do: desc_key
 
     direct = for e <- describes, MapSet.member?(codes, e.data.to), do: {e, :direct}
 
     via =
       for e <- describes,
-          key = owner(lanes.substance, e.data.to),
+          key = owner_key(owners.substance, e.data.to),
           MapSet.member?(contained, key),
           do: {e, {:substance, key}}
 
     (direct ++ via)
-    |> Enum.reject(&suppressed?(&1, codes, edges, lanes.description))
-    |> Enum.group_by(fn {e, route} -> {owner(lanes.description, e.data.from), route} end)
+    |> Enum.reject(fn {e, _route} ->
+      MapSet.member?(suppressed_keys, owner_key(owners.description, e.data.from))
+    end)
+    |> Enum.group_by(fn {e, route} -> {owner_key(owners.description, e.data.from), route} end)
     |> Enum.map(fn {{key, route}, entries} ->
       desc_codes = Map.get(lanes.description, key) || MapSet.new([key])
 
@@ -1518,24 +1546,12 @@ defmodule Catalog do
     |> Enum.sort_by(&{&1.via != :direct, &1.via, &1.key})
   end
 
-  # A steward :suppress edge (description code → product code) hides that ONE pairing: it must
-  # resolve to the same description record AND target a code this variant carries. Resolution is
-  # by key, so the suppression survives merges on either side.
-  defp suppressed?({e, _route}, codes, edges, desc_members) do
-    desc_key = owner(desc_members, e.data.from)
-
-    Enum.any?(edges, fn s ->
-      s.data.relation == :suppress and MapSet.member?(codes, s.data.to) and
-        owner(desc_members, s.data.from) == desc_key
-    end)
-  end
-
   # Media-lane records reach the page via :depicts edges — the first-class path (gr-kek). The
   # legacy :media claim kind keeps resolving in resolve_media/3 until every producer emits lanes.
-  defp resolve_depicted(codes, edges, media_members, attrs, priority) do
+  defp resolve_depicted(codes, edges, media_members, media_index, attrs, priority) do
     edges
     |> Enum.filter(&(&1.data.relation == :depicts and MapSet.member?(codes, &1.data.to)))
-    |> Enum.group_by(&owner(media_members, &1.data.from))
+    |> Enum.group_by(&owner_key(media_index, &1.data.from))
     |> Enum.map(fn {key, es} ->
       attributes = lane_attributes(Map.get(media_members, key) || MapSet.new([key]), attrs, priority)
 
@@ -1551,8 +1567,15 @@ defmodule Catalog do
 
   # Resolve an edge endpoint to the key that currently owns it; an endpoint with no identity
   # claim yet resolves to itself — the code IS the identity until a record exists for it.
-  defp owner(members, code),
-    do: Enum.find_value(members, code, fn {k, set} -> if MapSet.member?(set, code), do: k end)
+  # put_new keeps the FIRST key that carries a code, matching the Enum.find_value scan the
+  # index replaces (a held conflict can leave one code in two keys' sets).
+  defp owner_index(members) do
+    for {key, set} <- members, code <- set, reduce: %{} do
+      acc -> Map.put_new(acc, code, key)
+    end
+  end
+
+  defp owner_key(index, code), do: Map.get(index, code, code)
 
   defp lane_attributes(codes, attrs, priority),
     do: codes |> Survivorship.field_decisions(attrs, priority) |> Enum.sort()
