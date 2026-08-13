@@ -316,8 +316,9 @@ defmodule ClaimMapping do
   @doc false
   # The identifiers a claim is about, as of the instant it was made.
   #
-  # A SOURCED event is about the codes that source itself held then. If it held none, it has
-  # identified nothing and the event is refused.
+  # A SOURCED event is about the codes that source itself held then — or, when it held none at
+  # that instant but did identify this listing at some point, the nearest codes it held (gr-4iu,
+  # see nearest_codes/2). Only a source that NEVER asserted a code on the listing is refused.
   #
   # An UNSOURCED event is scoped to the legacy entity, and the entity id is an identifier in its
   # own right — that is exactly what grouping claims make first-class. So it is about every code
@@ -332,7 +333,29 @@ defmodule ClaimMapping do
   end
 
   def codes_at(periods, entity, source, at) do
-    periods |> Map.get({entity, source}, []) |> codes_covering(at) |> Enum.sort()
+    ps = Map.get(periods, {entity, source}, [])
+
+    case codes_covering(ps, at) do
+      [] -> ps |> nearest_codes(at) |> Enum.sort()
+      codes -> Enum.sort(codes)
+    end
+  end
+
+  # gr-4iu: a source that DID identify this listing but spoke outside the window it held codes
+  # anchors to the codes it held nearest in the past (bridging a delisting gap), or — before it
+  # first identified — to the earliest codes it ever asserted on this listing. The listing ref is
+  # the thread of continuity; the code set is merely late. A source that never asserted a code on
+  # the listing still anchors to nothing and the event is refused (see rejected/1).
+  defp nearest_codes(ps, at) do
+    held = Enum.filter(ps, &(MapSet.size(&1.codes) > 0))
+
+    held
+    |> Enum.take_while(&(&1.from <= at))
+    |> List.last()
+    |> then(fn
+      %{codes: codes} -> MapSet.to_list(codes)
+      nil -> with([%{codes: codes} | _] <- held, do: MapSet.to_list(codes), else: ([] -> []))
+    end)
   end
 
   # Periods are half-open, so the period OPENING at an instant owns it — right for identity,

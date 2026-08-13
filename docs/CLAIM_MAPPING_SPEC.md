@@ -75,25 +75,36 @@ the backfill report and the fix belongs upstream.
 | reason | events | who |
 |---|---|---|
 | `source_held_no_code` | 73 | `4996` and `5480` — they never assert a code anywhere in either fixture |
-| `source_held_no_code` | 11 | sources that *do* identify the product, but spoke outside the window they held codes |
 
-The first group is **settled, not outstanding**. `4996` reports the four sales-price aggregates and
+This group is **settled, not outstanding**. `4996` reports the four sales-price aggregates and
 `5480` reports packaging, and neither ever names a code for the product it is describing. Under the
 rule at the top of this section there is nothing to attach their facts to, so they are refused —
 loudly, in the ingest report, which is the part that was actually wrong before.
 
-The second group is small and open: `gr-4iu` asks whether a source's codes may reach backwards
-to facts it stated before identifying.
+A second group no longer exists (`gr-4iu`, decided 2026-08-13): a source that *does* identify the
+product but spoke **outside the window it held codes** — 46 days before its first identity
+assertion, or during a delisting gap — now anchors to the **nearest codes it held on that
+listing**: the most recent codes before the event, or, before the source first identified, the
+earliest codes it ever asserted there. The listing ref is the thread of continuity; the code set
+is merely late. This is deliberately an import-time inference: the legacy system attached these
+facts to the entity and showed them, so refusing them would make the golden record unable to
+reproduce what legacy demonstrably displayed — and, worse, it silently removed competing
+candidates from survivorship, letting fields resolve "cleanly" that should have carried a
+disagreement. The reach never crosses listings or sources, so a source that never identifies
+anything still refuses. **Live ingest refuses provisionally** — hindsight does not exist at the
+moment a live event arrives — and a later re-derivation repairs the anchoring retroactively;
+no live-side inference should be built.
 
-A third group no longer exists: three attributes stated **at the exact instant their source
+A third group no longer exists either: three attributes stated **at the exact instant their source
 delisted** used to fall into the empty period, because periods are half-open and the period
 opening at an instant owns it. That is right for identity and wrong for a parting attribute —
 the source is describing what it *had*, not the nothing it now has. Since `gr-gh0`, an attribute
 at the exact delisting instant anchors to the codes the closing period held.
 
 **Effect on the fixtures:** attribute claims went from 92 to 228 (anchoring at time-of-speech),
-then to 237 (the delisting boundary, `gr-gh0`), and 8 of the 10 sources now reach claims rather
-than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
+to 237 (the delisting boundary, `gr-gh0`), then to 248 (nearest-codes anchoring, `gr-4iu`), and
+8 of the 10 sources reach claims rather than 5. `4996` and `5480` still reach none, correctly —
+they identify nothing.
 
 ## Attribute fields observed
 
@@ -139,7 +150,7 @@ because every source asserting it identifies nothing (`4996`, `5480`).
 | `ttcPrice` | 3 | null, number | — | delete, set | — |
 | `weight` | 3 | number, string | — | set | — |
 | `width` | 2 | number | — | set | — |
-| `yearlyAverageSales` | 2 | null, number | — | delete, set | **yes** |
+| `yearlyAverageSales` | 2 | null, number | — | delete, set | — |
 
 ## Identity schemes observed
 

@@ -97,9 +97,11 @@ defmodule ClaimMappingSpecTest do
     test "an event that identifies nothing is refused, not dropped" do
       rejected = @fixtures |> Enum.map(&HistoryEnvelope.load!/1) |> ClaimMapping.rejected()
 
+      # Exactly the never-identifying sources remain; the outside-the-window group is anchored
+      # by gr-4iu's nearest-codes rule. (The old `reasons[:unsourced] > 0` assertion here was
+      # vacuously true — nil > 0 holds under term ordering — there are no unsourced rejections.)
       reasons = rejected |> Enum.map(& &1.reason) |> Enum.frequencies()
-      assert reasons[:source_held_no_code] > 0
-      assert reasons[:unsourced] > 0
+      assert reasons == %{source_held_no_code: 73}
 
       # 4996 and 5480 never assert a code anywhere in either fixture.
       never_identify =
@@ -126,7 +128,7 @@ defmodule ClaimMappingSpecTest do
 
       assert MapSet.size(documented) == 38, "the spec table did not parse"
       # Only fields whose sole sources never identify anything: 4996 and 5480.
-      assert MapSet.size(dropped) == 6
+      assert MapSet.size(dropped) == 5
 
       assert MapSet.difference(MapSet.difference(documented, dropped), produced)
              |> MapSet.to_list() == [],
@@ -141,16 +143,33 @@ defmodule ClaimMappingSpecTest do
              "the spec says these are dropped, but they now reach a claim — good news, update the spec"
     end
 
-    test "the delisting half of the anchor gap is closed", %{attrs: attrs} do
+    test "the anchor gap is closed", %{attrs: attrs} do
       # 92 -> 228 claims (time-of-speech anchoring), -> 237 (gr-gh0: parting attributes at the
-      # exact delisting instant), 5 -> 8 sourced. Only 4996 and 5480 reach nothing, and they
-      # identify nothing. If these move, gr-4iu moved with them and the spec needs updating.
-      assert length(attrs) == 237
+      # exact delisting instant), -> 248 (gr-4iu: nearest-codes anchoring for events outside the
+      # held window), 5 -> 8 sourced. Only 4996 and 5480 reach nothing — they identify nothing.
+      assert length(attrs) == 248
 
       sourced = attrs |> Enum.map(& &1.source) |> Enum.reject(&is_nil/1) |> Enum.uniq()
       assert length(sourced) == 8
       refute "4996" in sourced
       refute "5480" in sourced
+    end
+
+    test "a source speaking outside its held window anchors to its nearest codes (gr-4iu)",
+         %{attrs: attrs} do
+      # Source 888 reported yearlyAverageSales weeks before it first asserted a code; the claim
+      # now anchors to the earliest codes 888 asserted on that listing instead of being refused.
+      early = Enum.filter(attrs, &(&1.source == "888" and &1.data.field == "yearlyAverageSales"))
+      assert early != [], "the reach-back events were refused again"
+
+      # And the recovered claims carry the source's own codes — never another source's.
+      envelopes = Enum.map(@fixtures, &HistoryEnvelope.load!/1)
+      periods = ClaimMapping.listing_periods(envelopes)
+
+      own_codes =
+        for {{_e, "888"}, ps} <- periods, %{codes: codes} <- ps, c <- codes, into: MapSet.new(), do: c
+
+      assert Enum.all?(early, &MapSet.member?(own_codes, &1.data.code))
     end
 
     test "the anchor gap is real: four sources contribute no codes at all" do
