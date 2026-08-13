@@ -87,15 +87,5 @@ defmodule Isbn do
     payload <> gs1_check_digit(payload)
   end
 
-  defp gs1_check_digit(payload) do
-    sum =
-      payload
-      |> String.graphemes()
-      |> Enum.map(&String.to_integer/1)
-      |> Enum.reverse()
-      |> Enum.with_index()
-      |> Enum.reduce(0, fn {d, i}, acc -> acc + d * if(rem(i, 2) == 0, do: 3, else: 1) end)
-
-    Integer.to_string(rem(10 - rem(sum, 10), 10))
-  end
+  defp gs1_check_digit(payload), do: Integer.to_string(Codes.check_digit(payload))
 end

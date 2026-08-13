@@ -227,7 +227,9 @@ defmodule Codes do
 
   defp all_digits?(v), do: v != "" and v =~ ~r/^\d+$/
 
-  defp check_digit(payload) do
+  # GS1 mod-10 check digit. Public (@doc false) as THE one implementation — Isbn shares it.
+  @doc false
+  def check_digit(payload) do
     sum =
       payload
       |> String.graphemes()
@@ -1947,7 +1949,7 @@ defmodule PublicId do
 
   @doc "Canonical public id of `scheme` for `key` (by source priority), plus its aliases."
   def canonical(scheme, key, log, priority),
-    do: do_canonical(scheme, key, ledger(log).members, fn -> identity_claims(log) end, priority)
+    do: do_canonical(scheme, key, Api.members(log), fn -> identity_claims(log) end, priority)
 
   @doc """
   canonical/4 with the fold state prebuilt — `members` (`Api.members/1`) and the current
@@ -2005,7 +2007,7 @@ defmodule PublicId do
   end
 
   @doc "Identity-grade INVARIANT check: a code of `scheme` must never own >1 key. Returns violations."
-  def collisions(scheme, log) when is_list(log), do: collisions(scheme, ledger(log).members)
+  def collisions(scheme, log) when is_list(log), do: collisions(scheme, Api.members(log))
 
   def collisions(scheme, members) when is_map(members) do
     members
@@ -2020,6 +2022,4 @@ defmodule PublicId do
   @doc "Current identity claims — the second piece of fold state canonical/5 takes prebuilt."
   def identity_claims(log),
     do: for(%Events.ClaimAsserted{kind: :identity} = e <- log, do: e) |> Substrate.current()
-
-  defp ledger(log), do: Enum.reduce(log, IdentityLedger.new(), &IdentityLedger.evolve(&2, &1))
 end

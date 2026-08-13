@@ -123,7 +123,7 @@ defmodule Temporal do
     # `decide` leaves identity events with `order: nil`; stamp them monotonic, continuing after the
     # max claim order (mirrors Rederivation.stamp/2). Stamp ONCE here so the timeline and the log
     # carry the SAME orders — the timeline is just these stamped events, re-sorted by {date, order}.
-    identity_events = stamp(raw_identity_events, claims)
+    identity_events = Rederivation.stamp(raw_identity_events, claims)
     log = claims ++ identity_events
 
     # The timeline narrates the PRODUCT lane (the time machine's subject); other lanes' identity
@@ -131,7 +131,7 @@ defmodule Temporal do
     timeline =
       identity_events
       |> Enum.filter(&product_lane_event?/1)
-      |> Enum.sort_by(&{&1.recorded_at, &1.order}, &date_order/2)
+      |> Enum.sort_by(&{Date.to_erl(&1.recorded_at), &1.order})
 
     %{log: log, timeline: timeline, ledger: ledger}
   end
@@ -165,28 +165,8 @@ defmodule Temporal do
   end
 
   @doc "The permissive default priority — every source unranked, so conflicts tie (see `golden_as_of/3`)."
-  def default_priority, do: Priority.new(%{}, [])
+  def default_priority, do: GoldenRecords.default_priority()
 
   # epoch (integer Unix seconds) -> Date, at the ingest boundary.
-  defp to_date(epoch) when is_integer(epoch), do: epoch |> DateTime.from_unix!() |> DateTime.to_date()
-
-  # Continue the identity events' `:order` after the highest claim order, preserving emission order,
-  # so the combined temporal log stays monotonically sequenced for the engine's read layer.
-  # Mirrors `Rederivation.stamp/2`.
-  defp stamp(events, claims) do
-    base = claims |> Enum.map(& &1.order) |> Enum.max(fn -> -1 end)
-
-    events
-    |> Enum.with_index(base + 1)
-    |> Enum.map(fn {event, order} -> %{event | order: order} end)
-  end
-
-  # Comparator for `{%Date{}, order}` tuples: Date first (Date.compare), then integer order.
-  defp date_order({date_a, order_a}, {date_b, order_b}) do
-    case Date.compare(date_a, date_b) do
-      :lt -> true
-      :gt -> false
-      :eq -> order_a <= order_b
-    end
-  end
+  defp to_date(epoch), do: Bitemporal.effective_date(epoch)
 end
