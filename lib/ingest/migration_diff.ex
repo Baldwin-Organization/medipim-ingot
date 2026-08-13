@@ -204,11 +204,13 @@ defmodule MigrationDiff do
   defp render_code({scheme, value}), do: "#{scheme}:#{value}"
 
   defp counts(findings) do
+    freq = Enum.frequencies_by(findings, & &1.category)
+
     %{
-      confirmed: Enum.count(findings, &(&1.category == "confirmed")),
-      merged: Enum.count(findings, &(&1.category == "merged")),
-      split: Enum.count(findings, &(&1.category == "split")),
-      collision: Enum.count(findings, &(&1.category == "collision")),
+      confirmed: Map.get(freq, "confirmed", 0),
+      merged: Map.get(freq, "merged", 0),
+      split: Map.get(freq, "split", 0),
+      collision: Map.get(freq, "collision", 0),
       needs_review: Enum.count(findings, & &1.needs_review)
     }
   end
