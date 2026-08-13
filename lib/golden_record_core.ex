@@ -1897,11 +1897,21 @@ defmodule Api do
     end
   end
 
-  @doc "Resolve any code (canonical OR alias) to the surrogate key that currently owns it."
-  def resolve_key(log, code) do
+  @doc """
+  Resolve any code (canonical OR alias) to the surrogate key that currently owns it.
+
+  Accepts the raw log or, for callers doing many lookups, a prebuilt members map
+  (`Api.members/1`) so the ledger folds once instead of per call.
+  """
+  def resolve_key(log, code) when is_list(log), do: resolve_key(members(log), code)
+
+  def resolve_key(members, code) when is_map(members) do
     canon = Codes.canonicalize(code)
-    Enum.find_value(ledger(log).members, fn {k, codes} -> if MapSet.member?(codes, canon), do: k end)
+    Enum.find_value(members, fn {k, codes} -> if MapSet.member?(codes, canon), do: k end)
   end
+
+  @doc "The current `key => codes` members map — the fold state behind resolve_key/2."
+  def members(log), do: ledger(log).members
 
   @doc "Customer lookup by code — the robust access pattern. Returns the current record + identity block."
   def lookup(log, code, priority) do
@@ -1912,8 +1922,11 @@ defmodule Api do
   end
 
   @doc "Fetch by surrogate key with its identity status (a stale key still answers, with a redirect)."
-  def get(log, key, priority) do
-    variant = log |> History.now(priority) |> Enum.flat_map(& &1.variants) |> Enum.find(&(&1.key == key))
+  def get(log, key, priority), do: get_projected(History.now(log, priority), log, key)
+
+  @doc "get/3 with the `History.now/2` projection prebuilt, for callers fetching many keys."
+  def get_projected(projection, log, key) do
+    variant = projection |> Enum.flat_map(& &1.variants) |> Enum.find(&(&1.key == key))
     %{key: key, identity: identity_status(log, key), variant: variant}
   end
 
@@ -1940,9 +1953,21 @@ defmodule PublicId do
   """
 
   @doc "Canonical public id of `scheme` for `key` (by source priority), plus its aliases."
-  def canonical(scheme, key, log, priority) do
+  def canonical(scheme, key, log, priority),
+    do: do_canonical(scheme, key, ledger(log).members, fn -> identity_claims(log) end, priority)
+
+  @doc """
+  canonical/4 with the fold state prebuilt — `members` (`Api.members/1`) and the current
+  identity claims — so callers enriching many keys fold the log once instead of per key.
+  """
+  def canonical(scheme, key, members, idclaims, priority),
+    do: do_canonical(scheme, key, members, fn -> idclaims end, priority)
+
+  # idclaims arrives as a thunk: the log arity only pays for the identity-claims fold on the
+  # multi-code path, exactly as before.
+  defp do_canonical(scheme, key, members, idclaims_fun, priority) do
     codes =
-      ledger(log).members
+      members
       |> Map.get(key, MapSet.new())
       |> Enum.filter(fn {s, _} -> s == scheme end)
       |> Enum.sort()
@@ -1955,7 +1980,7 @@ defmodule PublicId do
         %{canonical: code, aliases: []}
 
       _multiple ->
-        idclaims = identity_claims(log)
+        idclaims = idclaims_fun.()
 
         entries =
           for code <- codes, src <- sources_of(code, idclaims), do: %{source: src, value: code, order: 0}
@@ -1987,8 +2012,10 @@ defmodule PublicId do
   end
 
   @doc "Identity-grade INVARIANT check: a code of `scheme` must never own >1 key. Returns violations."
-  def collisions(scheme, log) do
-    ledger(log).members
+  def collisions(scheme, log) when is_list(log), do: collisions(scheme, ledger(log).members)
+
+  def collisions(scheme, members) when is_map(members) do
+    members
     |> Enum.flat_map(fn {k, codes} -> for {s, _} = c <- codes, s == scheme, do: {c, k} end)
     |> Enum.group_by(fn {c, _} -> c end, fn {_, k} -> k end)
     |> Enum.filter(fn {_c, keys} -> length(Enum.uniq(keys)) > 1 end)
@@ -1997,7 +2024,8 @@ defmodule PublicId do
 
   defp sources_of(code, idclaims), do: for(c <- idclaims, code in c.data.codes, do: c.source)
 
-  defp identity_claims(log),
+  @doc "Current identity claims — the second piece of fold state canonical/5 takes prebuilt."
+  def identity_claims(log),
     do: for(%Events.ClaimAsserted{kind: :identity} = e <- log, do: e) |> Substrate.current()
 
   defp ledger(log), do: Enum.reduce(log, IdentityLedger.new(), &IdentityLedger.evolve(&2, &1))
