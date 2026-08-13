@@ -77,11 +77,12 @@ defmodule ClaimMapping do
   """
   def build(envelopes) when is_list(envelopes) do
     folded = fold_raw(envelopes)
+    periods = listing_periods(envelopes)
 
     %{
-      claims: envelopes |> canonical(folded) |> CanonicalClaims.to_engine!() |> stamp(),
+      claims: envelopes |> canonical(periods) |> CanonicalClaims.to_engine!() |> stamp(),
       shared: folded |> listing_codes() |> shared_codes(),
-      rejected: rejected(envelopes)
+      rejected: rejected(envelopes, periods)
     }
   end
 
@@ -92,12 +93,12 @@ defmodule ClaimMapping do
   a customer's mapping script would produce and submit.
   """
   def canonical_claims(envelopes) when is_list(envelopes),
-    do: canonical(envelopes, fold_raw(envelopes))
+    do: canonical(envelopes, listing_periods(envelopes))
 
-  defp canonical(envelopes, _folded) do
+  defp canonical(envelopes, periods) do
     # Periods are emitted in listing order — Map iteration order is otherwise unspecified, which
     # would let stamp/1's tie-break drift between runs.
-    periods = listing_periods(envelopes)
+    sorted_periods = Enum.sort_by(periods, fn {k, _} -> k end)
 
     # A claim is ABOUT a code — cnk, ean, cn. There is no such thing as a claim without one, so
     # the anchor is the code the asserting source itself held AT THE TIME it spoke, read out of
@@ -113,14 +114,12 @@ defmodule ClaimMapping do
     # ...and it links to ONE OR MORE of them, not one. So there is no "which code do we pick"
     # heuristic here at all: emit a claim per code the source held. An image carrying three EANs
     # links to three products, and a claim survives a split by attaching wherever its code went.
-    codes_at = &codes_at(periods, &1, &2, &3)
-
     # One identity claim PER PERIOD, not one per listing. A code that was attached and later
     # removed keeps an interval saying so, instead of silently never having existed — see
     # listing_periods/1 and docs/CLAIM_MAPPING_SPEC.md.
     identity =
-      for {{e, s}, periods} <- Enum.sort_by(periods, fn {k, _} -> k end),
-          period <- periods do
+      for {{e, s}, listing_periods} <- sorted_periods,
+          period <- listing_periods do
         %{
           "kind" => "identity",
           "source" => s,
@@ -136,7 +135,7 @@ defmodule ClaimMapping do
     # window where a code existed but belonged to no legacy product, so an as-of projection at
     # the first mint resolved to no product at all.
     grouping =
-      for {{e, s}, listing_periods} <- Enum.sort_by(periods, fn {k, _} -> k end),
+      for {{e, s}, listing_periods} <- sorted_periods,
           period <- listing_periods,
           code <- Enum.sort(period.codes) do
         %{
@@ -154,7 +153,7 @@ defmodule ClaimMapping do
       for env <- envelopes,
           ev <- env.events,
           ev.kind == :attribute,
-          code <- codes_at.(env.legacy_entity, ev.source, ev.recorded_at) do
+          code <- codes_at(periods, env.legacy_entity, ev.source, ev.recorded_at) do
         %{
           "kind" => "attribute",
           "source" => ev.source,
@@ -173,7 +172,7 @@ defmodule ClaimMapping do
           ev.op in [:set, :add],
           ev.data.value != nil,
           not Map.has_key?(@lane_collections, ev.data.collection),
-          code <- codes_at.(env.legacy_entity, ev.source, ev.recorded_at) do
+          code <- codes_at(periods, env.legacy_entity, ev.source, ev.recorded_at) do
         %{
           "kind" => "member_of",
           "source" => ev.source,
@@ -198,7 +197,7 @@ defmodule ClaimMapping do
           # One edge per product code the source held: the same image reaches every product it
           # was listed against, rather than only whichever code primary/1 happened to prefer.
           edges =
-            for code <- codes_at.(entity, nil, at) do
+            for code <- codes_at(periods, entity, nil, at) do
               %{
                 "kind" => "edge",
                 "source" => source,
@@ -364,9 +363,9 @@ defmodule ClaimMapping do
   nothing to be about, so it is refused rather than dropped quietly — the count belongs in the
   backfill report, and the fix belongs upstream.
   """
-  def rejected(envelopes) when is_list(envelopes) do
-    periods = listing_periods(envelopes)
+  def rejected(envelopes) when is_list(envelopes), do: rejected(envelopes, listing_periods(envelopes))
 
+  defp rejected(envelopes, periods) do
     for env <- envelopes,
         ev <- env.events,
         ev.kind in [:attribute, :edge],
