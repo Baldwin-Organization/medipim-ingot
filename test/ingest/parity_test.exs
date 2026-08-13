@@ -94,8 +94,10 @@ defmodule ParityTest do
       assert report.counts.applier_only == 0
       assert report.counts.cardinality == 0
 
-      assert report.counts.unresolved == 11
-      assert report.counts.match == 76
+      # gr-gh0: parting attributes at the exact delisting instant now reach claims, so two
+      # 347025 fields gained a competing candidate and moved from match to unresolved.
+      assert report.counts.unresolved == 13
+      assert report.counts.match == 74
       assert Enum.all?(report.divergences, &(&1.classification == :unresolved))
     end
 

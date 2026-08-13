@@ -321,20 +321,33 @@ defmodule ClaimMapping do
   def codes_at(periods, entity, nil, at) do
     periods
     |> Enum.filter(fn {{e, _source}, _} -> e == entity end)
-    |> Enum.flat_map(fn {_key, ps} ->
-      case Enum.find(ps, &covers?(&1, at)) do
-        %{codes: codes} -> MapSet.to_list(codes)
-        nil -> []
-      end
-    end)
+    |> Enum.flat_map(fn {_key, ps} -> codes_covering(ps, at) end)
     |> Enum.uniq()
     |> Enum.sort()
   end
 
   def codes_at(periods, entity, source, at) do
-    case Enum.find(Map.get(periods, {entity, source}, []), &covers?(&1, at)) do
-      %{codes: codes} -> Enum.sort(codes)
-      nil -> []
+    periods |> Map.get({entity, source}, []) |> codes_covering(at) |> Enum.sort()
+  end
+
+  # Periods are half-open, so the period OPENING at an instant owns it — right for identity,
+  # wrong for an attribute stated in the same batch as a delisting: the source is describing
+  # what it HAD, not the nothing it now has. At the exact instant a source delists, anchor
+  # attributes to the codes the closing period held (gr-gh0).
+  defp codes_covering(ps, at) do
+    case Enum.find(ps, &covers?(&1, at)) do
+      nil ->
+        []
+
+      %{codes: codes, from: from} ->
+        if MapSet.size(codes) == 0 and from == at do
+          case Enum.find(ps, &(&1.to == at)) do
+            %{codes: parting} -> MapSet.to_list(parting)
+            nil -> []
+          end
+        else
+          MapSet.to_list(codes)
+        end
     end
   end
 

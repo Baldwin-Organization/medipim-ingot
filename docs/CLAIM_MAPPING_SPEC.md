@@ -76,19 +76,24 @@ the backfill report and the fix belongs upstream.
 |---|---|---|
 | `source_held_no_code` | 73 | `4996` and `5480` — they never assert a code anywhere in either fixture |
 | `source_held_no_code` | 11 | sources that *do* identify the product, but spoke outside the window they held codes |
-| `source_held_no_code` | 3 | attributes stated at the exact instant their source delisted |
 
 The first group is **settled, not outstanding**. `4996` reports the four sales-price aggregates and
 `5480` reports packaging, and neither ever names a code for the product it is describing. Under the
 rule at the top of this section there is nothing to attach their facts to, so they are refused —
 loudly, in the ingest report, which is the part that was actually wrong before.
 
-The other two groups are small and open: `gr-4iu` asks whether a source's codes may reach backwards
-to facts it stated before identifying, and `gr-gh0` covers three events that land on the wrong side
-of a period boundary.
+The second group is small and open: `gr-4iu` asks whether a source's codes may reach backwards
+to facts it stated before identifying.
 
-**Effect on the fixtures:** attribute claims went from 92 to 228, and 8 of the 9 sources now reach
-claims rather than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
+A third group no longer exists: three attributes stated **at the exact instant their source
+delisted** used to fall into the empty period, because periods are half-open and the period
+opening at an instant owns it. That is right for identity and wrong for a parting attribute —
+the source is describing what it *had*, not the nothing it now has. Since `gr-gh0`, an attribute
+at the exact delisting instant anchors to the codes the closing period held.
+
+**Effect on the fixtures:** attribute claims went from 92 to 228 (anchoring at time-of-speech),
+then to 237 (the delisting boundary, `gr-gh0`), and 8 of the 9 sources now reach claims rather
+than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
 
 ## Attribute fields observed
 
