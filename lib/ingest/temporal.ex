@@ -97,19 +97,24 @@ defmodule Temporal do
 
     dates = claims |> Enum.map(& &1.recorded_at) |> Enum.uniq() |> Enum.sort(Date)
 
-    {raw_identity_events_rev, _ledgers} =
-      Enum.reduce(dates, {[], Lanes.new_ledgers()}, fn d, {events_acc, ledgers_prev} ->
-        live_d =
-          claims
-          |> Enum.filter(&(Date.compare(&1.recorded_at, d) != :gt))
-          |> Substrate.current()
+    # The live view advances INCREMENTALLY (one Map.put per claim into a slot map — what
+    # Substrate.slot/1 is public for) instead of refiltering + regrouping all claims per date:
+    # O(N + D) rather than O(D × N). Orders are unique and monotone with recorded_at (stamped by
+    # ClaimMapping.build), so the last put per slot IS Substrate.current's max-order winner.
+    sorted = Enum.sort_by(claims, & &1.order)
+
+    {raw_identity_events_rev, _ledgers, _current, _rest} =
+      Enum.reduce(dates, {[], Lanes.new_ledgers(), %{}, sorted}, fn d,
+                                                                    {events_acc, ledgers_prev, current, rest} ->
+        {due, rest} = Enum.split_while(rest, &(Date.compare(&1.recorded_at, d) != :gt))
+        current = Enum.reduce(due, current, &Map.put(&2, Substrate.slot(&1), &1))
 
         # Per-lane reconcile (gr-2a8): description/media identity claims fold against their own
         # ledgers, so the temporal product timeline never mints product keys for them.
-        {events_d, ledgers_d} = Lanes.reconcile(live_d, shared, ledgers_prev, d)
+        {events_d, ledgers_d} = Lanes.reconcile(Map.values(current), shared, ledgers_prev, d)
 
         # Prepend (reverse onto the acc), then reverse once after the fold — avoids O(n²) `++` growth.
-        {Enum.reverse(events_d, events_acc), ledgers_d}
+        {Enum.reverse(events_d, events_acc), ledgers_d, current, rest}
       end)
 
     raw_identity_events = Enum.reverse(raw_identity_events_rev)

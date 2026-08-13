@@ -157,15 +157,21 @@ defmodule FinerClaims do
         |> Enum.uniq()
         |> Enum.sort(&(Bitemporal.compare(&1, &2) != :gt))
 
-    {events_rev, ledger} =
-      Enum.reduce(dates, {[], ledger}, fn d, {acc, prev} ->
-        live =
-          claims
-          |> Enum.filter(&(Bitemporal.compare(&1.recorded_at, d) != :gt))
-          |> Substrate.current()
+    # Incremental slot map instead of refilter + Substrate.current per date — O(N + D), see
+    # Temporal.run/1. Orders are unique and monotone with recorded_at (stamp/1), so the last put
+    # per slot is exactly Substrate.current's max-order winner. Assumes `dates` ascending, which
+    # both the default and the append-new-dates caller satisfy.
+    sorted = Enum.sort_by(claims, & &1.order)
 
-        {events, _ledgers} = Lanes.reconcile(live, shared, ledgers_from(prev), d, nil, preferred)
-        {Enum.reverse(events, acc), Enum.reduce(events, prev, &IdentityLedger.evolve(&2, &1))}
+    {events_rev, ledger, _current, _rest} =
+      Enum.reduce(dates, {[], ledger, %{}, sorted}, fn d, {acc, prev, current, rest} ->
+        {due, rest} = Enum.split_while(rest, &(Bitemporal.compare(&1.recorded_at, d) != :gt))
+        current = Enum.reduce(due, current, &Map.put(&2, Substrate.slot(&1), &1))
+
+        {events, _ledgers} =
+          Lanes.reconcile(Map.values(current), shared, ledgers_from(prev), d, nil, preferred)
+
+        {Enum.reverse(events, acc), Enum.reduce(events, prev, &IdentityLedger.evolve(&2, &1)), current, rest}
       end)
 
     %{events: Enum.reverse(events_rev), ledger: ledger}
