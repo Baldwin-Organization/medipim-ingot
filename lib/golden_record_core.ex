@@ -1623,13 +1623,13 @@ defmodule History do
     known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
 
     if Enum.any?(known, &match?(%Events.SourceRecordRevised{}, &1)) do
-      source_record_state(known, known_at, effective_at)
+      source_record_state(known, effective_at)
     else
       legacy_state(known, effective_at)
     end
   end
 
-  defp source_record_state(known, known_at, effective_at) do
+  defp source_record_state(known, effective_at) do
     boundaries =
       known
       |> Enum.flat_map(fn event ->
@@ -1645,23 +1645,38 @@ defmodule History do
       |> Enum.uniq()
       |> Enum.sort(Date)
 
+    # Boundary-invariant event lists, extracted once instead of refiltered per boundary.
+    revisions = Enum.filter(known, &match?(%Events.SourceRecordRevised{}, &1))
+    merges = Enum.filter(known, &match?(%Events.IdentitiesMerged{}, &1))
+    bindings = Enum.filter(known, &match?(%Events.SourceRecordKeyBound{}, &1))
+
     ledger =
       Enum.reduce(boundaries, IdentityLedger.new(), fn boundary, ledger ->
-        claims = claims_bitemporal(known, known_at, boundary)
-        ledger = apply_merges(ledger, known, boundary)
+        claims = claims_bitemporal_known(known, boundary)
+        shared = shared(known, claims, boundary)
+
+        # Per-lane clusters computed once per boundary, shared by preferred/ and the reconcile.
+        lane_clusters =
+          Map.new(Lanes.lanes(), fn lane ->
+            identity = Lanes.identity_claims(claims, lane)
+            evidence = Lanes.identity_evidence(claims, lane)
+            {lane, Cluster.variants(identity ++ evidence, shared)}
+          end)
+
+        ledger = apply_merges(ledger, merges, boundary)
 
         reconcile_temporal(
           ledger,
-          claims,
-          preferred(known, claims, boundary),
-          shared(known, claims, boundary),
+          lane_clusters,
+          preferred(revisions, merges, bindings, lane_clusters, boundary),
+          shared,
           boundary
         )
       end)
 
     %{
       members: ledger.members,
-      claims: claims_bitemporal(known, known_at, effective_at),
+      claims: claims_bitemporal_known(known, effective_at),
       overrides: overrides_from(Enum.filter(known, &Bitemporal.effective?(&1, effective_at)))
     }
   end
@@ -1683,8 +1698,12 @@ defmodule History do
 
   @doc false
   def claims_bitemporal(log, known_at, %Date{} = effective_at) do
-    known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
+    log
+    |> Enum.filter(&Bitemporal.known?(&1, known_at))
+    |> claims_bitemporal_known(effective_at)
+  end
 
+  defp claims_bitemporal_known(known, %Date{} = effective_at) do
     standalone =
       known
       |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1))
@@ -1730,12 +1749,10 @@ defmodule History do
     end)
   end
 
-  defp reconcile_temporal(ledger, claims, preferred, shared, at) do
+  defp reconcile_temporal(ledger, lane_clusters, preferred, shared, at) do
     {events, _ledgers} =
       Enum.flat_map_reduce(Lanes.lanes(), FinerClaims.ledgers_from(ledger), fn lane, ledgers ->
-        identity = Lanes.identity_claims(claims, lane)
-        evidence = Lanes.identity_evidence(claims, lane)
-        clusters = Cluster.variants(identity ++ evidence, shared)
+        clusters = Map.fetch!(lane_clusters, lane)
         lane_preferred = Map.take(preferred, clusters)
 
         events =
@@ -1751,32 +1768,23 @@ defmodule History do
     Enum.reduce(events, ledger, &IdentityLedger.evolve(&2, &1))
   end
 
-  defp preferred(known, claims, effective_at) do
+  defp preferred(revisions, merges, bindings, lane_clusters, effective_at) do
     records =
-      known
+      revisions
       |> selected_records(effective_at)
       |> Enum.filter(& &1.active)
       |> Map.new(&{{&1.source, &1.ref}, &1})
 
     redirects =
-      for %Events.IdentitiesMerged{} = merge <- known,
+      for merge <- merges,
           Bitemporal.effective?(merge, effective_at),
           from <- merge.from -- [merge.into],
           into: %{},
           do: {from, merge.into}
 
-    clusters =
-      for lane <- Lanes.lanes(),
-          identity = Lanes.identity_claims(claims, lane),
-          cluster <-
-            Cluster.variants(
-              identity ++ Lanes.identity_evidence(claims, lane),
-              shared(known, claims, effective_at)
-            ),
-          do: cluster
+    clusters = Enum.flat_map(Lanes.lanes(), &Map.fetch!(lane_clusters, &1))
 
-    known
-    |> Enum.filter(&match?(%Events.SourceRecordKeyBound{}, &1))
+    bindings
     |> Enum.reduce(%{}, fn binding, acc ->
       with %Events.SourceRecordRevised{} = record <- Map.get(records, {binding.source, binding.ref}),
            identity when not is_nil(identity) <- Enum.find(record.claims, &(&1.kind == :identity)),
@@ -1808,9 +1816,8 @@ defmodule History do
     MapSet.union(declared, restricted)
   end
 
-  defp apply_merges(ledger, known, effective_at) do
-    known
-    |> Enum.filter(&match?(%Events.IdentitiesMerged{}, &1))
+  defp apply_merges(ledger, merges, effective_at) do
+    merges
     |> Enum.filter(&Bitemporal.effective?(&1, effective_at))
     |> Enum.sort_by(&(&1.order || -1))
     |> Enum.reduce(ledger, &IdentityLedger.evolve(&2, &1))
