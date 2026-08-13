@@ -66,9 +66,11 @@ defmodule LegacyIds do
   Returns `%{key, status}` (status from `Api.identity_status/2`: `:active`, `:merged` — already
   followed — or `:split`, answered with the kept key) or `nil` for an unknown id.
   """
-  def resolve(log, legacy_id) do
-    log
-    |> fold()
+  def resolve(log, legacy_id), do: resolve(log, legacy_id, fold(log))
+
+  @doc "resolve/2 with the `fold/1` state prebuilt, for callers resolving many ids."
+  def resolve(log, legacy_id, assigned) do
+    assigned
     |> Enum.filter(fn {_k, id} -> id == legacy_id end)
     |> Enum.map(&elem(&1, 0))
     |> Enum.sort()
