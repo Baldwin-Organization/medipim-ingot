@@ -15,7 +15,8 @@
 #
 # WHAT IT SHARES ────────────────────────────────────────────────────────────────────────────────
 # Delta semantics (`apply_identity`), canonicalization (`engine_codes`), anchoring (`primary`),
-# never-bridge rules (`shared?`), and attribute field naming (`field_dim`) are ClaimMapping's —
+# never-bridge rules (`shared?`), attribute field naming (`field_dim`), lane-reference folding
+# (`lane_refs`), and the lane-collection table (`lane_collections`) are ClaimMapping's —
 # exposed `@doc false` and called here, so the two folds cannot drift.
 #
 # DATE-TYPED THROUGHOUT — epoch -> Date at the boundary (like Temporal), valid_from = recorded_at
@@ -35,10 +36,11 @@ defmodule FinerClaims do
   the increment the Product API uses for both backfill and live claims.
   """
 
-  @lane_collections %{
-    "descriptions" => {:text_id, :description, :describes},
-    "media" => {:asset_id, :media, :depicts}
-  }
+  # ClaimMapping's wire-spelling table, atom-typed for this module's Date-typed claims —
+  # derived, not duplicated, so a lane-collection change lands once.
+  @lane_collections Map.new(ClaimMapping.lane_collections(), fn {k, {scheme, lane, relation}} ->
+                      {k, {String.to_atom(scheme), String.to_atom(lane), String.to_atom(relation)}}
+                    end)
 
   @doc """
   Map envelopes to `%{claims: [%Events.ClaimAsserted{}], shared: MapSet}` — like
@@ -100,7 +102,7 @@ defmodule FinerClaims do
 
     lane_entities =
       envelopes
-      |> lane_refs()
+      |> ClaimMapping.lane_refs()
       |> Enum.sort_by(fn {key, _} -> key end)
       |> Enum.flat_map(fn {{entity, source, collection}, %{ids: ids, last: last}} ->
         {scheme, lane, relation} = Map.fetch!(@lane_collections, collection)
@@ -214,25 +216,6 @@ defmodule FinerClaims do
         end)
 
       %{entity: e, source: s, snapshots: Enum.reverse(snaps_rev)}
-    end
-  end
-
-  # medipim media events can point at first-class lane records ("descriptions" and "media").
-  # Snapshot-v1 semantics match ClaimMapping: add/set survives, remove drops the asset.
-  defp lane_refs(envelopes) do
-    for env <- envelopes,
-        ev <- env.events,
-        ev.kind == :media,
-        Map.has_key?(@lane_collections, ev.data.collection),
-        reduce: %{} do
-      acc ->
-        key = {env.legacy_entity, ev.source || env.source_system, ev.data.collection}
-        id = to_string(ev.data.asset)
-        cur = Map.get(acc, key, %{ids: MapSet.new(), last: %{}})
-
-        ids = if ev.op == :remove, do: MapSet.delete(cur.ids, id), else: MapSet.put(cur.ids, id)
-
-        Map.put(acc, key, %{ids: ids, last: Map.put(cur.last, id, {ev.valid_from, ev.recorded_at})})
     end
   end
 

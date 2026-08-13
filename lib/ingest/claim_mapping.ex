@@ -230,12 +230,18 @@ defmodule ClaimMapping do
     identity ++ grouping ++ attribute ++ member_of ++ List.flatten(lane_entities)
   end
 
+  @doc false
+  # The lane-collection table, in wire (string) spelling — FinerClaims derives its atom form
+  # from this so there is one table, not two that must not drift.
+  def lane_collections, do: @lane_collections
+
+  @doc false
   # medipim :media events reference FIRST-CLASS entities by asset id (collection "descriptions"
   # or "media"), with real add/remove churn — fold them per (entity, source, collection) exactly
   # like identity codes, so only SURVIVING references become lane records + edges (snapshot-v1;
   # a removed asset simply does not survive the fold). Source falls back to the envelope's
-  # source_system — these events carry source: nil in real dumps.
-  defp lane_refs(envelopes) do
+  # source_system — these events carry source: nil in real dumps. Shared with FinerClaims.
+  def lane_refs(envelopes) do
     for env <- envelopes,
         ev <- env.events,
         ev.kind == :media,
