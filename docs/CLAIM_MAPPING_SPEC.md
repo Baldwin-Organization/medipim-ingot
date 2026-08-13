@@ -92,7 +92,7 @@ the source is describing what it *had*, not the nothing it now has. Since `gr-gh
 at the exact delisting instant anchors to the codes the closing period held.
 
 **Effect on the fixtures:** attribute claims went from 92 to 228 (anchoring at time-of-speech),
-then to 237 (the delisting boundary, `gr-gh0`), and 8 of the 9 sources now reach claims rather
+then to 237 (the delisting boundary, `gr-gh0`), and 8 of the 10 sources now reach claims rather
 than 5. `4996` and `5480` still reach none, correctly — they identify nothing.
 
 ## Attribute fields observed
