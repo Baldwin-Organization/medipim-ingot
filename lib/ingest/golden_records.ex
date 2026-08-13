@@ -78,11 +78,15 @@ defmodule GoldenRecords do
 
   def project(%{log: log, ledger: ledger}, priority)
       when is_struct(priority, Priority) or is_function(priority, 2) do
+    # Fold state for CNK enrichment built ONCE — the ledger is already in hand, and the identity
+    # claims fold once — instead of PublicId.canonical/4 refolding the whole log per variant.
+    idclaims = PublicId.identity_claims(log)
+
     records =
       ledger.members
       |> Catalog.project(live_claims(log), priority, @no_overrides)
       |> Enum.map(fn %{product: product, variants: variants} ->
-        %{product: product, variants: Enum.map(variants, &enrich(&1, log, priority))}
+        %{product: product, variants: Enum.map(variants, &enrich(&1, ledger.members, idclaims, priority))}
       end)
 
     %{records: records, log: log}
@@ -99,9 +103,9 @@ defmodule GoldenRecords do
   @doc "The permissive default priority — every source unranked, so conflicts tie (see moduledoc)."
   def default_priority, do: Priority.new(%{}, [])
 
-  # Attach the variant's customer-facing CNK (canonical + aliases) from the same log/priority.
-  defp enrich(variant, log, priority) do
-    Map.put(variant, :cnk, PublicId.canonical(:cnk, variant.key, log, priority))
+  # Attach the variant's customer-facing CNK (canonical + aliases) from the same fold state.
+  defp enrich(variant, members, idclaims, priority) do
+    Map.put(variant, :cnk, PublicId.canonical(:cnk, variant.key, members, idclaims, priority))
   end
 
   # The CURRENT ClaimAsserted view of the log — what Catalog.project folds over.
