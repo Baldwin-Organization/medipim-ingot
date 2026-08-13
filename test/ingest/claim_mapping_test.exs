@@ -184,6 +184,52 @@ defmodule ClaimMappingTest do
       assert Enum.filter(ClaimMapping.build([env]).claims, &(&1.kind == :attribute)) == []
     end
 
+    # gr-gh0: periods are half-open, so the period opening at an instant owns it. Right for
+    # identity, wrong for a parting attribute — a source delisting and stating facts in the same
+    # batch is describing what it HAD. The boundary is pinned in both directions.
+    test "attribute at the exact delisting instant anchors to the closing period's codes" do
+      day2 = 2 * 86_400
+
+      env =
+        envelope(1, [
+          id("A", "set", "cnk", "111", 10),
+          id("A", "delete", "cnk", "A", day2),
+          %{
+            "recorded_at" => day2,
+            "source" => "A",
+            "op" => "set",
+            "kind" => "attribute",
+            "field" => "name",
+            "value" => "Parting"
+          }
+        ])
+
+      attr = Enum.find(ClaimMapping.build([env]).claims, &(&1.kind == :attribute))
+      assert attr.data.code == {:cnk, "111"}
+      assert ClaimMapping.rejected([env]) == []
+    end
+
+    test "attribute at the opening instant of a live period anchors to the new codes" do
+      day2 = 2 * 86_400
+
+      env =
+        envelope(1, [
+          id("A", "set", "cnk", "111", 10),
+          id("A", "set", "cnk", "222", day2),
+          %{
+            "recorded_at" => day2,
+            "source" => "A",
+            "op" => "set",
+            "kind" => "attribute",
+            "field" => "name",
+            "value" => "Fresh"
+          }
+        ])
+
+      attr = Enum.find(ClaimMapping.build([env]).claims, &(&1.kind == :attribute))
+      assert attr.data.code == {:cnk, "222"}
+    end
+
     # PR #3 review (CodeRabbit): identity codes are emitted in a deterministic (sorted) order.
     test "identity claim codes are sorted" do
       env = envelope(1, [id("A", "set", "cnk", "999", 10), id("A", "add", "gtin", "5012345678900", 10)])

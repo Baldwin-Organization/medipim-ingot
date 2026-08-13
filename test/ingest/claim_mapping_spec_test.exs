@@ -142,9 +142,10 @@ defmodule ClaimMappingSpecTest do
     end
 
     test "the delisting half of the anchor gap is closed", %{attrs: attrs} do
-      # 92 -> 228 claims, 5 -> 8 sourced. Only 4996 and 5480 reach nothing, and they identify
-      # nothing. If these move, gr-4iu moved with them and the spec needs updating.
-      assert length(attrs) == 228
+      # 92 -> 228 claims (time-of-speech anchoring), -> 237 (gr-gh0: parting attributes at the
+      # exact delisting instant), 5 -> 8 sourced. Only 4996 and 5480 reach nothing, and they
+      # identify nothing. If these move, gr-4iu moved with them and the spec needs updating.
+      assert length(attrs) == 237
 
       sourced = attrs |> Enum.map(& &1.source) |> Enum.reject(&is_nil/1) |> Enum.uniq()
       assert length(sourced) == 8
