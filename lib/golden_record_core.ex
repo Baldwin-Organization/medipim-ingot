@@ -422,13 +422,6 @@ defmodule Relations do
 
   defp lane_ok?(nil, _allowed), do: true
   defp lane_ok?(lane, allowed), do: lane in allowed
-
-  @doc """
-  Product-page description traversal (gr-sw0) — the named, bounded rules: descriptions tagged
-  directly to the product (one hop), plus descriptions tagged to any substance the product
-  contains (two hops, via :contains).
-  """
-  def product_descriptions, do: [direct: :describes, via: {:contains, :describes}]
 end
 
 defmodule Uuid do
@@ -1509,9 +1502,9 @@ defmodule Catalog do
     |> Enum.sort_by(& &1.key)
   end
 
-  # The derived description set (gr-sw0): descriptions tagged directly to this variant, plus
-  # descriptions tagged to any substance it contains — Relations.product_descriptions/0 is the
-  # named traversal, never blanket closure. Each entry carries its provenance (`via` — WHY it is
+  # The derived description set (gr-sw0): descriptions tagged directly to this variant (one hop,
+  # :describes), plus descriptions tagged to any substance it contains (two hops, via :contains)
+  # — a named, bounded traversal, never blanket closure. Each entry carries its provenance (`via` — WHY it is
   # on this page) and drops steward-suppressed pairings (gr-745) for THIS product only.
   defp resolve_descriptions(codes, lanes, owners, substances, suppress_edges, edges, attrs, priority) do
     describes = Enum.filter(edges, &(&1.data.relation == :describes))
