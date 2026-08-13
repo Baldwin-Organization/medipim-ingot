@@ -58,7 +58,9 @@ defmodule Rederivation do
 
   # Continue the identity events' `:order` after the highest claim order, preserving decide's
   # emission order, so the combined log stays monotonically sequenced for Api.changes_since/2.
-  defp stamp(events, claims) do
+  # Public (@doc false) as THE one stamping helper — Temporal.run and FinerClaims.run share it.
+  @doc false
+  def stamp(events, claims) do
     base = claims |> Enum.map(& &1.order) |> Enum.max(fn -> -1 end)
 
     events

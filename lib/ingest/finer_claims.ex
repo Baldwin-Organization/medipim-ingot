@@ -185,9 +185,7 @@ defmodule FinerClaims do
   def run(envelopes) when is_list(envelopes) do
     %{claims: claims, shared: shared} = build(envelopes)
     %{events: events, ledger: ledger} = fold_forward(claims, shared)
-
-    base = claims |> Enum.map(& &1.order) |> Enum.max(fn -> -1 end)
-    events = events |> Enum.with_index(base + 1) |> Enum.map(fn {e, i} -> %{e | order: i} end)
+    events = Rederivation.stamp(events, claims)
 
     %{log: claims ++ events, timeline: events, ledger: ledger, shared: shared}
   end
@@ -279,7 +277,7 @@ defmodule FinerClaims do
     end
   end
 
-  defp to_date(epoch) when is_integer(epoch), do: epoch |> DateTime.from_unix!() |> DateTime.to_date()
+  defp to_date(epoch), do: Bitemporal.effective_date(epoch)
 
   @doc false
   def ledgers_from(%IdentityLedger{} = ledger) do
