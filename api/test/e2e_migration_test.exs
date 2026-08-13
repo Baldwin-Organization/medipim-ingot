@@ -153,9 +153,10 @@ defmodule Api.E2eMigrationTest do
 
     # Migration semantics: the batch is the source's current truth, so slot history compacts.
     # The totals grew when identity and grouping became per-period (gr-blb) — the same facts,
-    # now carrying the interval each one applied for, plus one claim per code a source held.
-    assert report["counts"]["compacted"] == 69
-    assert report["counts"]["accepted"] == 229
+    # now carrying the interval each one applied for, plus one claim per code a source held —
+    # and again with gr-4iu, when events outside a source's held window gained an anchor.
+    assert report["counts"]["compacted"] == 71
+    assert report["counts"]["accepted"] == 233
     assert report["counts"]["skipped"] == 0
 
     # lineage: both legacy entities keep their ids on the minted keys
@@ -213,7 +214,7 @@ defmodule Api.E2eMigrationTest do
     second = decoded(request(:post, "/v1/cutover", %{claims: batch}))
 
     assert second["counts"]["accepted"] == 0
-    assert second["counts"]["skipped"] == 229
+    assert second["counts"]["skipped"] == 233
     assert second["counts"]["mints"] == 0
     assert second["lineage"] == []
 
@@ -246,7 +247,7 @@ defmodule Api.E2eMigrationTest do
     # The name:fr slots supersede and nothing else moves. Six rather than four now: the source
     # held three codes in its last period, so one changed fact is one claim per code.
     assert report["counts"]["accepted"] == 6
-    assert report["counts"]["skipped"] == 223
+    assert report["counts"]["skipped"] == 227
     assert report["counts"]["mints"] == 0
     assert report["lineage"] == []
 
