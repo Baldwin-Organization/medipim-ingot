@@ -352,6 +352,12 @@ defmodule Lanes do
     Enum.flat_map_reduce(@lanes, ledgers, fn lane, acc ->
       case identity_claims(live_claims, lane, registry) do
         [] ->
+          # A lane with NO identity claims is SKIPPED — members persist untouched. This fold
+          # reads an append-only claim stream, possibly partial (a live batch may speak about
+          # one lane only), so an empty lane means "no information", never "nothing exists".
+          # History.reconcile_temporal deliberately does the OPPOSITE (retract): it replays a
+          # complete effective snapshot, where absence IS evidence. Do not converge the two —
+          # see gr-huw and test/reconcile_empty_lane_test.exs.
           {[], acc}
 
         claims ->
@@ -1744,6 +1750,14 @@ defmodule History do
     end)
   end
 
+  # Near-duplicate of Lanes.reconcile/6 with ONE deliberate difference: an empty lane still runs
+  # decide, which RETRACTS every key in it. Each boundary replays the complete claim set effective
+  # at that date, so a lane with no clusters is evidence of absence — every claim expired — and
+  # retraction is what keeps members consistent with the effective world (no zombie keys after
+  # a validity window closes). Lanes.reconcile does the OPPOSITE (skip): it folds a possibly
+  # partial append-only stream, where absence is merely no information. Do not converge the two —
+  # see gr-huw and test/reconcile_empty_lane_test.exs. Consequence worth knowing: a product whose
+  # claims lapse and later return mints a NEW key unless a SourceRecordKeyBound bridges the gap.
   defp reconcile_temporal(ledger, lane_clusters, preferred, shared, at) do
     {events, _ledgers} =
       Enum.flat_map_reduce(Lanes.lanes(), FinerClaims.ledgers_from(ledger), fn lane, ledgers ->
