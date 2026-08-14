@@ -56,24 +56,34 @@ A dependency-free **Mix project** (Elixir 1.18+, stdlib only — the built-in `J
 `Jason` dependency). Source in `lib/`, ExUnit suites in `test/`, runnable explainers at the root.
 
 ```bash
-mix test                          # run all suites (72 tests)
+mix test                          # run all engine+ingest suites
 mix test --cover                  # with built-in line coverage
 mix format                        # format (also enforced by a hook)
 mix run golden_record_ddd.exs     # a demo (compiles lib/ first); also _api/_stress
 elixir golden_record.exs          # the one standalone explainer (defines its own modules)
 ```
 
-CI runs `mix test` inside the official `elixir` Docker image, matrixed over 1.18 and 1.19
-(`.github/workflows/ci.yml`).
+Two more suites live beside the root project: `api/` (its own Mix project; needs the
+`gr-api-test-pg` Postgres container on port 55432 — see `api/test/test_helper.exs`) and `php/`
+(the parity port; `cd php && vendor/bin/phpunit`).
+
+CI (`.github/workflows/ci.yml`) runs the root suite matrixed over Elixir 1.18–1.20, the PHP
+suite over 8.3–8.5, and the API suite against a Postgres service. A change to `ClaimMapping`
+can move claim-count pins in ALL THREE (spec tests, parity snapshots, and
+`api/test/e2e_migration_test.exs`) — run the api suite locally before pushing such a change.
 
 ## Architecture Overview
 
 - `lib/golden_record_core.ex` — the engine: flat modules (`Codes`, `Substrate`, `Cluster`,
   `IdentityLedger`, `Stewardship`, `Catalog`, `History`, `Api`, `PublicId`, …), pure functions,
   event-sourced. Loaded by Mix; cross-referenced by the ingest.
-- `lib/ingest/` — the legacy-medipim ingest pipeline: `envelope_loader.ex` (gr-n8i: parse/validate
-  the contract-C `HistoryEnvelope`, spec in `docs/HISTORY_ENVELOPE.md`) → `claim_mapping.ex`
-  (gr-beo: fold listings → canonicalize/partition → engine claims) → (next) cluster + reconcile.
+- `lib/ingest/` — the legacy-medipim ingest pipeline: `envelope_loader.ex` (parse/validate the
+  contract-C `HistoryEnvelope`, spec in `docs/HISTORY_ENVELOPE.md`) → `claim_mapping.ex` (fold
+  listings → canonicalize/partition → engine claims, spec in `docs/CLAIM_MAPPING_SPEC.md`) →
+  `rederive.ex`/`temporal.ex`/`finer_claims.ex` (cluster + reconcile into dated identity events)
+  → `golden_records.ex` (whole-product projection). `medipim_policy.ex` is the medipim
+  survivorship scoring policy (gr-7yw), injected as a rank fn — the generic core stays
+  medipim-free. `parity.ex` compares the engine fold against applier snapshots.
 - `test/ingest/fixtures/` — real data, incl. the full delta history of medipim entity `422156`,
   plus `gen_422156.exs` which regenerates the decoded envelope from the raw dump.
 

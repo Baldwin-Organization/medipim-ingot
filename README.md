@@ -24,7 +24,8 @@ at the repo root.
 | `docs/HISTORY_ENVELOPE.md` | The contract-C spec the ingest consumes. |
 | `api/` | The Product API for medipim — Plug+Bandit + Postgres service over the engine (`docs/API.md`). |
 | `viz/` | The guided story demo + time machine (Astro + React; see `viz/README.md`). |
-| `test/` | ExUnit suites (339 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
+| `lib/ingest/medipim_policy.ex` | The concrete medipim survivorship scoring policy — an injected rank fn; the generic engine stays medipim-free. |
+| `test/` | ExUnit suites (356 tests). Fixtures — incl. the real entity 422156 — under `test/ingest/fixtures/`. |
 | `golden_record_ddd.exs` | DDD + event-sourced walkthrough — event log, golden as a fold, time travel, conflicts, verdicts. |
 | `golden_record_stress.exs` | Stress tests — multiple products + JSON, code collision → shared, 3-way contradictions, media re-homing. |
 | `golden_record_api.exs` | Customer-facing layer — ATC collections, CNK public identity, the read API. |
