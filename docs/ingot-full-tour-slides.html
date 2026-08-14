@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot — the full tour</title>
+
+<!-- === FONTS: Bold Signal pairing — Archivo Black display, Space Grotesk body, Space Mono for code === -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   THEME — Bold Signal (same system as ingot-engine-slides.html)
+   =========================================== */
+:root {
+    --stage-bg: #111111;
+    --slide-bg: #1a1a1a;
+    --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    --card-bg: #FF5722;               /* the signature orange card */
+    --text-primary: #ffffff;
+    --text-secondary: #9a9a9a;
+    --text-on-card: #1a1a1a;
+    --accent: #FF5722;
+    --font-display: 'Archivo Black', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.6s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css, included in full)
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE CANVAS — every slide gets the dark gradient
+   =========================================== */
+.slide { background: var(--bg-gradient); }
+
+/* ===========================================
+   CHROME — number top-left, breadcrumb nav top-right
+   (.num and .pageno are auto-filled by JS at load)
+   =========================================== */
+.num {
+    position: absolute; top: 64px; left: 90px;
+    font: 34px var(--font-display); color: #555; letter-spacing: 2px;
+}
+.crumbs {
+    position: absolute; top: 70px; right: 90px;
+    font: 500 21px var(--font-body); color: #fff; letter-spacing: 3px;
+}
+.crumbs span { opacity: .3; margin-left: 32px; }
+.crumbs span.on { opacity: 1; color: var(--accent); }
+
+/* ===========================================
+   ORANGE CARD SLIDES — title, section beats, closing
+   =========================================== */
+.card {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    background: var(--card-bg);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 80px 90px;
+}
+.kicker {
+    font: 700 25px var(--font-body); color: var(--text-on-card);
+    letter-spacing: 6px; text-transform: uppercase; margin-bottom: 26px;
+}
+.big-title { font: 150px/0.98 var(--font-display); color: var(--text-on-card); }
+.card .sub { font: 500 33px/1.4 var(--font-body); color: var(--text-on-card); margin-top: 34px; max-width: 1300px; }
+
+/* Section beats: a giant ghost number behind the section word */
+.ghost-num {
+    position: absolute; top: 30px; right: 60px;
+    font: 480px var(--font-display); color: rgba(26,26,26,0.14); line-height: 1;
+}
+
+/* ===========================================
+   DARK CONTENT SLIDES — big statement + small evidence
+   =========================================== */
+.content {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    display: flex; flex-direction: column; justify-content: center; gap: 50px;
+}
+.statement { font: 84px/1.08 var(--font-display); color: var(--text-primary); max-width: 1650px; }
+.statement em { font-style: normal; color: var(--accent); }
+.support { font: 500 32px/1.45 var(--font-body); color: var(--text-secondary); max-width: 1500px; }
+.support b { color: #fff; font-weight: 700; }
+
+/* Code chips: real demo output, kept small — the slide is the idea, the chip is the proof */
+.chip {
+    align-self: flex-start;
+    background: #111; border-left: 8px solid var(--accent);
+    padding: 34px 44px; font: 26px/1.7 var(--font-mono); color: #e8e8e8;
+    white-space: pre;
+}
+.chip.small { font-size: 23px; line-height: 1.65; }
+.chip .c { color: #7a7a7a; }        /* comment / dim  */
+.chip .o { color: var(--accent); }  /* highlight      */
+.chip .g { color: #8bc34a; }        /* result / good  */
+
+/* ===========================================
+   LOG-SO-FAR SLIDES — the whole append-only log,
+   older events dimmed, this act's events lit up
+   =========================================== */
+.log-head { font: 52px/1.1 var(--font-display); color: var(--text-primary); }
+.log-head em { font-style: normal; color: var(--accent); }
+.logchip {
+    align-self: flex-start;
+    background: #111; border-left: 8px solid var(--accent);
+    padding: 26px 40px; font: 18.5px/1.42 var(--font-mono); color: #e8e8e8;
+    white-space: pre;
+}
+.logchip .dim { color: #5d5d5d; }   /* already in the log before this act */
+.logchip .o { color: var(--accent); }
+.logchip .g { color: #8bc34a; }
+
+/* Versus rows: sources or moments laid side by side */
+.versus { display: flex; gap: 40px; }
+.claim-box {
+    flex: 1; background: #111; padding: 40px 48px;
+    border-top: 8px solid #444;
+}
+.claim-box.win { border-top-color: var(--accent); }
+.claim-box .who {
+    font: 700 22px var(--font-body); letter-spacing: 4px; text-transform: uppercase;
+    color: var(--text-secondary); margin-bottom: 18px;
+}
+.claim-box.win .who { color: var(--accent); }
+.claim-box .what { font: 62px var(--font-display); color: #fff; }
+.claim-box .note { font: 500 24px var(--font-body); color: var(--text-secondary); margin-top: 14px; }
+
+.foot {
+    position: absolute; bottom: 70px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between;
+    font: 500 21px var(--font-body); color: #777; letter-spacing: 2px;
+}
+
+/* ===========================================
+   REVEAL ANIMATIONS — staggered rise on slide entry
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.10s; }
+.reveal:nth-child(2) { transition-delay: 0.22s; }
+.reveal:nth-child(3) { transition-delay: 0.34s; }
+.reveal:nth-child(4) { transition-delay: 0.46s; }
+.reveal:nth-child(5) { transition-delay: 0.58s; }
+
+/* ===========================================
+   DECK CONTROLS — page counter under the stage
+   =========================================== */
+.deck-controls {
+    font: 500 15px var(--font-body); color: #888; letter-spacing: 3px;
+    user-select: none;
+}
+
+/* ===========================================
+   INLINE EDITING — hover top-left corner or press E
+   =========================================== */
+.edit-hotzone {
+    position: fixed; top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 10000; cursor: pointer;
+}
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px;
+    z-index: 10001; font-size: 22px;
+    background: #2d2d2d; color: #fff; border: 1px solid #555;
+    border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--accent); border-color: var(--accent); }
+body.editing [contenteditable="true"] { outline: 2px dashed rgba(255,87,34,0.7); outline-offset: 4px; }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+    <!-- ============ TITLE ============ -->
+    <section class="slide active visible">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="kicker reveal">Ingot · mix run golden_record_ddd.exs</div>
+            <h1 class="big-title reveal" style="font-size:132px">THE FULL TOUR</h1>
+            <p class="sub reveal">One event log, three months, every trick in the engine — mints, splits, gated merges, verdicts, and time travel.</p>
+        </div>
+        <div class="foot"><span>WARD · AUG 2026</span><span>golden_record_ddd.exs</span></div>
+    </section>
+
+    <!-- ============ THE LOG ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:76px">One append-only log.<br><em>25 events.</em> Everything else is a fold.</h2>
+            <div class="chip small reveal"><span class="c">#6   rec 2026-01-10</span>  CLAIM    supplier  attr  gtin:0111 . weight_g = 260
+<span class="c">#13  rec 2026-01-10</span>  <span class="o">MINT</span>     SK_1  {gtin:0111, upc:9111}
+<span class="c">#22  rec 2026-02-01</span>  <span class="o">RESOLVE</span>  SK_2.weight_g := 520 (by alice)</div>
+            <p class="support reveal">Source claims, identity decisions, and steward verdicts all live in <b>one ordered stream</b>. Nothing in it is ever edited or deleted — we'll watch it grow after every act.</p>
+        </div>
+        <div class="foot"><span>THE SYSTEM OF RECORD</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 01: JANUARY ============ -->
+    <section class="slide">
+        <div class="crumbs"><span class="on">JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">01</div>
+            <div class="kicker reveal">Act one</div>
+            <h2 class="big-title reveal">JANUARY</h2>
+            <p class="sub reveal">Twelve claims arrive. Two products are born.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ MINTING ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span class="on">JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">Shared codes cluster the evidence.<br>Each cluster gets a <em>stable key.</em></h2>
+            <div class="chip reveal"><span class="o">MINT</span>  SK_1  {gtin:0111, upc:9111}   <span class="c"># supplier + manufacturer agree</span>
+<span class="o">MINT</span>  SK_2  {gtin:0222}             <span class="c"># the 500ml bottle</span></div>
+            <p class="support reveal">Three listings mention <b>gtin:0111</b> — they collapse into one identity. The surrogate keys (SK_1, SK_2) are what the outside world holds on to.</p>
+        </div>
+        <div class="foot"><span>01 · JANUARY</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE FIRST TIE ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span class="on">JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">Equally trusted sources disagree.<br>The engine <em>flags it, not fudges it.</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Marketplace</div><div class="what">525 g</div><div class="note">same tier for weight</div></div>
+                <div class="claim-box"><div class="who">Supplier</div><div class="what">520 g</div><div class="note">same tier for weight</div></div>
+            </div>
+            <div class="chip reveal"><span class="o">FLAG</span>  SK_2.weight_g undecidable: marketplace=525, supplier=520</div>
+        </div>
+        <div class="foot"><span>01 · JANUARY</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ LOG AFTER JANUARY ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span class="on">JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content" style="gap:38px">
+            <h2 class="log-head reveal">The log after January — <em>15 events, all new.</em></h2>
+            <div class="logchip reveal">#1   Jan 10  CLAIM  supplier      identity  S-100 = {gtin:0111, upc:9111}
+#2   Jan 10  CLAIM  manufacturer  identity  MF-1  = {gtin:0111}
+#3   Jan 10  CLAIM  supplier      identity  S-101 = {gtin:0222}
+#4   Jan 10  CLAIM  supplier      group     gtin:0111 -> mpn:SH-LAV
+#5   Jan 10  CLAIM  supplier      group     gtin:0222 -> mpn:SH-LAV
+#6   Jan 10  CLAIM  supplier      attr      gtin:0111  weight_g = 260
+#7   Jan 10  CLAIM  manufacturer  attr      gtin:0111  weight_g = 255
+#8   Jan 10  CLAIM  supplier      attr      gtin:0111  name = "Shampoo 250"
+#9   Jan 10  CLAIM  marketplace   attr      gtin:0111  name = "Brand X Lavender Shampoo 250ml"
+#10  Jan 10  CLAIM  supplier      attr      gtin:0222  weight_g = 520
+#11  Jan 10  CLAIM  marketplace   attr      gtin:0222  weight_g = 525
+#12  Jan 10  CLAIM  supplier      attr      gtin:0222  name = "Shampoo 500"
+#13  Jan 10  <span class="o">MINT</span>   SK_1  {gtin:0111, upc:9111}
+#14  Jan 10  <span class="o">MINT</span>   SK_2  {gtin:0222}
+#15  Jan 10  <span class="o">FLAG</span>   SK_2.weight_g undecidable: marketplace=525, supplier=520</div>
+        </div>
+        <div class="foot"><span>01 · JANUARY — THE LOG SO FAR</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 02: FEBRUARY ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>JANUARY</span><span class="on">FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">02</div>
+            <div class="kicker reveal">Act two</div>
+            <h2 class="big-title reveal">FEBRUARY</h2>
+            <p class="sub reveal">The world shifts: a correction, a split, a verdict.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ LATE CORRECTION ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span class="on">FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">The manufacturer rewrites January — <em>without rewriting history.</em></h2>
+            <div class="chip reveal">CLAIM  manufacturer  weight_g = 250
+       <span class="o">valid_from: 2026-01-01</span>   <span class="c"># when it was true in the world</span>
+       <span class="o">recorded_at: 2026-02-01</span>  <span class="c"># when we learned it</span></div>
+            <p class="support reveal">The old 255 stays in the log. Queries <b>as-known-in-January</b> still answer 255; queries after the correction answer 250.</p>
+        </div>
+        <div class="foot"><span>02 · FEBRUARY</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE SPLIT ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span class="on">FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">The evidence stops agreeing —<br>so the identity <em>splits.</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Supplier updates S-100</div><div class="what" style="font-size:46px">drops upc:9111</div><div class="note">now only gtin:0111</div></div>
+                <div class="claim-box"><div class="who">Marketplace claims M-9</div><div class="what" style="font-size:46px">upc:9111 = 10ml sample</div><div class="note">"Lavender Sample 10ml"</div></div>
+            </div>
+            <div class="chip reveal"><span class="o">SPLIT</span>  SK_1 keeps {upc:9111}, spins off SK_3 {gtin:0111}   <span class="c"># lineage recorded</span></div>
+        </div>
+        <div class="foot"><span>02 · FEBRUARY</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE VERDICT ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span class="on">FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:76px">Alice settles January's tie.<br>A verdict is <em>just another event.</em></h2>
+            <div class="chip reveal"><span class="o">RESOLVE</span>  SK_2.weight_g := 520 (by alice)</div>
+            <p class="support reveal">From now on the projection shows <b>520 · steward:alice · resolved_by_steward</b> — and the log remembers who decided, when, and what the candidates were.</p>
+        </div>
+        <div class="foot"><span>02 · FEBRUARY</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ LOG AFTER FEBRUARY ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span class="on">FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content" style="gap:34px">
+            <h2 class="log-head reveal">February <em>appends seven.</em> January is untouched.</h2>
+            <div class="logchip reveal"><span class="dim">#1   Jan 10  CLAIM  supplier      identity  S-100 = {gtin:0111, upc:9111}
+#2   Jan 10  CLAIM  manufacturer  identity  MF-1  = {gtin:0111}
+#3   Jan 10  CLAIM  supplier      identity  S-101 = {gtin:0222}
+#4   Jan 10  CLAIM  supplier      group     gtin:0111 -> mpn:SH-LAV
+#5   Jan 10  CLAIM  supplier      group     gtin:0222 -> mpn:SH-LAV
+#6   Jan 10  CLAIM  supplier      attr      gtin:0111  weight_g = 260
+#7   Jan 10  CLAIM  manufacturer  attr      gtin:0111  weight_g = 255
+#8-12        CLAIM  … names + the 0222 weights …
+#13  Jan 10  MINT   SK_1  {gtin:0111, upc:9111}
+#14  Jan 10  MINT   SK_2  {gtin:0222}
+#15  Jan 10  FLAG   SK_2.weight_g undecidable: 525 vs 520</span>
+#16  Feb 01  CLAIM  manufacturer  attr      gtin:0111  weight_g = 250  <span class="c">(valid from Jan 01)</span>
+#17  Feb 01  CLAIM  supplier      identity  S-100 = {gtin:0111}
+#18  Feb 01  CLAIM  marketplace   identity  M-9   = {upc:9111}
+#19  Feb 01  CLAIM  marketplace   group     upc:9111 -> mpn:SH-MINI
+#20  Feb 01  CLAIM  marketplace   attr      upc:9111   name = "Lavender Sample 10ml"
+#21  Feb 01  <span class="o">SPLIT</span>  SK_1 keeps {upc:9111}, spins off SK_3 {gtin:0111}
+#22  Feb 01  <span class="o">RESOLVE</span>  SK_2.weight_g := 520 (by alice)</div>
+        </div>
+        <div class="foot"><span>02 · FEBRUARY — THE LOG SO FAR</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 03: THE SCRAPER ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span class="on">SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">03</div>
+            <div class="kicker reveal">Act three</div>
+            <h2 class="big-title reveal" style="font-size:126px">THE SCRAPER</h2>
+            <p class="sub reveal">A sketchy source tries to glue two products together.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE GATED MERGE ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span class="on">SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">One scraper listing bridges both bottles. Merging established keys is <em>gated, never automatic.</em></h2>
+            <div class="chip reveal">CLAIM  scraper  identity X-1 = {gtin:0111, gtin:0222}
+<span class="o">FLAG</span>   merge? SK_2 + SK_3 bridged — <span class="o">HELD for review</span>
+<span class="o">RESOLVE</span>  merge SK_1 + SK_2 <span class="g">REJECTED</span> (by alice)</div>
+            <p class="support reveal">Auto-merging would silently fuse the 250ml and 500ml products for every customer. Instead it sits in the queue until a human says yes — and a rejection is remembered too.</p>
+        </div>
+        <div class="foot"><span>03 · THE SCRAPER</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ LOG AFTER THE SCRAPER ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span class="on">SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="content" style="gap:34px">
+            <h2 class="log-head reveal">The scraper <em>appends three.</em> 25 events; none edited, none deleted.</h2>
+            <div class="logchip reveal"><span class="dim">#1   Jan 10  CLAIM  supplier      identity  S-100 = {gtin:0111, upc:9111}
+#2   Jan 10  CLAIM  manufacturer  identity  MF-1  = {gtin:0111}
+#3   Jan 10  CLAIM  supplier      identity  S-101 = {gtin:0222}
+#4-12        CLAIM  … groupings, weights, names …
+#13  Jan 10  MINT   SK_1  {gtin:0111, upc:9111}
+#14  Jan 10  MINT   SK_2  {gtin:0222}
+#15  Jan 10  FLAG   SK_2.weight_g undecidable: 525 vs 520
+#16  Feb 01  CLAIM  manufacturer  attr      gtin:0111  weight_g = 250  (valid from Jan 01)
+#17  Feb 01  CLAIM  supplier      identity  S-100 = {gtin:0111}
+#18  Feb 01  CLAIM  marketplace   identity  M-9   = {upc:9111}
+#19  Feb 01  CLAIM  marketplace   group     upc:9111 -> mpn:SH-MINI
+#20  Feb 01  CLAIM  marketplace   attr      upc:9111   name = "Lavender Sample 10ml"
+#21  Feb 01  SPLIT  SK_1 keeps {upc:9111}, spins off SK_3 {gtin:0111}
+#22  Feb 01  RESOLVE  SK_2.weight_g := 520 (by alice)</span>
+#23  Feb 15  CLAIM  scraper       identity  X-1 = {gtin:0111, gtin:0222}
+#24  Feb 15  <span class="o">FLAG</span>   merge? SK_2 + SK_3 bridged — HELD for review
+#25  Feb 15  <span class="o">RESOLVE</span>  merge SK_1 + SK_2 <span class="g">REJECTED</span> (by alice)</div>
+        </div>
+        <div class="foot"><span>03 · THE SCRAPER — THE LOG SO FAR</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 04: HINDSIGHT ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span class="on">HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">04</div>
+            <div class="kicker reveal">Act four</div>
+            <h2 class="big-title reveal">HINDSIGHT</h2>
+            <p class="sub reveal">Fold the log. Ask it anything, about any date.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ GOLDEN NOW ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span class="on">HINDSIGHT</span></div>
+        <div class="content" style="gap:44px">
+            <h2 class="statement reveal" style="font-size:66px">Golden now: <em>two products, three variants</em> — with receipts.</h2>
+            <div class="chip small reveal">PRODUCT  mpn:SH-LAV
+  variant <span class="o">SK_2</span> [gtin:0222]  name "Shampoo 500"                    <span class="c">(supplier)</span>
+                          weight_g <span class="g">520</span>                          <span class="c">(steward:alice)</span>
+  variant <span class="o">SK_3</span> [gtin:0111]  name "Brand X Lavender Shampoo 250ml" <span class="c">(marketplace)</span>
+                          weight_g <span class="g">250</span>                          <span class="c">(manufacturer)</span>
+PRODUCT  mpn:SH-MINI
+  variant <span class="o">SK_1</span> [upc:9111]   name "Lavender Sample 10ml"           <span class="c">(marketplace)</span></div>
+            <p class="support reveal">Every value names its <b>winning source</b> — including the one a steward decided.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ TRANSACTION TIME ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">Replay to January 10:<br><em>the split never happened yet.</em></h2>
+            <div class="chip small reveal">PRODUCT  mpn:SH-LAV                       <span class="c"># as we believed it on 2026-01-10</span>
+  variant <span class="o">SK_1</span> [gtin:0111, upc:9111]   weight_g <span class="g">255</span>  <span class="c">(manufacturer)</span>
+  variant <span class="o">SK_2</span> [gtin:0222]             weight_g  —   <span class="o">NEEDS REVIEW (tie)</span></div>
+            <p class="support reveal">Same log, earlier cutoff: SK_1 is still whole, the correction to 250 isn't known yet, and the weight tie is still open. <b>Any past state is reproducible.</b></p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ BITEMPORAL GRID ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">Two clocks, one grid:<br><em>known-at</em> versus <em>true-at.</em></h2>
+            <div class="chip small reveal">weight of gtin:0111          effective →  Jan 05    Jan 10    Mar 01
+as-known Jan 05  :                          —         —         —
+as-known Jan 10  :                          —        <span class="g">255</span>       <span class="g">255</span>
+as-known Mar 01  :                          —        <span class="o">250</span>       <span class="o">250</span></div>
+            <p class="support reveal">Rows are <b>what we knew by that date</b>; columns are <b>what was true on that date</b>. The February correction changes the bottom row — and only the bottom row.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ LINEAGE + REPLAY ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">"Why is SK_1 like this?"<br><em>Ask the log.</em></h2>
+            <div class="chip reveal"><span class="c">#13</span>  <span class="o">MINT</span>     SK_1  {gtin:0111, upc:9111}
+<span class="c">#21</span>  <span class="o">SPLIT</span>    SK_1 keeps {upc:9111}, spins off SK_3
+<span class="c">#25</span>  <span class="o">RESOLVE</span>  merge SK_1 + SK_2 <span class="g">REJECTED</span> (by alice)</div>
+            <p class="support reveal">Full lineage of any key, on demand. And the safety net: <b>replaying the whole log rebuilds the live ledger exactly</b> — fold(log) == live state, checked at the end of the tour.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ CLOSING ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>JANUARY</span><span>FEBRUARY</span><span>SCRAPER</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="kicker reveal">The moral of the tour</div>
+            <h2 class="big-title reveal" style="font-size:96px">The log is the record.<br>Everything else is a fold.</h2>
+            <p class="sub reveal" style="margin-top:44px">Run it yourself, then try the hard cases:</p>
+            <p class="sub reveal" style="font-family:'Space Mono',monospace;font-weight:700;font-size:36px">mix run golden_record_ddd.exs&nbsp;&nbsp;·&nbsp;&nbsp;mix run golden_record_stress.exs</p>
+        </div>
+        <div class="foot"><span>INGOT · EVENT-SOURCED MASTER DATA</span><span class="pageno"></span></div>
+    </section>
+
+</main>
+</div>
+
+<!-- Deck chrome: page counter, outside the slide stage -->
+<div class="deck-controls" id="deckCounter"></div>
+
+<!-- Inline editing affordance -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard (arrows/space/pgup/pgdn/home/end),
+   mouse wheel, and touch swipe navigation.
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.counter = document.getElementById('deckCounter');
+        this.currentSlide = 0;
+        this.stage = document.getElementById('deckStage');
+        this.autoNumber();
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupWheelNav();
+        this.setupTouchNav();
+        // #7 in the URL opens the deck on slide 7
+        this.showSlide((parseInt(location.hash.slice(1), 10) || 1) - 1);
+    }
+
+    /* Slide numbers and "N / total" footers are derived from position,
+       so inserting a slide never breaks the numbering */
+    autoNumber() {
+        const total = this.slides.length;
+        this.slides.forEach((slide, i) => {
+            const n = String(i + 1).padStart(2, '0');
+            const num = slide.querySelector('.num');
+            if (num) num.textContent = n;
+            const pageno = slide.querySelector('.pageno');
+            if (pageno) pageno.textContent = `${n} / ${total}`;
+        });
+    }
+
+    /* Scale the whole 1920×1080 stage to fit the window (letterbox as needed) */
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+            else if (e.key === 'Home') { e.preventDefault(); this.showSlide(0); }
+            else if (e.key === 'End') { e.preventDefault(); this.showSlide(this.slides.length - 1); }
+        });
+    }
+
+    setupWheelNav() {
+        let cooldown = false;
+        document.addEventListener('wheel', (e) => {
+            if (cooldown || document.body.classList.contains('editing')) return;
+            if (Math.abs(e.deltaY) < 20) return;
+            cooldown = true;
+            setTimeout(() => cooldown = false, 500);
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+
+    setupTouchNav() {
+        let startX = null;
+        document.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (startX === null) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 50) dx < 0 ? this.next() : this.prev();
+            startX = null;
+        }, { passive: true });
+    }
+
+    next() { this.showSlide(this.currentSlide + 1); }
+    prev() { this.showSlide(this.currentSlide - 1); }
+
+    showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === this.currentSlide);
+            slide.classList.toggle('visible', i === this.currentSlide);
+        });
+        this.counter.textContent = `${this.currentSlide + 1} / ${this.slides.length}`;
+    }
+}
+
+/* ===========================================
+   INLINE EDITOR — hover top-left corner or press E,
+   click any text to edit; changes persist to localStorage.
+   Ctrl/Cmd+S downloads the edited HTML.
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.storageKey = 'ingot-full-tour-edits-v2';
+        this.editables = document.querySelectorAll('.kicker, .big-title, .sub, .statement, .support, .chip, .logchip, .log-head, .who, .what, .note, .foot span');
+        this.restore();
+        this.setupToggle();
+        this.setupSave();
+    }
+
+    setupToggle() {
+        const hotzone = document.querySelector('.edit-hotzone');
+        const toggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        const show = () => { clearTimeout(hideTimeout); toggle.classList.add('show'); };
+        const hideSoon = () => {
+            hideTimeout = setTimeout(() => { if (!this.isActive) toggle.classList.remove('show'); }, 400);
+        };
+        hotzone.addEventListener('mouseenter', show);
+        hotzone.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('mouseenter', show);
+        toggle.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('click', () => this.toggleEditMode());
+        hotzone.addEventListener('click', () => this.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        this.editables.forEach(el => el.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+        if (!this.isActive) this.persist();
+    }
+
+    persist() {
+        const edits = {};
+        this.editables.forEach((el, i) => edits[i] = el.innerHTML);
+        localStorage.setItem(this.storageKey, JSON.stringify(edits));
+    }
+
+    restore() {
+        const saved = localStorage.getItem(this.storageKey);
+        if (!saved) return;
+        const edits = JSON.parse(saved);
+        this.editables.forEach((el, i) => { if (edits[i] !== undefined) el.innerHTML = edits[i]; });
+    }
+
+    setupSave() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                this.persist();
+                const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ingot-full-tour-slides.html';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+        });
+    }
+}
+
+new SlidePresentation();
+new InlineEditor();
+</script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot — the engine in four small examples</title>
+
+<!-- === FONTS: Bold Signal pairing — Archivo Black display, Space Grotesk body, Space Mono for code === -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   THEME — Bold Signal
+   Change these variables to restyle the deck
+   =========================================== */
+:root {
+    --stage-bg: #111111;
+    --slide-bg: #1a1a1a;
+    --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    --card-bg: #FF5722;               /* the signature orange card */
+    --text-primary: #ffffff;
+    --text-secondary: #9a9a9a;
+    --text-on-card: #1a1a1a;
+    --accent: #FF5722;
+    --font-display: 'Archivo Black', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.6s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css, included in full)
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE CANVAS — every slide gets the dark gradient
+   =========================================== */
+.slide { background: var(--bg-gradient); }
+
+/* ===========================================
+   CHROME — number top-left, breadcrumb nav top-right
+   (Bold Signal signature elements)
+   =========================================== */
+.num {
+    position: absolute; top: 64px; left: 90px;
+    font: 34px var(--font-display); color: #555; letter-spacing: 2px;
+}
+.crumbs {
+    position: absolute; top: 70px; right: 90px;
+    font: 500 21px var(--font-body); color: #fff; letter-spacing: 3px;
+}
+.crumbs span { opacity: .3; margin-left: 32px; }
+.crumbs span.on { opacity: 1; color: var(--accent); }
+
+/* ===========================================
+   ORANGE CARD SLIDES — title, section beats, closing
+   =========================================== */
+.card {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    background: var(--card-bg);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 80px 90px;
+}
+.kicker {
+    font: 700 25px var(--font-body); color: var(--text-on-card);
+    letter-spacing: 6px; text-transform: uppercase; margin-bottom: 26px;
+}
+.big-title { font: 150px/0.98 var(--font-display); color: var(--text-on-card); }
+.card .sub { font: 500 33px/1.4 var(--font-body); color: var(--text-on-card); margin-top: 34px; max-width: 1200px; }
+
+/* Section beats: a giant ghost number behind the section word */
+.ghost-num {
+    position: absolute; top: 30px; right: 60px;
+    font: 480px var(--font-display); color: rgba(26,26,26,0.14); line-height: 1;
+}
+
+/* ===========================================
+   DARK CONTENT SLIDES — big statement + small evidence
+   =========================================== */
+.content {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    display: flex; flex-direction: column; justify-content: center; gap: 54px;
+}
+.statement { font: 84px/1.08 var(--font-display); color: var(--text-primary); max-width: 1600px; }
+.statement em { font-style: normal; color: var(--accent); }
+.support { font: 500 32px/1.45 var(--font-body); color: var(--text-secondary); max-width: 1400px; }
+.support b { color: #fff; font-weight: 700; }
+
+/* Code chips: real engine input/output, kept small — the slide is the idea, the chip is the proof */
+.chip {
+    align-self: flex-start;
+    background: #111; border-left: 8px solid var(--accent);
+    padding: 34px 44px; font: 26px/1.7 var(--font-mono); color: #e8e8e8;
+    white-space: pre;
+}
+.chip .c { color: #7a7a7a; }        /* comment      */
+.chip .o { color: var(--accent); }  /* highlight    */
+.chip .g { color: #8bc34a; }        /* result/good  */
+
+/* Versus rows: two sources disagreeing, laid side by side */
+.versus { display: flex; gap: 40px; }
+.claim-box {
+    flex: 1; background: #111; padding: 40px 48px;
+    border-top: 8px solid #444;
+}
+.claim-box.win { border-top-color: var(--accent); }
+.claim-box .who {
+    font: 700 22px var(--font-body); letter-spacing: 4px; text-transform: uppercase;
+    color: var(--text-secondary); margin-bottom: 18px;
+}
+.claim-box.win .who { color: var(--accent); }
+.claim-box .what { font: 62px var(--font-display); color: #fff; }
+.claim-box .note { font: 500 24px var(--font-body); color: var(--text-secondary); margin-top: 14px; }
+
+.foot {
+    position: absolute; bottom: 70px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between;
+    font: 500 21px var(--font-body); color: #777; letter-spacing: 2px;
+}
+
+/* ===========================================
+   REVEAL ANIMATIONS — staggered rise on slide entry
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.10s; }
+.reveal:nth-child(2) { transition-delay: 0.22s; }
+.reveal:nth-child(3) { transition-delay: 0.34s; }
+.reveal:nth-child(4) { transition-delay: 0.46s; }
+.reveal:nth-child(5) { transition-delay: 0.58s; }
+
+/* ===========================================
+   DECK CONTROLS — page counter under the stage
+   =========================================== */
+.deck-controls {
+    font: 500 15px var(--font-body); color: #888; letter-spacing: 3px;
+    user-select: none;
+}
+
+/* ===========================================
+   INLINE EDITING — hover top-left corner or press E
+   =========================================== */
+.edit-hotzone {
+    position: fixed; top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 10000; cursor: pointer;
+}
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px;
+    z-index: 10001; font-size: 22px;
+    background: #2d2d2d; color: #fff; border: 1px solid #555;
+    border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--accent); border-color: var(--accent); }
+body.editing [contenteditable="true"] { outline: 2px dashed rgba(255,87,34,0.7); outline-offset: 4px; }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+    <!-- ============ SLIDE 1 · TITLE ============ -->
+    <section class="slide active visible">
+        <div class="num">01</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="kicker reveal">Golden records from contradicting sources</div>
+            <h1 class="big-title reveal">INGOT</h1>
+            <p class="sub reveal">The engine, in four small examples — codes, conflicts, time travel, and the steward queue.</p>
+        </div>
+        <div class="foot"><span>WARD · AUG 2026</span><span>lib/golden_record_core.ex</span></div>
+    </section>
+
+    <!-- ============ SLIDE 2 · THE PROBLEM ============ -->
+    <section class="slide">
+        <div class="num">02</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="content">
+            <h2 class="statement reveal">Every source is sure.<br>They <em>can't all be right.</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Supplier</div><div class="what">260 g</div></div>
+                <div class="claim-box"><div class="who">Manufacturer</div><div class="what">255 g</div></div>
+                <div class="claim-box"><div class="who">Marketplace</div><div class="what">525 g</div></div>
+            </div>
+            <p class="support reveal">Same product, one barcode, three feeds. Master data is deciding <b>what to believe</b> — without losing what anyone said.</p>
+        </div>
+        <div class="foot"><span>THE PROBLEM</span><span>02 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 3 · THE IDEA ============ -->
+    <section class="slide">
+        <div class="num">03</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="kicker reveal">The one idea</div>
+            <h2 class="big-title reveal" style="font-size:118px">Nothing is ever overwritten.</h2>
+            <p class="sub reveal">Every statement a source makes is an immutable <b>claim</b> in an append-only log.<br>The golden record is just a pure function folded over that log:</p>
+            <p class="sub reveal" style="font-family:'Space Mono',monospace;font-weight:700;font-size:40px;margin-top:44px">fold(claims, priority) &nbsp;→&nbsp; golden</p>
+        </div>
+        <div class="foot"><span>THE IDEA</span><span>03 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 4 · SECTION 01: CODES ============ -->
+    <section class="slide">
+        <div class="crumbs"><span class="on">CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="ghost-num">01</div>
+            <div class="kicker reveal">Example one</div>
+            <h2 class="big-title reveal">CODES</h2>
+            <p class="sub reveal">One product, many spellings.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span>04 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 5 · CODES EXAMPLE ============ -->
+    <section class="slide">
+        <div class="num">05</div>
+        <div class="crumbs"><span class="on">CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">An EAN-13 and its GTIN-14 form are <em>the same number</em> at different widths.</h2>
+            <div class="chip reveal">Codes.canonicalize({:ean, "5410063001234"})
+<span class="c"># =></span> <span class="g">{:gtin, "05410063001234"}</span>          <span class="c"># zero-padded to 14 digits</span></div>
+            <p class="support reveal">Normalize <b>before</b> comparing — otherwise every format difference looks like a conflict between sources.</p>
+        </div>
+        <div class="foot"><span>01 · CODES</span><span>05 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 6 · SECTION 02: PRIORITY ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>CODES</span><span class="on">PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="ghost-num">02</div>
+            <div class="kicker reveal">Example two</div>
+            <h2 class="big-title reveal">PRIORITY</h2>
+            <p class="sub reveal">Who do you trust — per field.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span>06 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 7 · PRIORITY EXAMPLE ============ -->
+    <section class="slide">
+        <div class="num">07</div>
+        <div class="crumbs"><span>CODES</span><span class="on">PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">A ranked list picks the winner.<br>The loser is <em>kept, not deleted.</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box win"><div class="who">Manufacturer · wins</div><div class="what">255 g</div><div class="note">ranked first for weight</div></div>
+                <div class="claim-box"><div class="who">Supplier · kept</div><div class="what">260 g</div><div class="note">still visible as a candidate</div></div>
+            </div>
+            <div class="chip reveal">weight_g: %{value: <span class="g">255</span>, winner: <span class="o">:manufacturer</span>, status: :resolved,
+           candidates: [manufacturer: 255, supplier: 260]}</div>
+        </div>
+        <div class="foot"><span>02 · PRIORITY</span><span>07 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 8 · SECTION 03: TIME TRAVEL ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span class="on">TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="ghost-num">03</div>
+            <div class="kicker reveal">Example three</div>
+            <h2 class="big-title reveal" style="font-size:126px">TIME TRAVEL</h2>
+            <p class="sub reveal">Two clocks: when it was true vs when we learned it.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span>08 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 9 · TIME TRAVEL EXAMPLE ============ -->
+    <section class="slide">
+        <div class="num">09</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span class="on">TIME</span><span>STEWARD</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:68px">In February the manufacturer corrects January: <em>"it was 250 all along."</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Asked as of Jan 10</div><div class="what">255 g</div><div class="note">what we believed then</div></div>
+                <div class="claim-box win"><div class="who">Asked as of Feb 1</div><div class="what">250 g</div><div class="note">after the correction</div></div>
+            </div>
+            <p class="support reveal">Nothing was edited — the correction is a new claim with <b>valid_from: Jan 1</b> and <b>recorded_at: Feb</b>. The January report stays reproducible forever.</p>
+        </div>
+        <div class="foot"><span>03 · TIME TRAVEL</span><span>09 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 10 · SECTION 04: THE STEWARD ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span class="on">STEWARD</span></div>
+        <div class="card">
+            <div class="ghost-num">04</div>
+            <div class="kicker reveal">Example four</div>
+            <h2 class="big-title reveal" style="font-size:126px">THE STEWARD</h2>
+            <p class="sub reveal">Ties go to a human — never a coin flip.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span>10 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 11 · STEWARD EXAMPLE ============ -->
+    <section class="slide">
+        <div class="num">11</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span class="on">STEWARD</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">Equal trust, different answers?<br>The engine <em>refuses to guess.</em></h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Supplier A</div><div class="what">"Soap"</div></div>
+                <div class="claim-box"><div class="who">Supplier B</div><div class="what">"Savon"</div></div>
+            </div>
+            <div class="chip reveal">name: %{value: <span class="o">nil</span>, status: <span class="o">:needs_review</span>, winner: nil}
+<span class="c"># -> ConflictFlagged lands in the steward queue; the verdict is just another event</span></div>
+        </div>
+        <div class="foot"><span>04 · THE STEWARD</span><span>11 / 12</span></div>
+    </section>
+
+    <!-- ============ SLIDE 12 · CLOSING ============ -->
+    <section class="slide">
+        <div class="num">12</div>
+        <div class="crumbs"><span>CODES</span><span>PRIORITY</span><span>TIME</span><span>STEWARD</span></div>
+        <div class="card">
+            <div class="kicker reveal">The whole engine in one line</div>
+            <h2 class="big-title reveal" style="font-size:86px">claims → cluster →<br>keys → priority → golden</h2>
+            <p class="sub reveal" style="margin-top:48px">See the full tour, with merges, media and verdicts:</p>
+            <p class="sub reveal" style="font-family:'Space Mono',monospace;font-weight:700;font-size:38px">mix run golden_record_ddd.exs</p>
+        </div>
+        <div class="foot"><span>INGOT · EVENT-SOURCED MASTER DATA</span><span>12 / 12</span></div>
+    </section>
+
+</main>
+</div>
+
+<!-- Deck chrome: page counter, outside the slide stage -->
+<div class="deck-controls" id="deckCounter">1 / 12</div>
+
+<!-- Inline editing affordance -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard (arrows/space/pgup/pgdn/home/end),
+   mouse wheel, and touch swipe navigation.
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.counter = document.getElementById('deckCounter');
+        this.currentSlide = 0;
+        this.stage = document.getElementById('deckStage');
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupWheelNav();
+        this.setupTouchNav();
+        // #7 in the URL opens the deck on slide 7
+        this.showSlide((parseInt(location.hash.slice(1), 10) || 1) - 1);
+    }
+
+    /* Scale the whole 1920×1080 stage to fit the window (letterbox as needed) */
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+            else if (e.key === 'Home') { e.preventDefault(); this.showSlide(0); }
+            else if (e.key === 'End') { e.preventDefault(); this.showSlide(this.slides.length - 1); }
+        });
+    }
+
+    setupWheelNav() {
+        let cooldown = false;
+        document.addEventListener('wheel', (e) => {
+            if (cooldown || document.body.classList.contains('editing')) return;
+            if (Math.abs(e.deltaY) < 20) return;
+            cooldown = true;
+            setTimeout(() => cooldown = false, 500);
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+
+    setupTouchNav() {
+        let startX = null;
+        document.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (startX === null) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 50) dx < 0 ? this.next() : this.prev();
+            startX = null;
+        }, { passive: true });
+    }
+
+    next() { this.showSlide(this.currentSlide + 1); }
+    prev() { this.showSlide(this.currentSlide - 1); }
+
+    showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === this.currentSlide);
+            slide.classList.toggle('visible', i === this.currentSlide);
+        });
+        this.counter.textContent = `${this.currentSlide + 1} / ${this.slides.length}`;
+    }
+}
+
+/* ===========================================
+   INLINE EDITOR — hover top-left corner or press E,
+   click any text to edit; changes persist to localStorage.
+   Ctrl/Cmd+S downloads the edited HTML.
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.storageKey = 'ingot-slides-edits';
+        this.editables = document.querySelectorAll('.kicker, .big-title, .sub, .statement, .support, .chip, .who, .what, .note, .foot span');
+        this.restore();
+        this.setupToggle();
+        this.setupSave();
+    }
+
+    setupToggle() {
+        const hotzone = document.querySelector('.edit-hotzone');
+        const toggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        const show = () => { clearTimeout(hideTimeout); toggle.classList.add('show'); };
+        const hideSoon = () => {
+            hideTimeout = setTimeout(() => { if (!this.isActive) toggle.classList.remove('show'); }, 400);
+        };
+        hotzone.addEventListener('mouseenter', show);
+        hotzone.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('mouseenter', show);
+        toggle.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('click', () => this.toggleEditMode());
+        hotzone.addEventListener('click', () => this.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        this.editables.forEach(el => el.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+        if (!this.isActive) this.persist();
+    }
+
+    persist() {
+        const edits = {};
+        this.editables.forEach((el, i) => edits[i] = el.innerHTML);
+        localStorage.setItem(this.storageKey, JSON.stringify(edits));
+    }
+
+    restore() {
+        const saved = localStorage.getItem(this.storageKey);
+        if (!saved) return;
+        const edits = JSON.parse(saved);
+        this.editables.forEach((el, i) => { if (edits[i] !== undefined) el.innerHTML = edits[i]; });
+    }
+
+    setupSave() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                this.persist();
+                const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ingot-engine-slides.html';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+        });
+    }
+}
+
+new SlidePresentation();
+new InlineEditor();
+</script>
+</body>
+</html>

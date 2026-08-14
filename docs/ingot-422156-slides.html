@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot — entity 422156, a true story</title>
+
+<!-- === FONTS: Bold Signal pairing — Archivo Black display, Space Grotesk body, Space Mono for code === -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ===========================================
+   THEME — Bold Signal (same system as the other Ingot decks)
+   =========================================== */
+:root {
+    --stage-bg: #111111;
+    --slide-bg: #1a1a1a;
+    --bg-gradient: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+    --card-bg: #FF5722;
+    --text-primary: #ffffff;
+    --text-secondary: #9a9a9a;
+    --text-on-card: #1a1a1a;
+    --accent: #FF5722;
+    --font-display: 'Archivo Black', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.6s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css, included in full)
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px;
+        height: 1080px;
+        break-after: page;
+        page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE CANVAS — every slide gets the dark gradient
+   =========================================== */
+.slide { background: var(--bg-gradient); }
+
+/* ===========================================
+   CHROME — number top-left, breadcrumb nav top-right
+   (.num and .pageno are auto-filled by JS at load)
+   =========================================== */
+.num {
+    position: absolute; top: 64px; left: 90px;
+    font: 34px var(--font-display); color: #555; letter-spacing: 2px;
+}
+.crumbs {
+    position: absolute; top: 70px; right: 90px;
+    font: 500 21px var(--font-body); color: #fff; letter-spacing: 3px;
+}
+.crumbs span { opacity: .3; margin-left: 32px; }
+.crumbs span.on { opacity: 1; color: var(--accent); }
+
+/* ===========================================
+   ORANGE CARD SLIDES — title, section beats, closing
+   =========================================== */
+.card {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    background: var(--card-bg);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 80px 90px;
+}
+.kicker {
+    font: 700 25px var(--font-body); color: var(--text-on-card);
+    letter-spacing: 6px; text-transform: uppercase; margin-bottom: 26px;
+}
+.big-title { font: 150px/0.98 var(--font-display); color: var(--text-on-card); }
+.card .sub { font: 500 33px/1.4 var(--font-body); color: var(--text-on-card); margin-top: 34px; max-width: 1300px; }
+
+/* Section beats: a giant ghost number behind the section word */
+.ghost-num {
+    position: absolute; top: 30px; right: 60px;
+    font: 480px var(--font-display); color: rgba(26,26,26,0.14); line-height: 1;
+}
+
+/* ===========================================
+   DARK CONTENT SLIDES — big statement + small evidence
+   =========================================== */
+.content {
+    position: absolute; left: 90px; right: 90px; top: 180px; bottom: 150px;
+    display: flex; flex-direction: column; justify-content: center; gap: 50px;
+}
+.statement { font: 84px/1.08 var(--font-display); color: var(--text-primary); max-width: 1650px; }
+.statement em { font-style: normal; color: var(--accent); }
+.support { font: 500 32px/1.45 var(--font-body); color: var(--text-secondary); max-width: 1500px; }
+.support b { color: #fff; font-weight: 700; }
+
+/* Code chips: real pipeline output, kept small — the slide is the idea, the chip is the proof */
+.chip {
+    align-self: flex-start;
+    background: #111; border-left: 8px solid var(--accent);
+    padding: 34px 44px; font: 26px/1.7 var(--font-mono); color: #e8e8e8;
+    white-space: pre;
+}
+.chip.small { font-size: 22px; line-height: 1.6; }
+.chip .c { color: #7a7a7a; }        /* comment / dim  */
+.chip .o { color: var(--accent); }  /* highlight      */
+.chip .g { color: #8bc34a; }        /* result / good  */
+.chip .dim { color: #5d5d5d; }
+
+/* Big stat trio */
+.versus { display: flex; gap: 40px; }
+.claim-box {
+    flex: 1; background: #111; padding: 40px 48px;
+    border-top: 8px solid #444;
+}
+.claim-box.win { border-top-color: var(--accent); }
+.claim-box .who {
+    font: 700 22px var(--font-body); letter-spacing: 4px; text-transform: uppercase;
+    color: var(--text-secondary); margin-bottom: 18px;
+}
+.claim-box.win .who { color: var(--accent); }
+.claim-box .what { font: 62px var(--font-display); color: #fff; }
+.claim-box .note { font: 500 24px var(--font-body); color: var(--text-secondary); margin-top: 14px; }
+
+.foot {
+    position: absolute; bottom: 70px; left: 90px; right: 90px;
+    display: flex; justify-content: space-between;
+    font: 500 21px var(--font-body); color: #777; letter-spacing: 2px;
+}
+
+/* ===========================================
+   REVEAL ANIMATIONS — staggered rise on slide entry
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal:nth-child(1) { transition-delay: 0.10s; }
+.reveal:nth-child(2) { transition-delay: 0.22s; }
+.reveal:nth-child(3) { transition-delay: 0.34s; }
+.reveal:nth-child(4) { transition-delay: 0.46s; }
+.reveal:nth-child(5) { transition-delay: 0.58s; }
+
+/* ===========================================
+   DECK CONTROLS — page counter under the stage
+   =========================================== */
+.deck-controls {
+    font: 500 15px var(--font-body); color: #888; letter-spacing: 3px;
+    user-select: none;
+}
+
+/* ===========================================
+   INLINE EDITING — hover top-left corner or press E
+   =========================================== */
+.edit-hotzone {
+    position: fixed; top: 0; left: 0;
+    width: 80px; height: 80px;
+    z-index: 10000; cursor: pointer;
+}
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px;
+    z-index: 10001; font-size: 22px;
+    background: #2d2d2d; color: #fff; border: 1px solid #555;
+    border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--accent); border-color: var(--accent); }
+body.editing [contenteditable="true"] { outline: 2px dashed rgba(255,87,34,0.7); outline-offset: 4px; }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+    <!-- ============ TITLE ============ -->
+    <section class="slide active visible">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="kicker reveal">Ingot · medipim-be · a true story from the fixtures</div>
+            <h1 class="big-title reveal" style="font-size:120px">ENTITY 422156</h1>
+            <p class="sub reveal">A-Derma Primalba 2-in-1 baby wash gel, 750 ml — eight years of real delta history, folded into golden records.</p>
+        </div>
+        <div class="foot"><span>WARD · AUG 2026</span><span>test/ingest/fixtures/medipim_be_422156.json</span></div>
+    </section>
+
+    <!-- ============ THE RAW MATERIAL ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:74px"><em>930 deltas</em> over eight years.<br>Five sources. One entity.</h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Media flips</div><div class="what">768</div><div class="note">adds + removes of assets</div></div>
+                <div class="claim-box"><div class="who">Attributes</div><div class="what">127</div><div class="note">prices, names, dimensions</div></div>
+                <div class="claim-box win"><div class="who">Identity</div><div class="what">23</div><div class="note">the interesting ones</div></div>
+            </div>
+            <p class="support reveal">Aug 2018 → May 2026. The ingest (<b>EnvelopeLoader → ClaimMapping → Temporal</b>) folds all 930 into 255 claims + dated identity events — then everything on the next slides is a projection of that log.</p>
+        </div>
+        <div class="foot"><span>THE RAW MATERIAL</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 01: ISLANDS ============ -->
+    <section class="slide">
+        <div class="crumbs"><span class="on">ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">01</div>
+            <div class="kicker reveal">2018 – 2019</div>
+            <h2 class="big-title reveal">ISLANDS</h2>
+            <p class="sub reveal">One medipim entity — but the evidence says two identities.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ TWO MINTS ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span class="on">ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">The pharma DBs bring a CNK.<br>Source 44 brings an EAN.<br><em>Nobody links them.</em></h2>
+            <div class="chip reveal">2018-08-31  <span class="o">MINT</span>  SK_1  [cnk: "3612173"]           <span class="c"># sources 1034 + 1035</span>
+2018-11-19  <span class="o">MINT</span>  SK_2  [gtin: "03282770049374"]  <span class="c"># source 44, alone</span></div>
+            <p class="support reveal">Medipim called it one entity; the engine only believes <b>code evidence</b>. No listing carries both codes, so they honestly stay two islands.</p>
+        </div>
+        <div class="foot"><span>01 · ISLANDS</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SK_1 GROWS ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span class="on">ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">2019: source 1035 adds an EAN — <em>a different one.</em></h2>
+            <div class="chip reveal">2019-11-01  <span class="o">MEMBERS</span>  SK_1 -> [cnk: "3612173", gtin: "03282770114577"]</div>
+            <p class="support reveal">Source 1035's listing already held the CNK, so its new EAN <b>joins SK_1</b> — no new identity. The entity now spans two different GTINs (…114577 and …049374) that have never appeared together. Foreshadowing.</p>
+        </div>
+        <div class="foot"><span>01 · ISLANDS</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 02: EAN SWAP ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>ISLANDS</span><span class="on">EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">02</div>
+            <div class="kicker reveal">August – December 2023</div>
+            <h2 class="big-title reveal" style="font-size:128px">THE EAN SWAP</h2>
+            <p class="sub reveal">The manufacturer re-barcodes the product. Everything moves.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ RETRACT + MINT ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span class="on">EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">Source 44 swaps its EAN in one day. Its old identity <em>dies with the evidence.</em></h2>
+            <div class="chip reveal">2023-08-24  claim: source 44 removes …049374, adds …146004
+2023-08-24  <span class="o">RETRACT</span>  SK_2  <span class="c"># its only evidence is gone</span>
+2023-08-24  <span class="o">MINT</span>     SK_3  [gtin: "03282770146004"]</div>
+            <p class="support reveal">No source ever vouched for old-EAN = new-EAN, so the engine won't invent that link: SK_2 is retracted with lineage, and the new barcode starts life as <b>SK_3</b>.</p>
+        </div>
+        <div class="foot"><span>02 · THE EAN SWAP</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE BRIDGE ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span class="on">EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">Then the pharma DBs adopt the new EAN — <em>and build a bridge.</em></h2>
+            <div class="chip reveal">2023-11-15  claim: source 1035 adds …146004   <span class="c"># its listing also holds the CNK</span>
+2023-12-19  claim: source 1034 adds …146004
+2023-11-15  <span class="o">FLAG</span>  merge? SK_1 + SK_3 — <span class="o">HELD for review</span></div>
+            <p class="support reveal">Their listings now touch both islands: CNK + old GTIN (SK_1) <b>and</b> the new GTIN (SK_3). That's real merge evidence — but merging two <b>established</b> keys is gated, so it lands in the steward queue instead of just happening.</p>
+        </div>
+        <div class="foot"><span>02 · THE EAN SWAP</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 03: CHURN ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span class="on">CHURN</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">03</div>
+            <div class="kicker reveal">2024 – 2026</div>
+            <h2 class="big-title reveal">CHURN</h2>
+            <p class="sub reveal">Migrations, media storms — and a flag that will not die.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SCHEME MIGRATIONS ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span class="on">CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:68px">Medipim renames the scheme <em>three times.</em> The golden record doesn't even blink.</h2>
+            <div class="chip small reveal">2018   "ean"        3282770146004    <span class="c">┐</span>
+2024-01  "eanGtin13"  3282770146004    <span class="c">│ Codes.canonicalize</span>
+2024-12  "eanGtin14"  03282770146004   <span class="c">│  → {:gtin, "03282770146004"}</span>
+2024-12  "gtin"       03282770146004   <span class="c">┘   one identity, every spelling</span></div>
+            <p class="support reveal">The 2024 <b>ean→eanGtin13→eanGtin14</b> migrations and the 2026 cleanup flap look like identity churn in the raw deltas. After canonicalization they are <b>no-ops</b> — same 14-digit GTIN, zero key movement.</p>
+        </div>
+        <div class="foot"><span>03 · CHURN</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE HELD MERGE ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span class="on">CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">The merge flag re-raises at every reconcile — <em>21 times in 3 years.</em> Never auto-merged.</h2>
+            <div class="chip small reveal">2023-11-15  <span class="o">FLAG</span>  merge? SK_1 + SK_3 — HELD
+<span class="dim">2023-12-19 · 2024-03-14 · 2024-08-27 · 2024-08-30 · 2024-11-29
+2025-03-24 · 2025-06-20 · 2025-07-09 · 2025-07-10 · 2025-07-23
+2025-09-25 · 2025-11-03 · 2025-12-16 · 2026-01-24 · 2026-02-03 · …</span>
+2026-04-27  <span class="o">FLAG</span>  merge? SK_1 + SK_3 — <span class="o">still HELD</span></div>
+            <p class="support reveal">The evidence keeps pointing at the same conclusion, and the engine keeps saying the same thing: <b>a human has to bless this merge</b>. No verdict in the data — so the flag stays honest and open.</p>
+        </div>
+        <div class="foot"><span>03 · CHURN</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ MEDIA STORM ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span class="on">CHURN</span><span>HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:72px">2025: a media storm.<br><em>683 flips</em> fold to 13 assets.</h2>
+            <div class="versus reveal">
+                <div class="claim-box"><div class="who">Raw deltas · 2025</div><div class="what">683</div><div class="note">adds and removes, often same-day</div></div>
+                <div class="claim-box win"><div class="who">Golden media records</div><div class="what">13</div><div class="note">what's actually linked today</div></div>
+            </div>
+            <p class="support reveal">Every flip stays in the log (replayable), but the projection only shows the <b>current end-of-day truth</b> — recency by claim order, per slot.</p>
+        </div>
+        <div class="foot"><span>03 · CHURN</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ SECTION 04: HINDSIGHT ============ -->
+    <section class="slide">
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span class="on">HINDSIGHT</span></div>
+        <div class="card">
+            <div class="ghost-num">04</div>
+            <div class="kicker reveal">Fold the log</div>
+            <h2 class="big-title reveal">HINDSIGHT</h2>
+            <p class="sub reveal">The time machine, on real data.</p>
+        </div>
+        <div class="foot"><span>SECTION</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ TIME MACHINE ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">Same log, three questions:<br><em>golden_as_of(date).</em></h2>
+            <div class="chip small reveal"><span class="c">as known 2018-09-30:</span>  SK_1 [cnk]                          <span class="c"># one island</span>
+<span class="c">as known 2019-12-01:</span>  SK_1 [cnk, gtin …114577] · SK_2 [gtin …049374]
+<span class="c">as known 2026-05-17:</span>  SK_1 [cnk, gtin …114577] · SK_3 [gtin …146004]
+                      <span class="o">+ merge? SK_1 + SK_3 still open</span></div>
+            <p class="support reveal">Every answer is a fold of the same 255-entry log with a different cutoff — nothing is precomputed, nothing can drift.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE OPEN QUESTIONS ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">What's left for a steward is <em>exactly two decisions.</em></h2>
+            <div class="chip reveal"><span class="o">merge?</span>       SK_1 + SK_3           <span class="c"># same product, re-barcoded?</span>
+<span class="o">publicPrice</span>  needs_review on SK_1  <span class="c"># 1034 retracted it, 1035 says 16.50</span></div>
+            <p class="support reveal">930 deltas in, and the machine settled everything it honestly could. What remains is precisely the two calls that <b>should</b> go to a human — each with its evidence attached.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ STILL ONE PRODUCT ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:70px">To medipim, it was always <em>one product.</em> And it still is.</h2>
+            <div class="chip reveal"><span class="c"># what the Product API serves (snapshot fold):</span>
+resolve_legacy(422156)  <span class="c">-></span>  {:ok, <span class="g">"SK_1"</span>, <span class="g">:stable</span>}
+<span class="c"># what the time machine shows (temporal fold):</span>
+SK_1 + SK_3, merge <span class="o">held for review</span></div>
+            <p class="support reveal">Two lenses over one log. The <b>serving path</b> folds the final listings — where 1034 and 1035 hold both the CNK and the new EAN — into one product today. The two-identity view is the temporal pass being honest about <b>the past</b>, not a different catalog.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ THE ID OUTLIVES THE IDENTITY ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span class="on">HINDSIGHT</span></div>
+        <div class="content">
+            <h2 class="statement reveal" style="font-size:68px">The medipim id is demoted from <em>identity</em> to <em>alias</em> — and answered forever.</h2>
+            <div class="chip reveal"><span class="o">LegacyIdAssigned</span>  SK_1 := 422156   <span class="c"># an event in the log, not a side table</span>
+<span class="c">merge  -></span> absorbed id becomes an alias of the survivor
+<span class="c">split  -></span> primary keeps 422156, the new key allocates a fresh id</div>
+            <p class="support reveal">The entity id was <b>never a clustering input</b> — codes decide identity; the id rides along as grouping evidence and becomes the product umbrella. Downstream keeps speaking medipim ids; the engine owns identity underneath and translates at the boundary.</p>
+        </div>
+        <div class="foot"><span>04 · HINDSIGHT</span><span class="pageno"></span></div>
+    </section>
+
+    <!-- ============ CLOSING ============ -->
+    <section class="slide">
+        <div class="num"></div>
+        <div class="crumbs"><span>ISLANDS</span><span>EAN SWAP</span><span>CHURN</span><span>HINDSIGHT</span></div>
+        <div class="card">
+            <div class="kicker reveal">The moral, on real data</div>
+            <h2 class="big-title reveal" style="font-size:92px">930 deltas in.<br>Two honest identities out.</h2>
+            <p class="sub reveal" style="margin-top:44px">— and to the outside world it never stopped being product <b>422156</b>. Reproduce every slide:</p>
+            <p class="sub reveal" style="font-family:'Space Mono',monospace;font-weight:700;font-size:34px">HistoryEnvelope.load!(…422156.json) |> then(&Temporal.run([&1]))</p>
+        </div>
+        <div class="foot"><span>INGOT · EVENT-SOURCED MASTER DATA</span><span class="pageno"></span></div>
+    </section>
+
+</main>
+</div>
+
+<!-- Deck chrome: page counter, outside the slide stage -->
+<div class="deck-controls" id="deckCounter"></div>
+
+<!-- Inline editing affordance -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   Keyboard (arrows/space/pgup/pgdn/home/end),
+   mouse wheel, and touch swipe navigation.
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.counter = document.getElementById('deckCounter');
+        this.currentSlide = 0;
+        this.stage = document.getElementById('deckStage');
+        this.autoNumber();
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupWheelNav();
+        this.setupTouchNav();
+        // #7 in the URL opens the deck on slide 7
+        this.showSlide((parseInt(location.hash.slice(1), 10) || 1) - 1);
+    }
+
+    /* Slide numbers and "N / total" footers are derived from position,
+       so inserting a slide never breaks the numbering */
+    autoNumber() {
+        const total = this.slides.length;
+        this.slides.forEach((slide, i) => {
+            const n = String(i + 1).padStart(2, '0');
+            const num = slide.querySelector('.num');
+            if (num) num.textContent = n;
+            const pageno = slide.querySelector('.pageno');
+            if (pageno) pageno.textContent = `${n} / ${total}`;
+        });
+    }
+
+    /* Scale the whole 1920×1080 stage to fit the window (letterbox as needed) */
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+            else if (e.key === 'Home') { e.preventDefault(); this.showSlide(0); }
+            else if (e.key === 'End') { e.preventDefault(); this.showSlide(this.slides.length - 1); }
+        });
+    }
+
+    setupWheelNav() {
+        let cooldown = false;
+        document.addEventListener('wheel', (e) => {
+            if (cooldown || document.body.classList.contains('editing')) return;
+            if (Math.abs(e.deltaY) < 20) return;
+            cooldown = true;
+            setTimeout(() => cooldown = false, 500);
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+
+    setupTouchNav() {
+        let startX = null;
+        document.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (startX === null) return;
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 50) dx < 0 ? this.next() : this.prev();
+            startX = null;
+        }, { passive: true });
+    }
+
+    next() { this.showSlide(this.currentSlide + 1); }
+    prev() { this.showSlide(this.currentSlide - 1); }
+
+    showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === this.currentSlide);
+            slide.classList.toggle('visible', i === this.currentSlide);
+        });
+        this.counter.textContent = `${this.currentSlide + 1} / ${this.slides.length}`;
+    }
+}
+
+/* ===========================================
+   INLINE EDITOR — hover top-left corner or press E,
+   click any text to edit; changes persist to localStorage.
+   Ctrl/Cmd+S downloads the edited HTML.
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.storageKey = 'ingot-422156-edits';
+        this.editables = document.querySelectorAll('.kicker, .big-title, .sub, .statement, .support, .chip, .who, .what, .note, .foot span');
+        this.restore();
+        this.setupToggle();
+        this.setupSave();
+    }
+
+    setupToggle() {
+        const hotzone = document.querySelector('.edit-hotzone');
+        const toggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        const show = () => { clearTimeout(hideTimeout); toggle.classList.add('show'); };
+        const hideSoon = () => {
+            hideTimeout = setTimeout(() => { if (!this.isActive) toggle.classList.remove('show'); }, 400);
+        };
+        hotzone.addEventListener('mouseenter', show);
+        hotzone.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('mouseenter', show);
+        toggle.addEventListener('mouseleave', hideSoon);
+        toggle.addEventListener('click', () => this.toggleEditMode());
+        hotzone.addEventListener('click', () => this.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        this.editables.forEach(el => el.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+        if (!this.isActive) this.persist();
+    }
+
+    persist() {
+        const edits = {};
+        this.editables.forEach((el, i) => edits[i] = el.innerHTML);
+        localStorage.setItem(this.storageKey, JSON.stringify(edits));
+    }
+
+    restore() {
+        const saved = localStorage.getItem(this.storageKey);
+        if (!saved) return;
+        const edits = JSON.parse(saved);
+        this.editables.forEach((el, i) => { if (edits[i] !== undefined) el.innerHTML = edits[i]; });
+    }
+
+    setupSave() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                this.persist();
+                const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ingot-422156-slides.html';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }
+        });
+    }
+}
+
+new SlidePresentation();
+new InlineEditor();
+</script>
+</body>
+</html>
