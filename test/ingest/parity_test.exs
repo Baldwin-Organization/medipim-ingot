@@ -96,8 +96,10 @@ defmodule ParityTest do
 
       # gr-gh0: parting attributes at the exact delisting instant now reach claims, so two
       # 347025 fields gained a competing candidate and moved from match to unresolved.
+      # gr-4iu: nearest-codes anchoring recovers events outside the held window; one more
+      # field reaches the engine fold and matches the applier snapshot.
       assert report.counts.unresolved == 13
-      assert report.counts.match == 74
+      assert report.counts.match == 75
       assert Enum.all?(report.divergences, &(&1.classification == :unresolved))
     end
 
