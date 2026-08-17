@@ -174,6 +174,27 @@ defmodule AuMarketTest do
     end
   end
 
+  describe "survivorship policy (gr-sx7.5)" do
+    test "an AU org ranking is a MedipimPolicy CONTEXT, not a new module" do
+      # The AU editorial tie class (22 cohort entities on name:en, orgs 1/220/1033) resolves
+      # with the existing injected-rank machinery and zero new code. The concrete ranking below
+      # is the sweep's PROPOSAL (org 1 ▸ 220 ▸ 1033) — it needs customer sign-off before it is
+      # anything more than a demonstration (flagged via bd human on gr-sx7.5).
+      context = %{
+        penalty: false,
+        field_scores: %{"name:en" => %{"1" => 3, "220" => 2, "1033" => 1}}
+      }
+
+      entries = [
+        %{source: "220", value: "PANADOL OSTEO CPLT 665MG 96", order: 1},
+        %{source: "1", value: "Panadol Osteo Caplets 665mg 96", order: 2}
+      ]
+
+      decision = Survivorship.decide("name:en", entries, MedipimPolicy.rank_fn(context))
+      assert %{value: "Panadol Osteo Caplets 665mg 96", winner: "1", status: :resolved} = decision
+    end
+  end
+
   describe "leaflets" do
     test "become media-lane records under :leaflet_id, distinct from same-numbered media assets" do
       env =
