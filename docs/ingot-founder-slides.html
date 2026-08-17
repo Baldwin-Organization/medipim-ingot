@@ -262,6 +262,33 @@ h2 {
 }
 .ledger-moral { margin-top: 46px; font-size: 30px; line-height: 1.5; color: var(--ink-2); max-width: 1420px; }
 .ledger-moral strong { color: var(--ink); }
+.tech-table {
+    width: 100%; max-width: 1660px; margin-top: 40px;
+    border-collapse: collapse; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+.tech-table th, .tech-table td {
+    text-align: left; padding: 14px 26px; border-bottom: 1px solid var(--line);
+    font-size: 22px; line-height: 1.36; color: var(--ink-2); vertical-align: top;
+}
+.tech-table thead th {
+    font-family: var(--font-display); font-size: 27px; font-weight: 600; color: var(--ink);
+    background: var(--bronze-soft); border-bottom: 2px solid var(--bronze);
+}
+.tech-table thead th span {
+    display: block; font-family: var(--font-mono); font-size: 17px; font-weight: 400;
+    color: var(--bronze-deep); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px;
+}
+.tech-table tbody td:first-child {
+    font-family: var(--font-mono); font-size: 20px; color: var(--ink);
+    text-transform: uppercase; letter-spacing: 0.05em; width: 330px;
+}
+.tech-table tbody tr:last-child td { border-bottom: none; }
+.tech-table .strong-cell { color: var(--ink); }
+.tech-table .identical {
+    text-align: center; font-family: var(--font-mono); font-size: 23px;
+    color: var(--good); font-weight: 600; background: rgba(46, 125, 79, 0.06);
+}
 
 /* ===========================================
    SLIDE 5 — identity claiming (claims → one record)
@@ -703,7 +730,48 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 10 · WHAT IT UNLOCKS ============ -->
+    <!-- ============ SLIDE 10 · TECHNOLOGY ============ -->
+    <section class="slide" aria-label="Technology choice">
+        <div class="pad">
+            <p class="eyebrow reveal">TECHNOLOGY</p>
+            <h2 class="reveal">Two languages, one engine — compared honestly.</h2>
+            <table class="tech-table reveal d1">
+                <thead>
+                    <tr><th></th><th>Elixir <span>the reference</span></th><th>PHP <span>our current stack</span></th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Fit for this problem</td>
+                        <td class="strong-cell">Native — a language designed for recomputing answers from permanent logs</td>
+                        <td>Capable — the engine is faithfully ported and fully verified</td>
+                    </tr>
+                    <tr>
+                        <td>Fits today's platform &amp; team</td>
+                        <td>New runtime to operate, new skills to hire</td>
+                        <td class="strong-cell">Yes — today's stack, run by today's team, zero adoption friction</td>
+                    </tr>
+                    <tr>
+                        <td>Where it shines</td>
+                        <td class="strong-cell">Designing &amp; verifying: whole engine in one readable file, full check suite in under a second</td>
+                        <td class="strong-cell">Production inside the existing platform — no rewrite, no migration of the migration</td>
+                    </tr>
+                    <tr>
+                        <td>The answers it gives</td>
+                        <td colspan="2" class="identical">identical — byte for byte, proven by the same test suite passing in both</td>
+                    </tr>
+                    <tr>
+                        <td>New risk introduced</td>
+                        <td>Operational novelty (a stack we don't run yet)</td>
+                        <td class="strong-cell">None — it's the stack we already run</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="ledger-moral lanes-moral reveal d2"><strong>Use each where it's strongest:</strong> Elixir stays the reference where the design is built and verified fast; the PHP twin runs inside today's platform. And because both give identical answers, <strong>the choice is reversible at any time — no lock-in either way.</strong></p>
+            <div class="foot"><span>ingot</span><span>technology</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 11 · WHAT IT UNLOCKS ============ -->
     <section class="slide" aria-label="What it unlocks">
         <div class="pad">
             <p class="eyebrow reveal">WHY IT MATTERS</p>
@@ -753,7 +821,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
 <!-- deck chrome: navigation outside the slide stage -->
 <nav class="deck-controls" aria-label="Slide navigation">
     <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
-    <span class="page-count" id="pageCount">1 / 10</span>
+    <span class="page-count" id="pageCount">1 / 11</span>
     <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
 </nav>
 
