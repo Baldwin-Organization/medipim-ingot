@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot for Founders</title>
+
+<!-- Typography: Fraunces (warm ledger serif) for display, IBM Plex Sans/Mono for body & data -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+/* ===========================================
+   THEME — the ingot identity (paper / ink / bronze)
+   =========================================== */
+:root {
+    --stage-bg: #211D17;          /* letterbox ground */
+    --slide-bg: #F7F5F1;          /* warm paper */
+    --ink: #1C2026;
+    --ink-2: #5A6675;
+    --line: #DDD8CF;
+    --bronze: #9A5B23;
+    --bronze-deep: #7C4213;
+    --bronze-soft: #F0E4D6;
+    --card: #FFFFFF;
+    --good: #2E7D4F;
+    --bad: #A8402F;
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   (viewport-base.css, verbatim)
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px; height: 1080px;
+        break-after: page; page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE SCAFFOLD — shared layout at 1920×1080
+   =========================================== */
+.slide { font-family: var(--font-body); color: var(--ink); transition: opacity 0.45s var(--ease); }
+.pad { position: absolute; inset: 0; padding: 96px 130px; display: flex; flex-direction: column; }
+
+.eyebrow {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bronze);
+    margin-bottom: 26px;
+}
+h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 118px;
+    line-height: 1.03;
+    letter-spacing: -0.015em;
+    max-width: 1350px;
+}
+h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 76px;
+    line-height: 1.06;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+    max-width: 1500px;
+}
+.lede { font-size: 32px; line-height: 1.5; color: var(--ink-2); max-width: 1120px; }
+.lede strong { color: var(--ink); font-weight: 600; }
+
+/* footer strip on every content slide */
+.foot {
+    position: absolute;
+    left: 130px; right: 130px; bottom: 56px;
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 19px;
+    color: var(--ink-2);
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+}
+
+/* ===========================================
+   REVEAL ANIMATION — staggered, triggered by .visible
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.65s var(--ease), transform 0.65s var(--ease);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.15s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.25s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.35s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.45s; }
+.d1 { transition-delay: 0.15s !important; }
+.d2 { transition-delay: 0.30s !important; }
+.d3 { transition-delay: 0.45s !important; }
+.d4 { transition-delay: 0.60s !important; }
+
+/* ===========================================
+   SLIDE 1 — TITLE with ingot mark
+   =========================================== */
+.title-slide .pad { justify-content: center; }
+.ingot-mark { display: flex; flex-direction: column; gap: 10px; margin-bottom: 60px; }
+.bar {
+    height: 26px; border-radius: 5px;
+    background: linear-gradient(100deg, var(--bronze-deep), var(--bronze) 45%, #C98A4B 70%, var(--bronze));
+    box-shadow: 0 3px 10px rgba(122, 71, 22, 0.30);
+}
+.bar.b1 { width: 190px; }
+.bar.b2 { width: 150px; margin-left: 20px; }
+.bar.b3 { width: 110px; margin-left: 40px; }
+.title-sub { margin-top: 44px; font-size: 34px; color: var(--ink-2); max-width: 1000px; line-height: 1.5; }
+
+/* ===========================================
+   SLIDE 2 — the disagreeing suppliers
+   =========================================== */
+.suppliers { display: flex; gap: 36px; margin-top: 64px; }
+.supplier {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 36px 40px;
+    box-shadow: 0 4px 18px rgba(28, 32, 38, 0.05);
+}
+.supplier .who {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    color: var(--bronze);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+}
+.supplier .name { font-family: var(--font-display); font-size: 34px; font-weight: 600; line-height: 1.2; min-height: 125px; }
+.supplier .fact { font-family: var(--font-mono); font-size: 24px; margin-top: 18px; color: var(--ink-2); }
+.supplier .fact b { color: var(--ink); font-weight: 600; }
+.mismatch { color: var(--bad) !important; font-weight: 600; }
+.suppliers-caption { margin-top: 48px; font-size: 30px; color: var(--ink-2); max-width: 1350px; line-height: 1.5; }
+.suppliers-caption strong { color: var(--ink); }
+
+/* ===========================================
+   SLIDE 3 — what today's system does (three sins)
+   =========================================== */
+.sins { display: flex; flex-direction: column; gap: 34px; margin-top: 58px; max-width: 1460px; }
+.sin { display: grid; grid-template-columns: 96px 1fr; gap: 34px; align-items: start; }
+.sin-mark {
+    width: 96px; height: 96px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 46px; font-weight: 700; color: var(--bad);
+}
+.sin h3 { font-family: var(--font-display); font-size: 40px; font-weight: 600; margin-bottom: 8px; }
+.sin p { font-size: 28px; line-height: 1.45; color: var(--ink-2); max-width: 1250px; }
+
+/* ===========================================
+   SLIDE 4 — the ledger idea (old vs new)
+   =========================================== */
+.ledger-compare { display: flex; gap: 44px; margin-top: 56px; align-items: stretch; }
+.ledger-col {
+    flex: 1; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 40px 46px;
+}
+.ledger-col.winner { border: 2px solid var(--bronze); background: linear-gradient(180deg, #FFFDF9, #FBF4EA); }
+.ledger-col .tag {
+    font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 26px;
+}
+.ledger-col .tag.old { color: var(--bad); }
+.ledger-col .tag.new { color: var(--bronze); }
+.wipe {
+    font-family: var(--font-mono); font-size: 26px; line-height: 2.1; color: var(--ink-2);
+}
+.wipe .gone { text-decoration: line-through; opacity: 0.42; }
+.entry { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 24px; line-height: 2.15; }
+.entry span:last-child { color: var(--ink-2); }
+.balance {
+    display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 25px;
+    border-top: 2px solid var(--bronze); margin-top: 14px; padding-top: 14px; font-weight: 600; color: var(--bronze-deep);
+}
+.ledger-moral { margin-top: 46px; font-size: 30px; line-height: 1.5; color: var(--ink-2); max-width: 1420px; }
+.ledger-moral strong { color: var(--ink); }
+
+/* ===========================================
+   SLIDE 5 — identity guardrails diagram
+   =========================================== */
+.pairs { display: flex; flex-direction: column; gap: 42px; margin-top: 60px; }
+.pair { display: grid; grid-template-columns: 420px 150px 420px 1fr; align-items: center; gap: 0; }
+.chip {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 26px 32px;
+}
+.chip .cname { font-family: var(--font-display); font-size: 30px; font-weight: 600; }
+.chip .code { font-family: var(--font-mono); font-size: 22px; color: var(--ink-2); margin-top: 8px; }
+.linker { text-align: center; font-family: var(--font-mono); font-size: 40px; }
+.linker.ok { color: var(--good); }
+.linker.warn { color: var(--bronze); }
+.pair-verdict { padding-left: 56px; }
+.verdict-pill {
+    display: inline-block; font-family: var(--font-mono); font-size: 22px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 22px; border-radius: 999px;
+}
+.verdict-pill.ok { background: var(--good); color: #fff; }
+.verdict-pill.warn { background: var(--bronze); color: #fff; }
+.pair-verdict p { font-size: 25px; color: var(--ink-2); margin-top: 12px; max-width: 620px; line-height: 1.4; }
+
+/* ===========================================
+   SLIDE 6 — shadow mode + proof numbers
+   =========================================== */
+.shadow-viz { display: flex; align-items: center; gap: 34px; margin-top: 58px; }
+.sys {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 34px 44px; text-align: center; flex: 1;
+}
+.sys .sysname { font-family: var(--font-display); font-size: 34px; font-weight: 600; }
+.sys .sysrole { font-family: var(--font-mono); font-size: 21px; color: var(--ink-2); margin-top: 8px; }
+.sys.newsys { border: 2px solid var(--bronze); background: linear-gradient(180deg, #FFFDF9, #FBF4EA); }
+.vs {
+    font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--good);
+    text-align: center; line-height: 1.4; flex: 0 0 260px;
+}
+.proof-band { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 56px; }
+.proof { flex: 1; background: var(--card); padding: 30px 36px; }
+.proof .pnum { font-family: var(--font-mono); font-size: 52px; font-weight: 600; color: var(--good); font-variant-numeric: tabular-nums; }
+.proof .pnum.bronze { color: var(--bronze); }
+.proof .plbl { font-size: 22px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
+
+/* ===========================================
+   SLIDE 7 — what it unlocks + roadmap
+   =========================================== */
+.unlocks { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 44px; margin-top: 54px; max-width: 1560px; }
+.unlock { display: grid; grid-template-columns: 56px 1fr; gap: 24px; align-items: start; }
+.unlock .u-mark { font-family: var(--font-display); font-size: 40px; color: var(--bronze); font-weight: 700; line-height: 1.1; }
+.unlock h3 { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-bottom: 6px; }
+.unlock p { font-size: 25px; line-height: 1.42; color: var(--ink-2); }
+.roadline { display: flex; align-items: center; gap: 0; margin-top: 66px; max-width: 1560px; }
+.road-step { flex: 1; text-align: center; position: relative; }
+.road-dot {
+    width: 26px; height: 26px; border-radius: 50%; margin: 0 auto 14px;
+    background: var(--good); position: relative; z-index: 1;
+}
+.road-dot.now { background: var(--bronze); box-shadow: 0 0 0 9px rgba(154, 91, 35, 0.18); }
+.road-dot.next { background: var(--slide-bg); border: 3px solid var(--ink-2); }
+.road-step::before {
+    content: ""; position: absolute; top: 12px; left: -50%; width: 100%;
+    height: 3px; background: var(--line);
+}
+.road-step:first-child::before { display: none; }
+.road-step .r-title { font-family: var(--font-mono); font-size: 21px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.road-step .r-sub { font-size: 21px; color: var(--ink-2); margin-top: 6px; }
+
+/* ===========================================
+   DECK CHROME — nav + progress (outside stage design)
+   =========================================== */
+.deck-controls { display: flex; align-items: center; gap: 18px; }
+.nav-btn {
+    background: rgba(247, 245, 241, 0.12); color: #F7F5F1;
+    border: 1px solid rgba(247, 245, 241, 0.28); border-radius: 8px;
+    font-family: var(--font-mono); font-size: 15px; padding: 7px 15px; cursor: pointer;
+    transition: background 0.2s ease;
+}
+.nav-btn:hover, .nav-btn:focus-visible { background: rgba(247, 245, 241, 0.26); outline: none; }
+.page-count { font-family: var(--font-mono); font-size: 14px; color: rgba(247, 245, 241, 0.75); }
+
+/* ===========================================
+   INLINE EDITING — press E or hover top-left
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px; z-index: 10001;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    background: #F7F5F1; border: 1px solid #C9C2B6; border-radius: 8px;
+    font-size: 18px; padding: 8px 12px; cursor: pointer;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--bronze); color: #fff; }
+body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outline-offset: 4px; }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+    <!-- ============ SLIDE 1 · TITLE ============ -->
+    <section class="slide title-slide active" aria-label="Title">
+        <div class="pad">
+            <div class="ingot-mark reveal">
+                <div class="bar b1"></div>
+                <div class="bar b2"></div>
+                <div class="bar b3"></div>
+            </div>
+            <p class="eyebrow reveal">INGOT · IN PLAIN LANGUAGE</p>
+            <h1 class="reveal">One product,<br>one truth.</h1>
+            <p class="title-sub reveal">Why we're rebuilding the way our catalog decides what a product <em>is</em> — and how we know the new way is safe.</p>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 2 · THE PROBLEM ============ -->
+    <section class="slide" aria-label="The problem">
+        <div class="pad">
+            <p class="eyebrow reveal">THE PROBLEM</p>
+            <h2 class="reveal">The same product arrives three different ways.</h2>
+            <div class="suppliers">
+                <div class="supplier reveal d1">
+                    <div class="who">Supplier A says</div>
+                    <div class="name">Panadol Osteo Caplets 665mg 96</div>
+                    <div class="fact">weight: <b>35</b></div>
+                    <div class="fact">barcode: <b>…4134</b></div>
+                </div>
+                <div class="supplier reveal d2">
+                    <div class="who">Supplier B says</div>
+                    <div class="name">PANADOL OSTEO CPLT 665MG 96</div>
+                    <div class="fact">weight: <b class="mismatch">0.035 kg</b></div>
+                    <div class="fact">barcode: <b>…4134</b></div>
+                </div>
+                <div class="supplier reveal d3">
+                    <div class="who">Supplier C says</div>
+                    <div class="name">Panadol Osteo 665 mg (96 pack)</div>
+                    <div class="fact">weight: <b class="mismatch">— not provided</b></div>
+                    <div class="fact">barcode: <b class="mismatch">…4141 (different!)</b></div>
+                </div>
+            </div>
+            <p class="suppliers-caption reveal d4">We buy product data from many suppliers. They disagree, duplicate each other, and change their minds over time. <strong>Something has to decide what's true — for hundreds of thousands of products.</strong></p>
+            <div class="foot"><span>ingot</span><span>the problem</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 3 · TODAY'S SYSTEM ============ -->
+    <section class="slide" aria-label="What today's system does">
+        <div class="pad">
+            <p class="eyebrow reveal">TODAY</p>
+            <h2 class="reveal">The current system guesses — and forgets.</h2>
+            <div class="sins">
+                <div class="sin reveal d1">
+                    <div class="sin-mark">?</div>
+                    <div>
+                        <h3>It picks a winner silently.</h3>
+                        <p>When suppliers disagree, one value wins by hidden rules. Nobody can answer a customer who asks <em>"why does it say this?"</em></p>
+                    </div>
+                </div>
+                <div class="sin reveal d2">
+                    <div class="sin-mark">✕</div>
+                    <div>
+                        <h3>It overwrites the past.</h3>
+                        <p>Each update replaces what was there. <em>"What did this product say in March?"</em> is a question we simply cannot answer.</p>
+                    </div>
+                </div>
+                <div class="sin reveal d3">
+                    <div class="sin-mark">€</div>
+                    <div>
+                        <h3>Every new country is a custom build.</h3>
+                        <p>Each market's product codes are hand-wired into the software. Expanding means months of engineering — every time.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>today</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 4 · THE IDEA ============ -->
+    <section class="slide" aria-label="The idea">
+        <div class="pad">
+            <p class="eyebrow reveal">THE FIX — PART 1</p>
+            <h2 class="reveal">Keep everything. Like an accountant.</h2>
+            <div class="ledger-compare">
+                <div class="ledger-col reveal d1">
+                    <div class="tag old">Old way — one box, overwritten</div>
+                    <div class="wipe">
+                        <div class="gone">weight: 30 g</div>
+                        <div class="gone">weight: 32 g</div>
+                        <div>weight: 35 g&nbsp;&nbsp;← only this survives</div>
+                    </div>
+                </div>
+                <div class="ledger-col winner reveal d2">
+                    <div class="tag new">Ingot — a ledger, never erased</div>
+                    <div class="entry"><span>Supplier A · Jan</span><span>30 g</span></div>
+                    <div class="entry"><span>Supplier B · Mar</span><span>32 g</span></div>
+                    <div class="entry"><span>Supplier A · Jun</span><span>35 g</span></div>
+                    <div class="balance"><span>Published answer</span><span>35 g — and we can show why</span></div>
+                </div>
+            </div>
+            <p class="ledger-moral reveal d3">Accountants never erase an entry — they add new ones, and the balance is <strong>calculated</strong>. Ingot treats product facts the same way: every statement from every supplier is kept forever, and what we publish is calculated from them. So we can <strong>explain any answer, rewind to any date, and recalculate everything</strong> if a rule changes.</p>
+            <div class="foot"><span>ingot</span><span>the fix · 1 of 2</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 5 · IDENTITY GUARDRAILS ============ -->
+    <section class="slide" aria-label="Identity guardrails">
+        <div class="pad">
+            <p class="eyebrow reveal">THE FIX — PART 2</p>
+            <h2 class="reveal">Official codes decide what's the same product — with guardrails.</h2>
+            <div class="pairs">
+                <div class="pair reveal d1">
+                    <div class="chip">
+                        <div class="cname">Dafalgan 1g</div>
+                        <div class="code">national code 3612173</div>
+                    </div>
+                    <div class="linker ok">⟷</div>
+                    <div class="chip">
+                        <div class="cname">DAFALGAN 1G 60 tabs</div>
+                        <div class="code">national code 3612173</div>
+                    </div>
+                    <div class="pair-verdict">
+                        <span class="verdict-pill ok">merged</span>
+                        <p>Same government-issued code → provably the same product. Duplicates collapse into one.</p>
+                    </div>
+                </div>
+                <div class="pair reveal d2">
+                    <div class="chip">
+                        <div class="cname">Vitamin C 500mg</div>
+                        <div class="code">only a barcode …8900</div>
+                    </div>
+                    <div class="linker warn">⚠</div>
+                    <div class="chip">
+                        <div class="cname">Vit. C Effervescent</div>
+                        <div class="code">same barcode …8900</div>
+                    </div>
+                    <div class="pair-verdict">
+                        <span class="verdict-pill warn">ask a human</span>
+                        <p>Barcodes get reused and shared. Instead of guessing, the engine flags it for a quick review.</p>
+                    </div>
+                </div>
+            </div>
+            <p class="ledger-moral reveal d3">The old system trusted its own internal numbering. Ingot trusts <strong>the codes printed on the actual product</strong> — and when a code isn't trustworthy enough, it asks instead of guessing. <strong>Wrong merges (the wrong photo on a medicine) become structurally impossible to do silently.</strong></p>
+            <div class="foot"><span>ingot</span><span>the fix · 2 of 2</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 6 · PROOF ============ -->
+    <section class="slide" aria-label="Proof">
+        <div class="pad">
+            <p class="eyebrow reveal">PROOF</p>
+            <h2 class="reveal">We don't switch on faith. We run both and compare.</h2>
+            <div class="shadow-viz reveal d1">
+                <div class="sys">
+                    <div class="sysname">Today's system</div>
+                    <div class="sysrole">keeps running, untouched</div>
+                </div>
+                <div class="vs">answers<br>compared<br>automatically</div>
+                <div class="sys newsys">
+                    <div class="sysname">Ingot</div>
+                    <div class="sysrole">runs in the shadow, on the same data</div>
+                </div>
+            </div>
+            <div class="proof-band reveal d2">
+                <div class="proof"><div class="pnum">617</div><div class="plbl">automated checks run on every change</div></div>
+                <div class="proof"><div class="pnum">0</div><div class="plbl">unexplained differences vs today's system on real product histories</div></div>
+                <div class="proof"><div class="pnum bronze">4</div><div class="plbl">markets already proven: BE, FR, books &amp; Australia</div></div>
+                <div class="proof"><div class="pnum bronze">127,000</div><div class="plbl">Australian products added with configuration — not engineering</div></div>
+            </div>
+            <p class="ledger-moral reveal d3">Only when the side-by-side comparison stays clean do we flip the switch. <strong>Migration by evidence, not hope.</strong></p>
+            <div class="foot"><span>ingot</span><span>proof</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 7 · WHAT IT UNLOCKS ============ -->
+    <section class="slide" aria-label="What it unlocks">
+        <div class="pad">
+            <p class="eyebrow reveal">WHY IT MATTERS</p>
+            <h2 class="reveal">What this buys us.</h2>
+            <div class="unlocks">
+                <div class="unlock reveal d1">
+                    <div class="u-mark">1</div>
+                    <div><h3>New markets in days, not months.</h3><p>A country is a configuration table. Australia already proved it.</p></div>
+                </div>
+                <div class="unlock reveal d1">
+                    <div class="u-mark">2</div>
+                    <div><h3>Every answer is explainable.</h3><p>"Why does it say this?" always has an answer: who said it, when, and why it won.</p></div>
+                </div>
+                <div class="unlock reveal d2">
+                    <div class="u-mark">3</div>
+                    <div><h3>Errors become a short review list.</h3><p>Conflicts get flagged for people instead of silently guessed — quality goes up, surprises go down.</p></div>
+                </div>
+                <div class="unlock reveal d2">
+                    <div class="u-mark">4</div>
+                    <div><h3>Full history, forever.</h3><p>Audit any product on any date. Nothing is ever lost again.</p></div>
+                </div>
+            </div>
+            <div class="roadline reveal d3">
+                <div class="road-step">
+                    <div class="road-dot"></div>
+                    <div class="r-title">Built &amp; verified</div>
+                    <div class="r-sub">engine + 4 markets</div>
+                </div>
+                <div class="road-step">
+                    <div class="road-dot now"></div>
+                    <div class="r-title">Now: shadow mode</div>
+                    <div class="r-sub">both systems, compared live</div>
+                </div>
+                <div class="road-step">
+                    <div class="road-dot next"></div>
+                    <div class="r-title">Next: switch over</div>
+                    <div class="r-sub">when the comparison stays clean</div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>questions → Ward</span></div>
+        </div>
+    </section>
+
+</main>
+</div>
+
+<!-- deck chrome: navigation outside the slide stage -->
+<nav class="deck-controls" aria-label="Slide navigation">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
+    <span class="page-count" id="pageCount">1 / 7</span>
+    <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
+</nav>
+
+<!-- inline editing affordance -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+<script>
+/* ===========================================
+   SLIDE CONTROLLER — keys, wheel, touch, buttons
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.current = 0;
+        this.stage = document.getElementById('deckStage');
+        this.setupStageScale();
+        this.setupNav();
+        this.show(0);
+    }
+
+    /* scale the fixed 1920×1080 stage uniformly into the window */
+    setupStageScale() {
+        const scale = () => {
+            const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+            if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+            if (e.key === 'Home') this.show(0);
+            if (e.key === 'End') this.show(this.slides.length - 1);
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => this.show(this.current - 1));
+        document.getElementById('nextBtn').addEventListener('click', () => this.show(this.current + 1));
+
+        /* wheel: debounced so trackpads don't skip slides */
+        let wheelLock = false;
+        window.addEventListener('wheel', (e) => {
+            if (document.body.classList.contains('editing')) return;
+            if (wheelLock) return;
+            if (Math.abs(e.deltaY) < 25) return;
+            wheelLock = true;
+            this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+            setTimeout(() => { wheelLock = false; }, 550);
+        }, { passive: true });
+
+        /* touch swipe */
+        let x0 = null;
+        window.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (Math.abs(dx) > 55) this.show(this.current + (dx < 0 ? 1 : -1));
+            x0 = null;
+        }, { passive: true });
+    }
+
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+        this.slides.forEach((s, k) => {
+            s.classList.toggle('active', k === this.current);
+            s.classList.toggle('visible', k === this.current);
+        });
+        document.getElementById('pageCount').textContent = `${this.current + 1} / ${this.slides.length}`;
+    }
+}
+const deck = new SlidePresentation();
+
+/* ===========================================
+   INLINE TEXT EDITING — E key or top-left hover.
+   Edits persist to localStorage; Ctrl/Cmd+S downloads the file.
+   =========================================== */
+const editor = {
+    isActive: false,
+    key: 'ingot-founder-slides-edits',
+    editable: 'h1, h2, h3, p, .fact, .entry span, .balance span, .r-title, .r-sub, .who, .name, .code, .cname, .plbl, .pnum, .sysname, .sysrole, .vs',
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        document.querySelectorAll(this.editable).forEach((el) => {
+            if (this.isActive) el.setAttribute('contenteditable', 'true');
+            else el.removeAttribute('contenteditable');
+        });
+        if (!this.isActive) this.persist();
+    },
+    persist() {
+        const texts = [...document.querySelectorAll(this.editable)].map((el) => el.innerHTML);
+        localStorage.setItem(this.key, JSON.stringify(texts));
+    },
+    restore() {
+        const saved = localStorage.getItem(this.key);
+        if (!saved) return;
+        const texts = JSON.parse(saved);
+        const els = [...document.querySelectorAll(this.editable)];
+        if (texts.length === els.length) els.forEach((el, i) => { el.innerHTML = texts[i]; });
+    }
+};
+editor.restore();
+
+const hotzone = document.getElementById('editHotzone');
+const editToggle = document.getElementById('editToggle');
+let hideTimeout = null;
+const showBtn = () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); };
+const hideBtnSoon = () => {
+    hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400);
+};
+hotzone.addEventListener('mouseenter', showBtn);
+hotzone.addEventListener('mouseleave', hideBtnSoon);
+editToggle.addEventListener('mouseenter', showBtn);
+editToggle.addEventListener('mouseleave', hideBtnSoon);
+editToggle.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && !(e.target.getAttribute && e.target.getAttribute('contenteditable'))) {
+        editor.toggleEditMode();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && editor.isActive) {
+        e.preventDefault();
+        editor.persist();
+        const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'ingot-founder-slides.html';
+        a.click();
+    }
+});
+</script>
+</body>
+</html>

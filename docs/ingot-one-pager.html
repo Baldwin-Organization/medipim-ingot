@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingot Engine</title>
+<style>
+  :root {
+    --paper: #F7F5F1;
+    --ink: #1C2026;
+    --ink-2: #4C5A6B;
+    --line: #DDD8CF;
+    --line-soft: #E8E4DC;
+    --bronze: #9A5B23;
+    --bronze-soft: #F0E4D6;
+    --card: #FFFFFF;
+    --good: #2E7D4F;
+    --mono-bg: #EFECE5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #15181D;
+      --ink: #E8E6E1;
+      --ink-2: #9AA7B5;
+      --line: #303640;
+      --line-soft: #262B33;
+      --bronze: #D08A45;
+      --bronze-soft: #2C241B;
+      --card: #1C2027;
+      --good: #5CB884;
+      --mono-bg: #20242C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #15181D;
+    --ink: #E8E6E1;
+    --ink-2: #9AA7B5;
+    --line: #303640;
+    --line-soft: #262B33;
+    --bronze: #D08A45;
+    --bronze-soft: #2C241B;
+    --card: #1C2027;
+    --good: #5CB884;
+    --mono-bg: #20242C;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Avenir Next", "Avenir", "Segoe UI", "Trebuchet MS", sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .mono, code, .pill, .step, .num, .eyebrow, .path {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 28px 56px;
+  }
+
+  /* ── header ─────────────────────────── */
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bronze);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: 34px;
+    line-height: 1.1;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .thesis {
+    font-size: 17px;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .thesis strong { color: var(--ink); font-weight: 600; }
+
+  /* ── pipeline ───────────────────────── */
+  .pipeline-wrap { overflow-x: auto; margin: 28px 0 8px; }
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    min-width: 640px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--card);
+  }
+  .step {
+    flex: 1;
+    padding: 12px 14px;
+    border-right: 1px solid var(--line-soft);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .step:last-child { border-right: none; }
+  .step b { display: block; font-size: 12px; color: var(--bronze); font-weight: 700; margin-bottom: 3px; }
+  .step span { color: var(--ink-2); }
+  .pipeline-caption {
+    font-size: 12.5px; color: var(--ink-2); margin: 6px 2px 0;
+  }
+  .pipeline-caption code { font-size: 12px; }
+
+  /* ── sections ───────────────────────── */
+  section { margin-top: 36px; }
+  h2 {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    margin: 0 0 18px;
+    font-weight: 600;
+  }
+  h2 .tick { color: var(--bronze); }
+
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 22px 28px;
+  }
+  .idea h3 { font-size: 15px; margin: 0 0 6px; font-weight: 700; }
+  .idea p { margin: 0; color: var(--ink-2); font-size: 14px; }
+  .idea code {
+    font-size: 12.5px;
+    background: var(--mono-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── numbers band ───────────────────── */
+  .band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stat { background: var(--card); padding: 14px 16px; }
+  .num {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--good);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .num.bronze { color: var(--bronze); }
+  .stat small { display: block; color: var(--ink-2); font-size: 12px; margin-top: 4px; line-height: 1.4; }
+
+  /* ── code block ─────────────────────── */
+  pre {
+    background: var(--mono-bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  pre .c { color: var(--ink-2); }
+  pre .k { color: var(--bronze); font-weight: 600; }
+
+  /* ── status rail ────────────────────── */
+  .rail { display: grid; gap: 10px; }
+  .rail-row {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 14px;
+    align-items: baseline;
+  }
+  .pill {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .pill.done { background: var(--good); color: var(--paper); }
+  .pill.now { background: var(--bronze); color: var(--paper); }
+  .pill.next { background: transparent; color: var(--ink-2); border: 1px solid var(--line); }
+  .rail-row p { margin: 0; font-size: 14px; color: var(--ink-2); }
+  .rail-row p strong { color: var(--ink); font-weight: 600; }
+
+  /* ── pointers ───────────────────────── */
+  .pointers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 6px 28px; }
+  .pointers div { font-size: 13.5px; color: var(--ink-2); padding: 6px 0; border-bottom: 1px dashed var(--line-soft); }
+  .path { font-size: 12.5px; color: var(--ink); }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">ingot · golden-record engine</p>
+    <h1>Product identity as a replayable fold</h1>
+    <p class="thesis">Sources don't write rows — they assert <strong>claims about codes</strong>, kept forever with provenance. Identity, merges, survivorship, and history are all <strong>pure folds over one event log</strong>. Every answer the system gives can be re-derived from scratch, and diffed against what medipim does today.</p>
+  </header>
+
+  <div class="pipeline-wrap">
+    <div class="pipeline">
+      <div class="step"><b>decode</b><span>legacy deltas → contract-C envelope (per entity, per source)</span></div>
+      <div class="step"><b>claims</b><span>identity / attribute / edge claims, dated, source-attributed</span></div>
+      <div class="step"><b>canonicalize</b><span>GTIN family → GTIN-14; shared codes partitioned out</span></div>
+      <div class="step"><b>cluster</b><span>bridge on identity codes only — never on entity ids</span></div>
+      <div class="step"><b>reconcile</b><span>ledger mints keys; merges graded, splits tracked, suspects held</span></div>
+      <div class="step"><b>project</b><span>golden record, as-of any date, API reads</span></div>
+    </div>
+  </div>
+  <p class="pipeline-caption">The whole loop is <code>Cluster.variants(Substrate.current(claims), shared) |> IdentityLedger.decide(…)</code> — no GenServers, no runtime state, no dependencies. The log is the system of record; everything else is a projection.</p>
+
+  <section>
+    <h2>Why it's built this way</h2>
+    <div class="cols">
+      <div class="idea">
+        <h3>Legacy ids are labels, not identity</h3>
+        <p>Identity is re-derived from the codes themselves (CNK, GTIN, CIP…). Two listings that share a national code are the same product no matter what their entity ids say — and <code>LegacyXref</code> maps every old id to its new key as <code>:stable</code>, <code>:split</code>, or <code>:merged</code>.</p>
+      </div>
+      <div class="idea">
+        <h3>The over-merge guard is structural</h3>
+        <p>Bridge grades: national codes are trusted bridges, barcodes are suspect (<code>ConflictFlagged</code>, held for review), and shared codes — restricted GTINs, supplier refs, AU's ARTG numbers — ride along but <em>never</em> fuse two products.</p>
+      </div>
+      <div class="idea">
+        <h3>Survivorship is a policy, not a schema</h3>
+        <p>Conflicting values stay as candidates. A rank function injected at read time picks winners — <code>MedipimPolicy</code> reproduces the legacy SourcesRanker byte-for-byte; a market policy is a context map, not a module. No policy? The engine says <code>needs_review</code> instead of inventing an answer.</p>
+      </div>
+      <div class="idea">
+        <h3>Time travel is free</h3>
+        <p>Claims carry <code>valid_from</code>/<code>recorded_at</code>, so <code>golden_as_of(date)</code> answers "what did we believe on any given day" — including a replaced product still pointing at its successor the day before its identity died.</p>
+      </div>
+      <div class="idea">
+        <h3>A new market is a data change</h3>
+        <p>Field semantics live in one registry table (<code>code_registry.ex</code>). BE, FR, a books vertical, and now AU each landed as registry rows plus fixtures — the engine itself didn't change.</p>
+      </div>
+      <div class="idea">
+        <h3>Cutover is diff-verified, not hoped</h3>
+        <p>A parity harness replays real entities through the engine <em>and</em> medipim's applier semantics and diffs the outputs. Divergences are counted, classified, and pinned in tests. We migrate when the diff says so.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Evidence <span class="tick">/</span> current numbers</h2>
+    <div class="band">
+      <div class="stat"><div class="num">617</div><small>tests green across 3 suites — 363 Elixir engine, 133 PHP port, 121 API vs Postgres</small></div>
+      <div class="stat"><div class="num">0</div><small>mapping gaps against medipim's applier snapshots — engine-only, applier-only, and value mismatches all zero</small></div>
+      <div class="stat"><div class="num bronze">4</div><small>markets proven as data changes: BE, FR, books, AU (127k entities swept)</small></div>
+      <div class="stat"><div class="num bronze">587 → 109</div><small>AU "duplicate GTIN" scare, engine-verified down to the real review queue</small></div>
+      <div class="stat"><div class="num">0</div><small>runtime dependencies — Elixir stdlib only; the PHP seam runs inside medipim's own stack</small></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What a claim looks like</h2>
+    <pre><span class="c"># every statement any source ever made, kept — this is the write model, whole</span>
+%{<span class="k">"kind"</span> => "identity",  <span class="k">"source"</span> => "1035", <span class="k">"ref"</span> => "422156:1035",
+  <span class="k">"codes"</span> => ["cnk:3612173", "gtin:03282770146004"],
+  <span class="k">"valid_from"</span> => 1_690_243_200, <span class="k">"recorded_at"</span> => 1_690_243_200}
+
+<span class="c"># reads are folds — same log, any lens</span>
+Rederivation.run(envelopes, at)          <span class="c"># current identity + ledger</span>
+Temporal.golden_as_of(log, ~D[2026-08-14])  <span class="c"># the record as believed that day</span></pre>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <div class="rail">
+      <div class="rail-row"><span class="pill done">done</span><p><strong>Engine, ingest, parity harness, PHP port, Product API.</strong> BE/FR fixtures replay end-to-end; survivorship policy audited against production behavior.</p></div>
+      <div class="rail-row"><span class="pill done">done</span><p><strong>AU export sweep + follow-ups.</strong> Identity clean at 127k entities; registry extended; unit-noise conflicts eliminated; replacement lifecycle decoded; collision queue engine-verified.</p></div>
+      <div class="rail-row"><span class="pill now">now</span><p><strong>Shadow phase.</strong> Host the claim log inside medipim, backfill at scale, run live shadow ingest, sample parity continuously.</p></div>
+      <div class="rail-row"><span class="pill next">next</span><p><strong>Cutover.</strong> The engine replaces <code>products_deltas</code> as the whole-product system of record — flipped only when shadow parity holds.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where to look</h2>
+    <div class="pointers">
+      <div><span class="path">lib/golden_record_core.ex</span> — the whole engine, one file, pure functions</div>
+      <div><span class="path">lib/ingest/claim_mapping.ex</span> — the reference adapter every source copies</div>
+      <div><span class="path">docs/CLAIM_MAPPING_SPEC.md</span> — decode semantics, pinned by tests</div>
+      <div><span class="path">docs/ingot-engine-slides.html</span> — the engine in four examples</div>
+      <div><span class="path">analysis/au-20260814/</span> — the AU sweep: scripts, report, verdicts</div>
+      <div><span class="path">mix test</span> — 0.7s for the full engine suite; <span class="path">cd php && vendor/bin/phpunit</span> for the port</div>
+    </div>
+  </section>
+
+  <footer>
+    <span>ingot — golden-record engine · status as of 2026-08-17</span>
+    <span>questions → Ward</span>
+  </footer>
+</div>
+</body>
+</html>
