@@ -308,7 +308,23 @@ h2 {
 .proof .plbl { font-size: 22px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
 
 /* ===========================================
-   SLIDE 7 — what it unlocks + roadmap
+   SLIDE 7 — beyond products (the lanes)
+   =========================================== */
+.lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 24px 36px; margin-top: 42px; max-width: 1660px; }
+.lane-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 24px 34px;
+}
+.lane-card .lane-tag {
+    font-family: var(--font-mono); font-size: 19px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--bronze); margin-bottom: 10px;
+}
+.lane-card h3 { font-family: var(--font-display); font-size: 32px; font-weight: 600; margin-bottom: 7px; }
+.lane-card p { font-size: 23px; line-height: 1.4; color: var(--ink-2); }
+.lanes-moral { margin-top: 34px; font-size: 27px; }
+
+/* ===========================================
+   SLIDE 8 — what it unlocks + roadmap
    =========================================== */
 .unlocks { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 44px; margin-top: 54px; max-width: 1560px; }
 .unlock { display: grid; grid-template-columns: 56px 1fr; gap: 24px; align-items: start; }
@@ -536,7 +552,39 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 7 · WHAT IT UNLOCKS ============ -->
+    <!-- ============ SLIDE 7 · BEYOND PRODUCTS ============ -->
+    <section class="slide" aria-label="Beyond products">
+        <div class="pad">
+            <p class="eyebrow reveal">BEYOND PRODUCTS</p>
+            <h2 class="reveal">The same ledger works for everything in the catalog.</h2>
+            <div class="lanes reveal d1">
+                <div class="lane-card">
+                    <div class="lane-tag">photos &amp; videos</div>
+                    <h3>One image, every product it shows.</h3>
+                    <p>A photo carrying three barcodes reaches all three products. Duplicates collapse; orphaned images become visible instead of lost.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">descriptions</div>
+                    <h3>Know whose words we publish.</h3>
+                    <p>Every text is tied to its supplier and language — and when two disagree, we can say exactly why one was chosen.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">leaflets &amp; documents</div>
+                    <h3>The right leaflet on every pack.</h3>
+                    <p>Patient leaflets stay linked to each product they belong to — and old versions stay retrievable. That's compliance, built in.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">ingredients</div>
+                    <h3>"Every product containing X" — one question.</h3>
+                    <p>Products connect to their substances, so recalls and ingredient checks stop being spreadsheet archaeology.</p>
+                </div>
+            </div>
+            <p class="ledger-moral lanes-moral reveal d2">The engine already treats these as <strong>first-class citizens</strong> — same ledger, same guardrails, same history. The rollout should cover them from day one: <strong>one system holding the whole catalog to one quality bar, instead of four separate ones.</strong></p>
+            <div class="foot"><span>ingot</span><span>beyond products</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 8 · WHAT IT UNLOCKS ============ -->
     <section class="slide" aria-label="What it unlocks">
         <div class="pad">
             <p class="eyebrow reveal">WHY IT MATTERS</p>
@@ -586,7 +634,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
 <!-- deck chrome: navigation outside the slide stage -->
 <nav class="deck-controls" aria-label="Slide navigation">
     <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
-    <span class="page-count" id="pageCount">1 / 7</span>
+    <span class="page-count" id="pageCount">1 / 8</span>
     <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
 </nav>
 
