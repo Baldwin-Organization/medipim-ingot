@@ -118,7 +118,7 @@ its own GTIN-14 canonicalization downstream (not here).
 | `identity`  | `cnk`, `ean`, `gtin`, `eanGtin8/12/13/14`        | identity claim codes     | **drives clustering** |
 | `attribute` | `name`, `status`, price/tax, dims, …             | attribute claim (anchored to a code) | survivorship only |
 | `edge`      | `publicCategories`, `brands`, `labos`, `internationalBrands`, `medipimCategories`, `organizations` | `member_of` claim | re-homes; not identity |
-| `media`     | `media`, `descriptions`                          | media claim              | noise for identity |
+| `media`     | `media`, `descriptions`, `leaflets` (AU)         | media claim              | noise for identity |
 | `meta`      | `updatedAt`, `updatedBy`, `createdAt`, `createdBy`, `legacyId` | **dropped at the boundary** | medipim-internal plumbing + touch signal; bumps `last_touched_at` |
 
 > `organizations` is structural (which sources list the product) and is **derivable** from the

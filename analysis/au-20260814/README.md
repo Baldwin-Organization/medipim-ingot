@@ -14,6 +14,8 @@ follow-ups in `au-quality-report.md`; the beads under the `au-quality` epic trac
 | `extract_cohort.py` | Pass 2: writes one `raw.jsonl` per cohort entity. |
 | `dupes.py` | Cross-entity live code-ownership scan (the collision list). |
 | `sweep.exs` | The Elixir sweep: `gen.exs` decode → `Temporal.run` → `LegacyXref` → aggregate (run via `mix run`). |
+| `verify_collisions.exs` | gr-sx7.2: folds each collision group jointly through the engine; per-code verdict (single_owner / not_live / merged_suspect / shared). Env args: `AU_RAW_DIR`, `AU_OUT`. |
+| `au_collision_verdicts.json` | The 587 engine verdicts + histogram — the real review queue is the 106 `merged_suspect` + 3 `shared`. |
 
 Reproduce: run the three Python scripts then `mix run sweep.exs`. NOTE: scripts carry
 absolute paths (the session scratchpad + `~/Downloads` CSV) — adjust the constants at the

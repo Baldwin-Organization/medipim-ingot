@@ -1,0 +1,8073 @@
+{
+ "histogram": {
+  "merged_suspect": 106,
+  "not_live": 120,
+  "shared": 3,
+  "single_owner": 358
+ },
+ "verdicts": [
+  {
+   "code": "gtin:00000093478762",
+   "dead_entities": 0,
+   "entities": [
+    119984,
+    119983
+   ],
+   "relations": {
+    "119983": "split",
+    "119984": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00010181042652",
+   "dead_entities": 0,
+   "entities": [
+    116227,
+    110803
+   ],
+   "relations": {
+    "110803": "merged_suspect",
+    "116227": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:00080196304700",
+   "dead_entities": 1,
+   "entities": [
+    114760,
+    114744
+   ],
+   "relations": {
+    "114744": "stable",
+    "114760": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00080196304717",
+   "dead_entities": 1,
+   "entities": [
+    114761,
+    114745
+   ],
+   "relations": {
+    "114745": "stable",
+    "114761": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00080196553177",
+   "dead_entities": 1,
+   "entities": [
+    114762,
+    114746
+   ],
+   "relations": {
+    "114746": "stable",
+    "114762": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00193489008022",
+   "dead_entities": 1,
+   "entities": [
+    114752,
+    114748
+   ],
+   "relations": {
+    "114748": "stable",
+    "114752": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00309970277604",
+   "dead_entities": 1,
+   "entities": [
+    110795,
+    110678
+   ],
+   "relations": {
+    "110678": "stable",
+    "110795": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00309970277611",
+   "dead_entities": 1,
+   "entities": [
+    110796,
+    110679
+   ],
+   "relations": {
+    "110679": "stable",
+    "110796": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903059300",
+   "dead_entities": 1,
+   "entities": [
+    77344,
+    76534
+   ],
+   "relations": {
+    "76534": "stable",
+    "77344": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903627257",
+   "dead_entities": 1,
+   "entities": [
+    114924,
+    114819
+   ],
+   "relations": {
+    "114819": "stable",
+    "114924": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903627820",
+   "dead_entities": 1,
+   "entities": [
+    114927,
+    114822
+   ],
+   "relations": {
+    "114822": "stable",
+    "114927": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903628001",
+   "dead_entities": 1,
+   "entities": [
+    114930,
+    114825
+   ],
+   "relations": {
+    "114825": "stable",
+    "114930": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903630936",
+   "dead_entities": 1,
+   "entities": [
+    114931,
+    114826
+   ],
+   "relations": {
+    "114826": "stable",
+    "114931": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903637065",
+   "dead_entities": 1,
+   "entities": [
+    114933,
+    114827
+   ],
+   "relations": {
+    "114827": "stable",
+    "114933": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903649389",
+   "dead_entities": 0,
+   "entities": [
+    114947,
+    114829
+   ],
+   "relations": {
+    "114829": "stable",
+    "114947": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903649440",
+   "dead_entities": 1,
+   "entities": [
+    114948,
+    114830
+   ],
+   "relations": {
+    "114830": "stable",
+    "114948": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903649556",
+   "dead_entities": 0,
+   "entities": [
+    114949,
+    114831
+   ],
+   "relations": {
+    "114831": "stable",
+    "114949": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903649594",
+   "dead_entities": 0,
+   "entities": [
+    114951,
+    114833
+   ],
+   "relations": {
+    "114833": "stable",
+    "114951": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903649921",
+   "dead_entities": 1,
+   "entities": [
+    114952,
+    114834
+   ],
+   "relations": {
+    "114834": "stable",
+    "114952": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903650569",
+   "dead_entities": 1,
+   "entities": [
+    114957,
+    114839
+   ],
+   "relations": {
+    "114839": "stable",
+    "114957": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903659661",
+   "dead_entities": 1,
+   "entities": [
+    114959,
+    114841
+   ],
+   "relations": {
+    "114841": "stable",
+    "114959": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903659685",
+   "dead_entities": 1,
+   "entities": [
+    114960,
+    114842
+   ],
+   "relations": {
+    "114842": "stable",
+    "114960": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903659791",
+   "dead_entities": 1,
+   "entities": [
+    114962,
+    114844
+   ],
+   "relations": {
+    "114844": "stable",
+    "114962": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903659869",
+   "dead_entities": 0,
+   "entities": [
+    114963,
+    114845
+   ],
+   "relations": {
+    "114845": "stable",
+    "114963": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903661640",
+   "dead_entities": 0,
+   "entities": [
+    114966,
+    114848
+   ],
+   "relations": {
+    "114848": "stable",
+    "114966": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903665921",
+   "dead_entities": 0,
+   "entities": [
+    114970,
+    76544
+   ],
+   "relations": {
+    "114970": "stable",
+    "76544": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903665938",
+   "dead_entities": 0,
+   "entities": [
+    114971,
+    114850
+   ],
+   "relations": {
+    "114850": "stable",
+    "114971": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903668823",
+   "dead_entities": 1,
+   "entities": [
+    114974,
+    114852
+   ],
+   "relations": {
+    "114852": "stable",
+    "114974": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903671984",
+   "dead_entities": 1,
+   "entities": [
+    114975,
+    114853
+   ],
+   "relations": {
+    "114853": "stable",
+    "114975": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903672097",
+   "dead_entities": 1,
+   "entities": [
+    114976,
+    114854
+   ],
+   "relations": {
+    "114854": "stable",
+    "114976": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903672462",
+   "dead_entities": 1,
+   "entities": [
+    114977,
+    76546
+   ],
+   "relations": {
+    "114977": "unknown",
+    "76546": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903672479",
+   "dead_entities": 1,
+   "entities": [
+    114978,
+    114855
+   ],
+   "relations": {
+    "114855": "stable",
+    "114978": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903672820",
+   "dead_entities": 1,
+   "entities": [
+    114979,
+    76547
+   ],
+   "relations": {
+    "114979": "unknown",
+    "76547": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903672882",
+   "dead_entities": 1,
+   "entities": [
+    114982,
+    76549
+   ],
+   "relations": {
+    "114982": "unknown",
+    "76549": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673247",
+   "dead_entities": 1,
+   "entities": [
+    114985,
+    76551
+   ],
+   "relations": {
+    "114985": "unknown",
+    "76551": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673261",
+   "dead_entities": 1,
+   "entities": [
+    114986,
+    114859
+   ],
+   "relations": {
+    "114859": "stable",
+    "114986": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673353",
+   "dead_entities": 1,
+   "entities": [
+    114987,
+    114860
+   ],
+   "relations": {
+    "114860": "stable",
+    "114987": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673360",
+   "dead_entities": 1,
+   "entities": [
+    114988,
+    114861
+   ],
+   "relations": {
+    "114861": "stable",
+    "114988": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673384",
+   "dead_entities": 1,
+   "entities": [
+    114989,
+    76552
+   ],
+   "relations": {
+    "114989": "unknown",
+    "76552": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673414",
+   "dead_entities": 0,
+   "entities": [
+    114990,
+    114862
+   ],
+   "relations": {
+    "114862": "stable",
+    "114990": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673544",
+   "dead_entities": 1,
+   "entities": [
+    114993,
+    76555
+   ],
+   "relations": {
+    "114993": "unknown",
+    "76555": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673551",
+   "dead_entities": 0,
+   "entities": [
+    114994,
+    114863
+   ],
+   "relations": {
+    "114863": "stable",
+    "114994": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673636",
+   "dead_entities": 0,
+   "entities": [
+    114995,
+    114864
+   ],
+   "relations": {
+    "114864": "stable",
+    "114995": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673735",
+   "dead_entities": 1,
+   "entities": [
+    114998,
+    114867
+   ],
+   "relations": {
+    "114867": "stable",
+    "114998": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673759",
+   "dead_entities": 1,
+   "entities": [
+    114999,
+    114868
+   ],
+   "relations": {
+    "114868": "stable",
+    "114999": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673773",
+   "dead_entities": 0,
+   "entities": [
+    115000,
+    114869
+   ],
+   "relations": {
+    "114869": "stable",
+    "115000": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903673933",
+   "dead_entities": 1,
+   "entities": [
+    115003,
+    114872
+   ],
+   "relations": {
+    "114872": "stable",
+    "115003": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903676712",
+   "dead_entities": 0,
+   "entities": [
+    115006,
+    114875
+   ],
+   "relations": {
+    "114875": "stable",
+    "115006": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678365",
+   "dead_entities": 0,
+   "entities": [
+    115008,
+    76557
+   ],
+   "relations": {
+    "115008": "stable",
+    "76557": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678396",
+   "dead_entities": 0,
+   "entities": [
+    115011,
+    76559
+   ],
+   "relations": {
+    "115011": "stable",
+    "76559": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678730",
+   "dead_entities": 0,
+   "entities": [
+    115012,
+    114877
+   ],
+   "relations": {
+    "114877": "stable",
+    "115012": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678839",
+   "dead_entities": 0,
+   "entities": [
+    115014,
+    114879
+   ],
+   "relations": {
+    "114879": "stable",
+    "115014": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678853",
+   "dead_entities": 0,
+   "entities": [
+    115015,
+    114880
+   ],
+   "relations": {
+    "114880": "stable",
+    "115015": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903678952",
+   "dead_entities": 0,
+   "entities": [
+    115016,
+    76560
+   ],
+   "relations": {
+    "115016": "stable",
+    "76560": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903679416",
+   "dead_entities": 1,
+   "entities": [
+    115020,
+    114883
+   ],
+   "relations": {
+    "114883": "stable",
+    "115020": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903679546",
+   "dead_entities": 1,
+   "entities": [
+    115021,
+    114884
+   ],
+   "relations": {
+    "114884": "stable",
+    "115021": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903679584",
+   "dead_entities": 0,
+   "entities": [
+    115023,
+    76562
+   ],
+   "relations": {
+    "115023": "stable",
+    "76562": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903681037",
+   "dead_entities": 1,
+   "entities": [
+    115025,
+    76563
+   ],
+   "relations": {
+    "115025": "unknown",
+    "76563": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903682010",
+   "dead_entities": 1,
+   "entities": [
+    115026,
+    114887
+   ],
+   "relations": {
+    "114887": "stable",
+    "115026": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903683819",
+   "dead_entities": 1,
+   "entities": [
+    115028,
+    114889
+   ],
+   "relations": {
+    "114889": "stable",
+    "115028": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903684946",
+   "dead_entities": 1,
+   "entities": [
+    115030,
+    114891
+   ],
+   "relations": {
+    "114891": "stable",
+    "115030": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903685011",
+   "dead_entities": 1,
+   "entities": [
+    115033,
+    114894
+   ],
+   "relations": {
+    "114894": "stable",
+    "115033": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903685202",
+   "dead_entities": 1,
+   "entities": [
+    115034,
+    114895
+   ],
+   "relations": {
+    "114895": "stable",
+    "115034": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903686582",
+   "dead_entities": 1,
+   "entities": [
+    115036,
+    114896
+   ],
+   "relations": {
+    "114896": "stable",
+    "115036": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903686841",
+   "dead_entities": 1,
+   "entities": [
+    115037,
+    114897
+   ],
+   "relations": {
+    "114897": "stable",
+    "115037": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903686858",
+   "dead_entities": 1,
+   "entities": [
+    115038,
+    114898
+   ],
+   "relations": {
+    "114898": "stable",
+    "115038": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903686865",
+   "dead_entities": 0,
+   "entities": [
+    115039,
+    114899
+   ],
+   "relations": {
+    "114899": "stable",
+    "115039": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903686896",
+   "dead_entities": 1,
+   "entities": [
+    115042,
+    114902
+   ],
+   "relations": {
+    "114902": "stable",
+    "115042": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903689750",
+   "dead_entities": 1,
+   "entities": [
+    115045,
+    114905
+   ],
+   "relations": {
+    "114905": "stable",
+    "115045": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903690329",
+   "dead_entities": 1,
+   "entities": [
+    115046,
+    114906
+   ],
+   "relations": {
+    "114906": "stable",
+    "115046": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382903811540",
+   "dead_entities": 1,
+   "entities": [
+    115047,
+    114907
+   ],
+   "relations": {
+    "114907": "stable",
+    "115047": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00382905152023",
+   "dead_entities": 0,
+   "entities": [
+    115050,
+    114910
+   ],
+   "relations": {
+    "114910": "stable",
+    "115050": "stable"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00800307815174",
+   "dead_entities": 1,
+   "entities": [
+    114216,
+    114215
+   ],
+   "relations": {
+    "114215": "stable",
+    "114216": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00810020170610",
+   "dead_entities": 0,
+   "entities": [
+    32194,
+    47314
+   ],
+   "relations": {
+    "32194": "split",
+    "47314": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00850278004091",
+   "dead_entities": 0,
+   "entities": [
+    32228,
+    54433
+   ],
+   "relations": {
+    "32228": "split",
+    "54433": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:00884389103275",
+   "dead_entities": 1,
+   "entities": [
+    114764,
+    114750
+   ],
+   "relations": {
+    "114750": "stable",
+    "114764": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:03555801288586",
+   "dead_entities": 0,
+   "entities": [
+    116505,
+    112617
+   ],
+   "relations": {
+    "112617": "merged_suspect",
+    "116505": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04057598002004",
+   "dead_entities": 0,
+   "entities": [
+    121954,
+    128020,
+    128652
+   ],
+   "relations": {
+    "121954": "split",
+    "128020": "split",
+    "128652": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04057598011464",
+   "dead_entities": 0,
+   "entities": [
+    120637,
+    120636
+   ],
+   "relations": {
+    "120636": "split",
+    "120637": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04057598016988",
+   "dead_entities": 0,
+   "entities": [
+    128021,
+    128845
+   ],
+   "relations": {
+    "128021": "split",
+    "128845": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04057598017077",
+   "dead_entities": 0,
+   "entities": [
+    121061,
+    128022,
+    128653
+   ],
+   "relations": {
+    "121061": "split",
+    "128022": "split",
+    "128653": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04057598017084",
+   "dead_entities": 0,
+   "entities": [
+    120438,
+    128023,
+    128654
+   ],
+   "relations": {
+    "120438": "split",
+    "128023": "split",
+    "128654": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04057599011074",
+   "dead_entities": 1,
+   "entities": [
+    113372,
+    113369
+   ],
+   "relations": {
+    "113369": "stable",
+    "113372": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:04987176274953",
+   "dead_entities": 0,
+   "entities": [
+    116664,
+    111135
+   ],
+   "relations": {
+    "111135": "merged_suspect",
+    "116664": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04987176274960",
+   "dead_entities": 0,
+   "entities": [
+    116665,
+    111136
+   ],
+   "relations": {
+    "111136": "merged_suspect",
+    "116665": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04987176363572",
+   "dead_entities": 0,
+   "entities": [
+    116711,
+    111139
+   ],
+   "relations": {
+    "111139": "merged_suspect",
+    "116711": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04987176363589",
+   "dead_entities": 0,
+   "entities": [
+    116712,
+    111140
+   ],
+   "relations": {
+    "111140": "merged_suspect",
+    "116712": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04987176363619",
+   "dead_entities": 0,
+   "entities": [
+    116715,
+    111141
+   ],
+   "relations": {
+    "111141": "merged_suspect",
+    "116715": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:04987176363626",
+   "dead_entities": 0,
+   "entities": [
+    116716,
+    111142
+   ],
+   "relations": {
+    "111142": "merged_suspect",
+    "116716": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:05051978000986",
+   "dead_entities": 1,
+   "entities": [
+    76223,
+    75673
+   ],
+   "relations": {
+    "75673": "split",
+    "76223": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:05051978001020",
+   "dead_entities": 2,
+   "entities": [
+    76224,
+    127502
+   ],
+   "relations": {
+    "127502": "unknown",
+    "76224": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:08901148232983",
+   "dead_entities": 0,
+   "entities": [
+    123123,
+    128055,
+    128679
+   ],
+   "relations": {
+    "123123": "split",
+    "128055": "split",
+    "128679": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09300605016392",
+   "dead_entities": 1,
+   "entities": [
+    114493,
+    114491
+   ],
+   "relations": {
+    "114491": "stable",
+    "114493": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09300631373575",
+   "dead_entities": 0,
+   "entities": [
+    128077,
+    128682
+   ],
+   "relations": {
+    "128077": "split",
+    "128682": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09300673839282",
+   "dead_entities": 0,
+   "entities": [
+    128087,
+    128683
+   ],
+   "relations": {
+    "128087": "split",
+    "128683": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09300673902696",
+   "dead_entities": 0,
+   "entities": [
+    117113,
+    110218
+   ],
+   "relations": {
+    "110218": "merged_suspect",
+    "117113": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09300673906779",
+   "dead_entities": 0,
+   "entities": [
+    117118,
+    115067
+   ],
+   "relations": {
+    "115067": "merged_suspect",
+    "117118": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09300711283404",
+   "dead_entities": 1,
+   "entities": [
+    107520,
+    107511
+   ],
+   "relations": {
+    "107511": "stable",
+    "107520": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310088008999",
+   "dead_entities": 0,
+   "entities": [
+    117204,
+    75715
+   ],
+   "relations": {
+    "117204": "merged_suspect",
+    "75715": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310088011227",
+   "dead_entities": 0,
+   "entities": [
+    117212,
+    75736
+   ],
+   "relations": {
+    "117212": "merged_suspect",
+    "75736": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310160813510",
+   "dead_entities": 0,
+   "entities": [
+    16904,
+    128099
+   ],
+   "relations": {
+    "128099": "split",
+    "16904": "split"
+   },
+   "verdict": "shared"
+  },
+  {
+   "code": "gtin:09310160814739",
+   "dead_entities": 0,
+   "entities": [
+    128100,
+    128685
+   ],
+   "relations": {
+    "128100": "merged_suspect",
+    "128685": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310263000695",
+   "dead_entities": 0,
+   "entities": [
+    122146,
+    122145
+   ],
+   "relations": {
+    "122145": "split",
+    "122146": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310320004840",
+   "dead_entities": 0,
+   "entities": [
+    117271,
+    110343
+   ],
+   "relations": {
+    "110343": "merged_suspect",
+    "117271": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310320005021",
+   "dead_entities": 0,
+   "entities": [
+    117274,
+    112618
+   ],
+   "relations": {
+    "112618": "merged_suspect",
+    "117274": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310488002375",
+   "dead_entities": 0,
+   "entities": [
+    128112,
+    128688
+   ],
+   "relations": {
+    "128112": "split",
+    "128688": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310488003174",
+   "dead_entities": 0,
+   "entities": [
+    128113,
+    128689
+   ],
+   "relations": {
+    "128113": "split",
+    "128689": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310488012176",
+   "dead_entities": 0,
+   "entities": [
+    122990,
+    128114,
+    128690
+   ],
+   "relations": {
+    "122990": "split",
+    "128114": "merged_suspect",
+    "128690": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310488017591",
+   "dead_entities": 0,
+   "entities": [
+    128115,
+    128691
+   ],
+   "relations": {
+    "128115": "split",
+    "128691": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310488022694",
+   "dead_entities": 0,
+   "entities": [
+    123951,
+    128116,
+    128692
+   ],
+   "relations": {
+    "123951": "split",
+    "128116": "merged_suspect",
+    "128692": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310488022724",
+   "dead_entities": 0,
+   "entities": [
+    123140,
+    123138
+   ],
+   "relations": {
+    "123138": "split",
+    "123140": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09310488022755",
+   "dead_entities": 0,
+   "entities": [
+    128117,
+    128693
+   ],
+   "relations": {
+    "128117": "merged_suspect",
+    "128693": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09310488022885",
+   "dead_entities": 0,
+   "entities": [
+    128118,
+    128694
+   ],
+   "relations": {
+    "128118": "split",
+    "128694": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09311770607667",
+   "dead_entities": 0,
+   "entities": [
+    114604,
+    114560
+   ],
+   "relations": {
+    "114560": "split",
+    "114604": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09311770607681",
+   "dead_entities": 0,
+   "entities": [
+    114605,
+    114561
+   ],
+   "relations": {
+    "114561": "split",
+    "114605": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09311770607773",
+   "dead_entities": 1,
+   "entities": [
+    114606,
+    114562
+   ],
+   "relations": {
+    "114562": "stable",
+    "114606": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09312658164210",
+   "dead_entities": 0,
+   "entities": [
+    117365,
+    110699
+   ],
+   "relations": {
+    "110699": "merged_suspect",
+    "117365": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09313212100927",
+   "dead_entities": 0,
+   "entities": [
+    128133,
+    128695
+   ],
+   "relations": {
+    "128133": "split",
+    "128695": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212100941",
+   "dead_entities": 0,
+   "entities": [
+    123271,
+    128134,
+    128696
+   ],
+   "relations": {
+    "123271": "split",
+    "128134": "split",
+    "128696": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212101306",
+   "dead_entities": 0,
+   "entities": [
+    128135,
+    128697
+   ],
+   "relations": {
+    "128135": "split",
+    "128697": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212101535",
+   "dead_entities": 0,
+   "entities": [
+    128136,
+    128698
+   ],
+   "relations": {
+    "128136": "split",
+    "128698": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212101665",
+   "dead_entities": 0,
+   "entities": [
+    120039,
+    128137,
+    128699
+   ],
+   "relations": {
+    "120039": "split",
+    "128137": "split",
+    "128699": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212102716",
+   "dead_entities": 0,
+   "entities": [
+    128138,
+    128700
+   ],
+   "relations": {
+    "128138": "split",
+    "128700": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313212107315",
+   "dead_entities": 0,
+   "entities": [
+    128146,
+    128701
+   ],
+   "relations": {
+    "128146": "split",
+    "128701": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09313501072577",
+   "dead_entities": 0,
+   "entities": [
+    128148,
+    128703
+   ],
+   "relations": {
+    "128148": "split",
+    "128703": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09314057020586",
+   "dead_entities": 0,
+   "entities": [
+    117391,
+    113101
+   ],
+   "relations": {
+    "113101": "merged_suspect",
+    "117391": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09314057020593",
+   "dead_entities": 0,
+   "entities": [
+    117392,
+    113102
+   ],
+   "relations": {
+    "113102": "merged_suspect",
+    "117392": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09314057020609",
+   "dead_entities": 0,
+   "entities": [
+    117393,
+    113103
+   ],
+   "relations": {
+    "113103": "merged_suspect",
+    "117393": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09314839014581",
+   "dead_entities": 0,
+   "entities": [
+    128152,
+    128704
+   ],
+   "relations": {
+    "128152": "split",
+    "128704": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09315430065453",
+   "dead_entities": 0,
+   "entities": [
+    128158,
+    128706
+   ],
+   "relations": {
+    "128158": "split",
+    "128706": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09316626101122",
+   "dead_entities": 0,
+   "entities": [
+    128162,
+    128707
+   ],
+   "relations": {
+    "128162": "split",
+    "128707": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09316626101382",
+   "dead_entities": 0,
+   "entities": [
+    122635,
+    128163,
+    128708
+   ],
+   "relations": {
+    "122635": "split",
+    "128163": "merged_suspect",
+    "128708": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09317039001061",
+   "dead_entities": 0,
+   "entities": [
+    21030,
+    128198
+   ],
+   "relations": {
+    "128198": "split",
+    "21030": "split"
+   },
+   "verdict": "shared"
+  },
+  {
+   "code": "gtin:09317376730648",
+   "dead_entities": 0,
+   "entities": [
+    30141,
+    123704
+   ],
+   "relations": {
+    "123704": "split",
+    "30141": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09318242000599",
+   "dead_entities": 0,
+   "entities": [
+    128242,
+    128714
+   ],
+   "relations": {
+    "128242": "split",
+    "128714": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09318242000773",
+   "dead_entities": 0,
+   "entities": [
+    128243,
+    128715
+   ],
+   "relations": {
+    "128243": "split",
+    "128715": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09319912018128",
+   "dead_entities": 0,
+   "entities": [
+    128262,
+    128718
+   ],
+   "relations": {
+    "128262": "split",
+    "128718": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09322141600378",
+   "dead_entities": 0,
+   "entities": [
+    128272,
+    128719
+   ],
+   "relations": {
+    "128272": "split",
+    "128719": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09322882000550",
+   "dead_entities": 0,
+   "entities": [
+    1800,
+    128316
+   ],
+   "relations": {
+    "128316": "split",
+    "1800": "split"
+   },
+   "verdict": "shared"
+  },
+  {
+   "code": "gtin:09323503024764",
+   "dead_entities": 0,
+   "entities": [
+    128321,
+    128722
+   ],
+   "relations": {
+    "128321": "split",
+    "128722": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09323610015877",
+   "dead_entities": 0,
+   "entities": [
+    125230,
+    128376,
+    128724
+   ],
+   "relations": {
+    "125230": "split",
+    "128376": "split",
+    "128724": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09323610016027",
+   "dead_entities": 0,
+   "entities": [
+    125238,
+    128377,
+    128725
+   ],
+   "relations": {
+    "125238": "split",
+    "128377": "split",
+    "128725": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09323857000155",
+   "dead_entities": 0,
+   "entities": [
+    122138,
+    128389,
+    128732
+   ],
+   "relations": {
+    "122138": "split",
+    "128389": "split",
+    "128732": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09323857000759",
+   "dead_entities": 0,
+   "entities": [
+    119946,
+    128390,
+    128733
+   ],
+   "relations": {
+    "119946": "split",
+    "128390": "split",
+    "128733": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09326306007491",
+   "dead_entities": 0,
+   "entities": [
+    117531,
+    75850
+   ],
+   "relations": {
+    "117531": "merged_suspect",
+    "75850": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09329221224509",
+   "dead_entities": 1,
+   "entities": [
+    110359,
+    110348
+   ],
+   "relations": {
+    "110348": "stable",
+    "110359": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09329414721754",
+   "dead_entities": 1,
+   "entities": [
+    107586,
+    107585
+   ],
+   "relations": {
+    "107585": "stable",
+    "107586": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09331880038519",
+   "dead_entities": 2,
+   "entities": [
+    117561,
+    110224
+   ],
+   "relations": {
+    "110224": "unknown",
+    "117561": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:09331880038632",
+   "dead_entities": 0,
+   "entities": [
+    117562,
+    110231
+   ],
+   "relations": {
+    "110231": "merged_suspect",
+    "117562": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038649",
+   "dead_entities": 0,
+   "entities": [
+    117563,
+    110232
+   ],
+   "relations": {
+    "110232": "merged_suspect",
+    "117563": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038656",
+   "dead_entities": 0,
+   "entities": [
+    117564,
+    110233
+   ],
+   "relations": {
+    "110233": "merged_suspect",
+    "117564": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038663",
+   "dead_entities": 0,
+   "entities": [
+    117565,
+    110234
+   ],
+   "relations": {
+    "110234": "merged_suspect",
+    "117565": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038670",
+   "dead_entities": 0,
+   "entities": [
+    117566,
+    110235
+   ],
+   "relations": {
+    "110235": "merged_suspect",
+    "117566": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038687",
+   "dead_entities": 0,
+   "entities": [
+    117567,
+    110236
+   ],
+   "relations": {
+    "110236": "merged_suspect",
+    "117567": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880038694",
+   "dead_entities": 0,
+   "entities": [
+    117568,
+    110237
+   ],
+   "relations": {
+    "110237": "merged_suspect",
+    "117568": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880043377",
+   "dead_entities": 0,
+   "entities": [
+    117569,
+    110239
+   ],
+   "relations": {
+    "110239": "merged_suspect",
+    "117569": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880043520",
+   "dead_entities": 0,
+   "entities": [
+    117582,
+    110705
+   ],
+   "relations": {
+    "110705": "merged_suspect",
+    "117582": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880043537",
+   "dead_entities": 0,
+   "entities": [
+    117583,
+    110706
+   ],
+   "relations": {
+    "110706": "merged_suspect",
+    "117583": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880043544",
+   "dead_entities": 0,
+   "entities": [
+    117584,
+    110707
+   ],
+   "relations": {
+    "110707": "merged_suspect",
+    "117584": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880044923",
+   "dead_entities": 0,
+   "entities": [
+    117600,
+    110240
+   ],
+   "relations": {
+    "110240": "merged_suspect",
+    "117600": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046712",
+   "dead_entities": 0,
+   "entities": [
+    117608,
+    110763
+   ],
+   "relations": {
+    "110763": "merged_suspect",
+    "117608": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046729",
+   "dead_entities": 0,
+   "entities": [
+    117609,
+    110764
+   ],
+   "relations": {
+    "110764": "merged_suspect",
+    "117609": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046736",
+   "dead_entities": 0,
+   "entities": [
+    117610,
+    110765
+   ],
+   "relations": {
+    "110765": "merged_suspect",
+    "117610": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046743",
+   "dead_entities": 0,
+   "entities": [
+    117611,
+    110766
+   ],
+   "relations": {
+    "110766": "merged_suspect",
+    "117611": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046774",
+   "dead_entities": 0,
+   "entities": [
+    117614,
+    110726
+   ],
+   "relations": {
+    "110726": "merged_suspect",
+    "117614": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046781",
+   "dead_entities": 0,
+   "entities": [
+    117615,
+    110768
+   ],
+   "relations": {
+    "110768": "merged_suspect",
+    "117615": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046798",
+   "dead_entities": 0,
+   "entities": [
+    117616,
+    110769
+   ],
+   "relations": {
+    "110769": "merged_suspect",
+    "117616": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046804",
+   "dead_entities": 0,
+   "entities": [
+    117617,
+    110770
+   ],
+   "relations": {
+    "110770": "merged_suspect",
+    "117617": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046811",
+   "dead_entities": 0,
+   "entities": [
+    117618,
+    110771
+   ],
+   "relations": {
+    "110771": "merged_suspect",
+    "117618": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046828",
+   "dead_entities": 0,
+   "entities": [
+    117619,
+    110772
+   ],
+   "relations": {
+    "110772": "merged_suspect",
+    "117619": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046835",
+   "dead_entities": 0,
+   "entities": [
+    117620,
+    111176
+   ],
+   "relations": {
+    "111176": "merged_suspect",
+    "117620": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046842",
+   "dead_entities": 0,
+   "entities": [
+    117621,
+    111177
+   ],
+   "relations": {
+    "111177": "merged_suspect",
+    "117621": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046859",
+   "dead_entities": 0,
+   "entities": [
+    117622,
+    110773
+   ],
+   "relations": {
+    "110773": "merged_suspect",
+    "117622": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046866",
+   "dead_entities": 0,
+   "entities": [
+    117623,
+    110774
+   ],
+   "relations": {
+    "110774": "merged_suspect",
+    "117623": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046873",
+   "dead_entities": 0,
+   "entities": [
+    117624,
+    110775
+   ],
+   "relations": {
+    "110775": "merged_suspect",
+    "117624": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046880",
+   "dead_entities": 0,
+   "entities": [
+    117625,
+    110776
+   ],
+   "relations": {
+    "110776": "merged_suspect",
+    "117625": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046897",
+   "dead_entities": 0,
+   "entities": [
+    117626,
+    110777
+   ],
+   "relations": {
+    "110777": "merged_suspect",
+    "117626": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046903",
+   "dead_entities": 0,
+   "entities": [
+    117627,
+    110778
+   ],
+   "relations": {
+    "110778": "merged_suspect",
+    "117627": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880046910",
+   "dead_entities": 0,
+   "entities": [
+    117628,
+    110727
+   ],
+   "relations": {
+    "110727": "merged_suspect",
+    "117628": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047559",
+   "dead_entities": 0,
+   "entities": [
+    117630,
+    110781
+   ],
+   "relations": {
+    "110781": "merged_suspect",
+    "117630": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047566",
+   "dead_entities": 0,
+   "entities": [
+    117631,
+    110782
+   ],
+   "relations": {
+    "110782": "merged_suspect",
+    "117631": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047573",
+   "dead_entities": 0,
+   "entities": [
+    117632,
+    110783
+   ],
+   "relations": {
+    "110783": "merged_suspect",
+    "117632": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047597",
+   "dead_entities": 0,
+   "entities": [
+    117633,
+    110784
+   ],
+   "relations": {
+    "110784": "merged_suspect",
+    "117633": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047610",
+   "dead_entities": 0,
+   "entities": [
+    117635,
+    110785
+   ],
+   "relations": {
+    "110785": "merged_suspect",
+    "117635": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047849",
+   "dead_entities": 0,
+   "entities": [
+    117640,
+    110788
+   ],
+   "relations": {
+    "110788": "merged_suspect",
+    "117640": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880047863",
+   "dead_entities": 0,
+   "entities": [
+    117642,
+    111181
+   ],
+   "relations": {
+    "111181": "merged_suspect",
+    "117642": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880051440",
+   "dead_entities": 2,
+   "entities": [
+    117643,
+    113180
+   ],
+   "relations": {
+    "113180": "unknown",
+    "117643": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:09331880051457",
+   "dead_entities": 2,
+   "entities": [
+    117644,
+    113181
+   ],
+   "relations": {
+    "113181": "unknown",
+    "117644": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:09331880051464",
+   "dead_entities": 0,
+   "entities": [
+    117645,
+    113086
+   ],
+   "relations": {
+    "113086": "merged_suspect",
+    "117645": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880051471",
+   "dead_entities": 2,
+   "entities": [
+    117646,
+    113183
+   ],
+   "relations": {
+    "113183": "unknown",
+    "117646": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:09331880051488",
+   "dead_entities": 0,
+   "entities": [
+    117647,
+    113088
+   ],
+   "relations": {
+    "113088": "merged_suspect",
+    "117647": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09331880051495",
+   "dead_entities": 2,
+   "entities": [
+    117648,
+    113185
+   ],
+   "relations": {
+    "113185": "unknown",
+    "117648": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:09331880051501",
+   "dead_entities": 1,
+   "entities": [
+    113186,
+    113090
+   ],
+   "relations": {
+    "113090": "stable",
+    "113186": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09334820000157",
+   "dead_entities": 0,
+   "entities": [
+    128441,
+    128740
+   ],
+   "relations": {
+    "128441": "split",
+    "128740": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475028795",
+   "dead_entities": 0,
+   "entities": [
+    119680,
+    128460,
+    128742
+   ],
+   "relations": {
+    "119680": "split",
+    "128460": "split",
+    "128742": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475029631",
+   "dead_entities": 0,
+   "entities": [
+    124770,
+    128461,
+    128743
+   ],
+   "relations": {
+    "124770": "split",
+    "128461": "split",
+    "128743": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475029648",
+   "dead_entities": 0,
+   "entities": [
+    124774,
+    128462,
+    128744
+   ],
+   "relations": {
+    "124774": "split",
+    "128462": "split",
+    "128744": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475029655",
+   "dead_entities": 0,
+   "entities": [
+    124768,
+    128463,
+    128745
+   ],
+   "relations": {
+    "124768": "split",
+    "128463": "split",
+    "128745": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475029884",
+   "dead_entities": 0,
+   "entities": [
+    124745,
+    128464,
+    128746
+   ],
+   "relations": {
+    "124745": "split",
+    "128464": "split",
+    "128746": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475029891",
+   "dead_entities": 0,
+   "entities": [
+    124747,
+    128465,
+    128747
+   ],
+   "relations": {
+    "124747": "split",
+    "128465": "split",
+    "128747": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475030217",
+   "dead_entities": 0,
+   "entities": [
+    119659,
+    128466,
+    128748
+   ],
+   "relations": {
+    "119659": "split",
+    "128466": "split",
+    "128748": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475031115",
+   "dead_entities": 0,
+   "entities": [
+    124719,
+    128467,
+    128749
+   ],
+   "relations": {
+    "124719": "split",
+    "128467": "split",
+    "128749": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475031351",
+   "dead_entities": 0,
+   "entities": [
+    119685,
+    128468,
+    128750
+   ],
+   "relations": {
+    "119685": "split",
+    "128468": "split",
+    "128750": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475320578",
+   "dead_entities": 0,
+   "entities": [
+    124945,
+    128469,
+    128752
+   ],
+   "relations": {
+    "124945": "split",
+    "128469": "split",
+    "128752": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338475323142",
+   "dead_entities": 0,
+   "entities": [
+    128470,
+    128753
+   ],
+   "relations": {
+    "128470": "split",
+    "128753": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09338689003496",
+   "dead_entities": 0,
+   "entities": [
+    118081,
+    128473,
+    128761
+   ],
+   "relations": {
+    "118081": "split",
+    "128473": "merged_suspect",
+    "128761": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218000122",
+   "dead_entities": 0,
+   "entities": [
+    124514,
+    128482,
+    128763
+   ],
+   "relations": {
+    "124514": "split",
+    "128482": "split",
+    "128763": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218000139",
+   "dead_entities": 0,
+   "entities": [
+    123409,
+    128483,
+    128764
+   ],
+   "relations": {
+    "123409": "split",
+    "128483": "merged_suspect",
+    "128764": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09339218000412",
+   "dead_entities": 0,
+   "entities": [
+    124908,
+    118716
+   ],
+   "relations": {
+    "118716": "merged_suspect",
+    "124908": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218000665",
+   "dead_entities": 0,
+   "entities": [
+    121309,
+    128486,
+    128765
+   ],
+   "relations": {
+    "121309": "split",
+    "128486": "split",
+    "128765": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218000696",
+   "dead_entities": 0,
+   "entities": [
+    122962,
+    128487,
+    128766
+   ],
+   "relations": {
+    "122962": "split",
+    "128487": "split",
+    "128766": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218000856",
+   "dead_entities": 0,
+   "entities": [
+    124376,
+    128488,
+    128767
+   ],
+   "relations": {
+    "124376": "split",
+    "128488": "split",
+    "128767": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218004144",
+   "dead_entities": 0,
+   "entities": [
+    119214,
+    128489,
+    128769
+   ],
+   "relations": {
+    "119214": "split",
+    "128489": "split",
+    "128769": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09339218004175",
+   "dead_entities": 0,
+   "entities": [
+    119220,
+    128490,
+    128770
+   ],
+   "relations": {
+    "119220": "split",
+    "128490": "split",
+    "128770": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09342232000153",
+   "dead_entities": 0,
+   "entities": [
+    125143,
+    128492,
+    128772
+   ],
+   "relations": {
+    "125143": "split",
+    "128492": "split",
+    "128772": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09346720002131",
+   "dead_entities": 0,
+   "entities": [
+    64035,
+    109972
+   ],
+   "relations": {
+    "109972": "merged_suspect",
+    "64035": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09350299000528",
+   "dead_entities": 0,
+   "entities": [
+    122108,
+    128512,
+    128800
+   ],
+   "relations": {
+    "122108": "split",
+    "128512": "split",
+    "128800": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299001211",
+   "dead_entities": 0,
+   "entities": [
+    122447,
+    128513,
+    128801
+   ],
+   "relations": {
+    "122447": "split",
+    "128513": "split",
+    "128801": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299001228",
+   "dead_entities": 0,
+   "entities": [
+    124239,
+    128514,
+    128802
+   ],
+   "relations": {
+    "124239": "split",
+    "128514": "split",
+    "128802": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299001488",
+   "dead_entities": 0,
+   "entities": [
+    128515,
+    128803
+   ],
+   "relations": {
+    "128515": "split",
+    "128803": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299001648",
+   "dead_entities": 0,
+   "entities": [
+    119864,
+    128516,
+    128804
+   ],
+   "relations": {
+    "119864": "split",
+    "128516": "split",
+    "128804": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299004076",
+   "dead_entities": 0,
+   "entities": [
+    118808,
+    128517,
+    128805
+   ],
+   "relations": {
+    "118808": "split",
+    "128517": "split",
+    "128805": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299004168",
+   "dead_entities": 0,
+   "entities": [
+    120863,
+    120861
+   ],
+   "relations": {
+    "120861": "split",
+    "120863": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299004175",
+   "dead_entities": 0,
+   "entities": [
+    124155,
+    124154
+   ],
+   "relations": {
+    "124154": "split",
+    "124155": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299004199",
+   "dead_entities": 0,
+   "entities": [
+    122561,
+    122559
+   ],
+   "relations": {
+    "122559": "split",
+    "122561": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299004434",
+   "dead_entities": 0,
+   "entities": [
+    128518,
+    128806
+   ],
+   "relations": {
+    "128518": "split",
+    "128806": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299005783",
+   "dead_entities": 0,
+   "entities": [
+    121852,
+    128519,
+    128807
+   ],
+   "relations": {
+    "121852": "split",
+    "128519": "split",
+    "128807": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09350299010480",
+   "dead_entities": 0,
+   "entities": [
+    128520,
+    128809
+   ],
+   "relations": {
+    "128520": "split",
+    "128809": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09351791000603",
+   "dead_entities": 0,
+   "entities": [
+    121459,
+    128523,
+    128812
+   ],
+   "relations": {
+    "121459": "split",
+    "128523": "split",
+    "128812": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09351791000955",
+   "dead_entities": 1,
+   "entities": [
+    114517,
+    114510
+   ],
+   "relations": {
+    "114510": "stable",
+    "114517": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09351791000993",
+   "dead_entities": 1,
+   "entities": [
+    114518,
+    114511
+   ],
+   "relations": {
+    "114511": "stable",
+    "114518": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09353767361732",
+   "dead_entities": 0,
+   "entities": [
+    117859,
+    112622
+   ],
+   "relations": {
+    "112622": "merged_suspect",
+    "117859": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000000",
+   "dead_entities": 0,
+   "entities": [
+    117940,
+    114449
+   ],
+   "relations": {
+    "114449": "merged_suspect",
+    "117940": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000017",
+   "dead_entities": 0,
+   "entities": [
+    117941,
+    114440
+   ],
+   "relations": {
+    "114440": "merged_suspect",
+    "117941": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000048",
+   "dead_entities": 0,
+   "entities": [
+    117942,
+    114441
+   ],
+   "relations": {
+    "114441": "merged_suspect",
+    "117942": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000062",
+   "dead_entities": 0,
+   "entities": [
+    117943,
+    114455
+   ],
+   "relations": {
+    "114455": "merged_suspect",
+    "117943": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000086",
+   "dead_entities": 0,
+   "entities": [
+    117944,
+    114456
+   ],
+   "relations": {
+    "114456": "merged_suspect",
+    "117944": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000093",
+   "dead_entities": 0,
+   "entities": [
+    117945,
+    114462
+   ],
+   "relations": {
+    "114462": "merged_suspect",
+    "117945": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000109",
+   "dead_entities": 0,
+   "entities": [
+    117946,
+    114461
+   ],
+   "relations": {
+    "114461": "merged_suspect",
+    "117946": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000123",
+   "dead_entities": 0,
+   "entities": [
+    117947,
+    114463
+   ],
+   "relations": {
+    "114463": "merged_suspect",
+    "117947": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000147",
+   "dead_entities": 0,
+   "entities": [
+    117948,
+    114465
+   ],
+   "relations": {
+    "114465": "merged_suspect",
+    "117948": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000154",
+   "dead_entities": 0,
+   "entities": [
+    117949,
+    114466
+   ],
+   "relations": {
+    "114466": "merged_suspect",
+    "117949": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000161",
+   "dead_entities": 0,
+   "entities": [
+    117950,
+    114467
+   ],
+   "relations": {
+    "114467": "merged_suspect",
+    "117950": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000185",
+   "dead_entities": 0,
+   "entities": [
+    117951,
+    114433
+   ],
+   "relations": {
+    "114433": "merged_suspect",
+    "117951": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000192",
+   "dead_entities": 0,
+   "entities": [
+    117952,
+    114434
+   ],
+   "relations": {
+    "114434": "merged_suspect",
+    "117952": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000208",
+   "dead_entities": 0,
+   "entities": [
+    117953,
+    114435
+   ],
+   "relations": {
+    "114435": "merged_suspect",
+    "117953": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000222",
+   "dead_entities": 0,
+   "entities": [
+    117954,
+    114444
+   ],
+   "relations": {
+    "114444": "merged_suspect",
+    "117954": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000239",
+   "dead_entities": 0,
+   "entities": [
+    117955,
+    114443
+   ],
+   "relations": {
+    "114443": "merged_suspect",
+    "117955": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000246",
+   "dead_entities": 0,
+   "entities": [
+    117956,
+    114447
+   ],
+   "relations": {
+    "114447": "merged_suspect",
+    "117956": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000253",
+   "dead_entities": 0,
+   "entities": [
+    117957,
+    114448
+   ],
+   "relations": {
+    "114448": "merged_suspect",
+    "117957": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000277",
+   "dead_entities": 0,
+   "entities": [
+    117958,
+    114445
+   ],
+   "relations": {
+    "114445": "merged_suspect",
+    "117958": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000284",
+   "dead_entities": 0,
+   "entities": [
+    117959,
+    114446
+   ],
+   "relations": {
+    "114446": "merged_suspect",
+    "117959": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000291",
+   "dead_entities": 0,
+   "entities": [
+    117960,
+    114468
+   ],
+   "relations": {
+    "114468": "merged_suspect",
+    "117960": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000314",
+   "dead_entities": 0,
+   "entities": [
+    117961,
+    114464
+   ],
+   "relations": {
+    "114464": "merged_suspect",
+    "117961": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000338",
+   "dead_entities": 0,
+   "entities": [
+    117962,
+    114436
+   ],
+   "relations": {
+    "114436": "merged_suspect",
+    "117962": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000345",
+   "dead_entities": 0,
+   "entities": [
+    117963,
+    114437
+   ],
+   "relations": {
+    "114437": "merged_suspect",
+    "117963": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000406",
+   "dead_entities": 0,
+   "entities": [
+    117964,
+    114438
+   ],
+   "relations": {
+    "114438": "merged_suspect",
+    "117964": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000413",
+   "dead_entities": 0,
+   "entities": [
+    117965,
+    114439
+   ],
+   "relations": {
+    "114439": "merged_suspect",
+    "117965": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000420",
+   "dead_entities": 0,
+   "entities": [
+    117966,
+    114459
+   ],
+   "relations": {
+    "114459": "merged_suspect",
+    "117966": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000437",
+   "dead_entities": 0,
+   "entities": [
+    117967,
+    114460
+   ],
+   "relations": {
+    "114460": "merged_suspect",
+    "117967": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000444",
+   "dead_entities": 0,
+   "entities": [
+    117968,
+    114453
+   ],
+   "relations": {
+    "114453": "merged_suspect",
+    "117968": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000451",
+   "dead_entities": 0,
+   "entities": [
+    117969,
+    114454
+   ],
+   "relations": {
+    "114454": "merged_suspect",
+    "117969": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000468",
+   "dead_entities": 0,
+   "entities": [
+    117970,
+    114451
+   ],
+   "relations": {
+    "114451": "merged_suspect",
+    "117970": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000475",
+   "dead_entities": 0,
+   "entities": [
+    117971,
+    114452
+   ],
+   "relations": {
+    "114452": "merged_suspect",
+    "117971": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000482",
+   "dead_entities": 0,
+   "entities": [
+    117972,
+    114450
+   ],
+   "relations": {
+    "114450": "merged_suspect",
+    "117972": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000499",
+   "dead_entities": 0,
+   "entities": [
+    117973,
+    114457
+   ],
+   "relations": {
+    "114457": "merged_suspect",
+    "117973": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09362291000505",
+   "dead_entities": 0,
+   "entities": [
+    117974,
+    114458
+   ],
+   "relations": {
+    "114458": "merged_suspect",
+    "117974": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09370700095677",
+   "dead_entities": 1,
+   "entities": [
+    114539,
+    114534
+   ],
+   "relations": {
+    "114534": "stable",
+    "114539": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09370700095691",
+   "dead_entities": 1,
+   "entities": [
+    114541,
+    114536
+   ],
+   "relations": {
+    "114536": "stable",
+    "114541": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09370700097992",
+   "dead_entities": 1,
+   "entities": [
+    114543,
+    114538
+   ],
+   "relations": {
+    "114538": "stable",
+    "114543": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:09414812068980",
+   "dead_entities": 0,
+   "entities": [
+    117988,
+    76061
+   ],
+   "relations": {
+    "117988": "merged_suspect",
+    "76061": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:09555240404367",
+   "dead_entities": 1,
+   "entities": [
+    115086,
+    115084
+   ],
+   "relations": {
+    "115084": "stable",
+    "115086": "unknown"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:15391189071274",
+   "dead_entities": 0,
+   "entities": [
+    124891,
+    127159,
+    2412
+   ],
+   "relations": {
+    "124891": "split",
+    "127159": "split",
+    "2412": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:18901148226767",
+   "dead_entities": 0,
+   "entities": [
+    124182,
+    127166,
+    3218
+   ],
+   "relations": {
+    "124182": "split",
+    "127166": "merged_suspect",
+    "3218": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:18901148226798",
+   "dead_entities": 0,
+   "entities": [
+    120221,
+    127167,
+    4025
+   ],
+   "relations": {
+    "120221": "split",
+    "127167": "merged_suspect",
+    "4025": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:18901148226804",
+   "dead_entities": 0,
+   "entities": [
+    124270,
+    127168,
+    1323
+   ],
+   "relations": {
+    "124270": "split",
+    "127168": "merged_suspect",
+    "1323": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:18901148226828",
+   "dead_entities": 0,
+   "entities": [
+    123124,
+    127169,
+    2942
+   ],
+   "relations": {
+    "123124": "split",
+    "127169": "merged_suspect",
+    "2942": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:18901148233109",
+   "dead_entities": 0,
+   "entities": [
+    119057,
+    127768,
+    37419
+   ],
+   "relations": {
+    "119057": "split",
+    "127768": "merged_suspect",
+    "37419": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19300673854404",
+   "dead_entities": 1,
+   "entities": [
+    123585,
+    127178
+   ],
+   "relations": {
+    "123585": "stable",
+    "127178": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19300673889932",
+   "dead_entities": 1,
+   "entities": [
+    121037,
+    127180
+   ],
+   "relations": {
+    "121037": "stable",
+    "127180": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19310160805208",
+   "dead_entities": 0,
+   "entities": [
+    120913,
+    127774,
+    54057
+   ],
+   "relations": {
+    "120913": "split",
+    "127774": "split",
+    "54057": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19314057000424",
+   "dead_entities": 0,
+   "entities": [
+    120117,
+    127775,
+    120116
+   ],
+   "relations": {
+    "120116": "split",
+    "120117": "split",
+    "127775": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19314057000486",
+   "dead_entities": 0,
+   "entities": [
+    120049,
+    127776,
+    2040
+   ],
+   "relations": {
+    "120049": "split",
+    "127776": "split",
+    "2040": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19314057000578",
+   "dead_entities": 0,
+   "entities": [
+    121948,
+    127777,
+    734
+   ],
+   "relations": {
+    "121948": "split",
+    "127777": "split",
+    "734": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19314949260356",
+   "dead_entities": 1,
+   "entities": [
+    120650,
+    127230
+   ],
+   "relations": {
+    "120650": "stable",
+    "127230": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19322838007562",
+   "dead_entities": 0,
+   "entities": [
+    127770,
+    79525
+   ],
+   "relations": {
+    "127770": "split",
+    "79525": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19323610013993",
+   "dead_entities": 1,
+   "entities": [
+    125241,
+    127736
+   ],
+   "relations": {
+    "125241": "stable",
+    "127736": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19323610015546",
+   "dead_entities": 0,
+   "entities": [
+    125221,
+    127737,
+    38252
+   ],
+   "relations": {
+    "125221": "split",
+    "127737": "split",
+    "38252": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19323610015690",
+   "dead_entities": 0,
+   "entities": [
+    119083,
+    127738,
+    2617
+   ],
+   "relations": {
+    "119083": "split",
+    "127738": "split",
+    "2617": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19323610015881",
+   "dead_entities": 0,
+   "entities": [
+    125232,
+    127739
+   ],
+   "relations": {
+    "125232": "merged_suspect",
+    "127739": "merged_suspect"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19323610015898",
+   "dead_entities": 0,
+   "entities": [
+    125233,
+    127740
+   ],
+   "relations": {
+    "125233": "merged_suspect",
+    "127740": "merged_suspect"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19326307002034",
+   "dead_entities": 1,
+   "entities": [
+    119583,
+    127261
+   ],
+   "relations": {
+    "119583": "stable",
+    "127261": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19326307002041",
+   "dead_entities": 1,
+   "entities": [
+    125279,
+    127262
+   ],
+   "relations": {
+    "125279": "stable",
+    "127262": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19326307002065",
+   "dead_entities": 1,
+   "entities": [
+    125277,
+    127263
+   ],
+   "relations": {
+    "125277": "stable",
+    "127263": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19330169002279",
+   "dead_entities": 2,
+   "entities": [
+    120674,
+    127268
+   ],
+   "relations": {
+    "120674": "unknown",
+    "127268": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19330169002484",
+   "dead_entities": 0,
+   "entities": [
+    119226,
+    32599
+   ],
+   "relations": {
+    "119226": "merged_suspect",
+    "32599": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:19338475024619",
+   "dead_entities": 1,
+   "entities": [
+    122257,
+    127288
+   ],
+   "relations": {
+    "122257": "stable",
+    "127288": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475026088",
+   "dead_entities": 1,
+   "entities": [
+    125091,
+    127289
+   ],
+   "relations": {
+    "125091": "stable",
+    "127289": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475026514",
+   "dead_entities": 1,
+   "entities": [
+    119675,
+    127290
+   ],
+   "relations": {
+    "119675": "stable",
+    "127290": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475026521",
+   "dead_entities": 1,
+   "entities": [
+    119676,
+    127291
+   ],
+   "relations": {
+    "119676": "stable",
+    "127291": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475026804",
+   "dead_entities": 1,
+   "entities": [
+    118152,
+    127292
+   ],
+   "relations": {
+    "118152": "stable",
+    "127292": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475027955",
+   "dead_entities": 1,
+   "entities": [
+    119623,
+    127293
+   ],
+   "relations": {
+    "119623": "stable",
+    "127293": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475027962",
+   "dead_entities": 1,
+   "entities": [
+    119624,
+    127294
+   ],
+   "relations": {
+    "119624": "stable",
+    "127294": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475028105",
+   "dead_entities": 1,
+   "entities": [
+    119694,
+    127295
+   ],
+   "relations": {
+    "119694": "stable",
+    "127295": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475028204",
+   "dead_entities": 1,
+   "entities": [
+    119510,
+    127296
+   ],
+   "relations": {
+    "119510": "stable",
+    "127296": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029140",
+   "dead_entities": 1,
+   "entities": [
+    119643,
+    127297
+   ],
+   "relations": {
+    "119643": "stable",
+    "127297": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029157",
+   "dead_entities": 1,
+   "entities": [
+    118836,
+    127298
+   ],
+   "relations": {
+    "118836": "stable",
+    "127298": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029348",
+   "dead_entities": 1,
+   "entities": [
+    118746,
+    127299
+   ],
+   "relations": {
+    "118746": "stable",
+    "127299": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029669",
+   "dead_entities": 1,
+   "entities": [
+    124923,
+    127300
+   ],
+   "relations": {
+    "124923": "stable",
+    "127300": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029690",
+   "dead_entities": 1,
+   "entities": [
+    124924,
+    127301
+   ],
+   "relations": {
+    "124924": "stable",
+    "127301": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029706",
+   "dead_entities": 1,
+   "entities": [
+    124920,
+    127302
+   ],
+   "relations": {
+    "124920": "stable",
+    "127302": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029713",
+   "dead_entities": 1,
+   "entities": [
+    124921,
+    127303
+   ],
+   "relations": {
+    "124921": "stable",
+    "127303": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029751",
+   "dead_entities": 1,
+   "entities": [
+    119677,
+    127304
+   ],
+   "relations": {
+    "119677": "stable",
+    "127304": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475029935",
+   "dead_entities": 1,
+   "entities": [
+    124731,
+    127305
+   ],
+   "relations": {
+    "124731": "stable",
+    "127305": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030221",
+   "dead_entities": 1,
+   "entities": [
+    119244,
+    127306
+   ],
+   "relations": {
+    "119244": "stable",
+    "127306": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030368",
+   "dead_entities": 1,
+   "entities": [
+    124759,
+    127307
+   ],
+   "relations": {
+    "124759": "stable",
+    "127307": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030375",
+   "dead_entities": 1,
+   "entities": [
+    123451,
+    127308
+   ],
+   "relations": {
+    "123451": "stable",
+    "127308": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030382",
+   "dead_entities": 1,
+   "entities": [
+    120137,
+    127309
+   ],
+   "relations": {
+    "120137": "stable",
+    "127309": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030504",
+   "dead_entities": 1,
+   "entities": [
+    124786,
+    127310
+   ],
+   "relations": {
+    "124786": "stable",
+    "127310": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030559",
+   "dead_entities": 1,
+   "entities": [
+    124791,
+    127311
+   ],
+   "relations": {
+    "124791": "stable",
+    "127311": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030672",
+   "dead_entities": 1,
+   "entities": [
+    119210,
+    127312
+   ],
+   "relations": {
+    "119210": "stable",
+    "127312": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030689",
+   "dead_entities": 1,
+   "entities": [
+    119212,
+    127313
+   ],
+   "relations": {
+    "119212": "stable",
+    "127313": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030887",
+   "dead_entities": 1,
+   "entities": [
+    119179,
+    127314
+   ],
+   "relations": {
+    "119179": "stable",
+    "127314": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475030900",
+   "dead_entities": 1,
+   "entities": [
+    119180,
+    127315
+   ],
+   "relations": {
+    "119180": "stable",
+    "127315": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475031037",
+   "dead_entities": 1,
+   "entities": [
+    119208,
+    127316
+   ],
+   "relations": {
+    "119208": "stable",
+    "127316": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475031044",
+   "dead_entities": 1,
+   "entities": [
+    119209,
+    127317
+   ],
+   "relations": {
+    "119209": "stable",
+    "127317": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475031570",
+   "dead_entities": 1,
+   "entities": [
+    119692,
+    127318
+   ],
+   "relations": {
+    "119692": "stable",
+    "127318": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475089175",
+   "dead_entities": 1,
+   "entities": [
+    121410,
+    127319
+   ],
+   "relations": {
+    "121410": "stable",
+    "127319": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475098047",
+   "dead_entities": 0,
+   "entities": [
+    118960,
+    1393
+   ],
+   "relations": {
+    "118960": "split",
+    "1393": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19338475320155",
+   "dead_entities": 1,
+   "entities": [
+    125243,
+    127320
+   ],
+   "relations": {
+    "125243": "stable",
+    "127320": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475320599",
+   "dead_entities": 1,
+   "entities": [
+    119410,
+    127321
+   ],
+   "relations": {
+    "119410": "stable",
+    "127321": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475320698",
+   "dead_entities": 0,
+   "entities": [
+    119455,
+    127322,
+    37040
+   ],
+   "relations": {
+    "119455": "split",
+    "127322": "split",
+    "37040": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19338475320704",
+   "dead_entities": 0,
+   "entities": [
+    119454,
+    127778,
+    37041
+   ],
+   "relations": {
+    "119454": "split",
+    "127778": "split",
+    "37041": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19338475321237",
+   "dead_entities": 1,
+   "entities": [
+    119378,
+    127323
+   ],
+   "relations": {
+    "119378": "stable",
+    "127323": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475321381",
+   "dead_entities": 1,
+   "entities": [
+    125244,
+    127324
+   ],
+   "relations": {
+    "125244": "stable",
+    "127324": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338475321787",
+   "dead_entities": 1,
+   "entities": [
+    125272,
+    127325
+   ],
+   "relations": {
+    "125272": "stable",
+    "127325": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19338689004162",
+   "dead_entities": 0,
+   "entities": [
+    118165,
+    113812
+   ],
+   "relations": {
+    "113812": "split",
+    "118165": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19339218001126",
+   "dead_entities": 1,
+   "entities": [
+    124819,
+    127328
+   ],
+   "relations": {
+    "124819": "stable",
+    "127328": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218002659",
+   "dead_entities": 1,
+   "entities": [
+    122460,
+    127329
+   ],
+   "relations": {
+    "122460": "stable",
+    "127329": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218002727",
+   "dead_entities": 1,
+   "entities": [
+    124567,
+    127330
+   ],
+   "relations": {
+    "124567": "stable",
+    "127330": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218002734",
+   "dead_entities": 1,
+   "entities": [
+    119169,
+    127331
+   ],
+   "relations": {
+    "119169": "stable",
+    "127331": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218002741",
+   "dead_entities": 1,
+   "entities": [
+    124566,
+    127332
+   ],
+   "relations": {
+    "124566": "stable",
+    "127332": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218003199",
+   "dead_entities": 1,
+   "entities": [
+    125070,
+    127333
+   ],
+   "relations": {
+    "125070": "stable",
+    "127333": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218003229",
+   "dead_entities": 1,
+   "entities": [
+    119471,
+    127334
+   ],
+   "relations": {
+    "119471": "stable",
+    "127334": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218003519",
+   "dead_entities": 1,
+   "entities": [
+    119552,
+    127335
+   ],
+   "relations": {
+    "119552": "stable",
+    "127335": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218003526",
+   "dead_entities": 1,
+   "entities": [
+    119553,
+    127336
+   ],
+   "relations": {
+    "119553": "stable",
+    "127336": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218003724",
+   "dead_entities": 1,
+   "entities": [
+    119644,
+    127337
+   ],
+   "relations": {
+    "119644": "stable",
+    "127337": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218004103",
+   "dead_entities": 1,
+   "entities": [
+    124778,
+    127338
+   ],
+   "relations": {
+    "124778": "stable",
+    "127338": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218004110",
+   "dead_entities": 1,
+   "entities": [
+    124779,
+    127339
+   ],
+   "relations": {
+    "124779": "stable",
+    "127339": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218004127",
+   "dead_entities": 1,
+   "entities": [
+    124777,
+    127340
+   ],
+   "relations": {
+    "124777": "stable",
+    "127340": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218004134",
+   "dead_entities": 1,
+   "entities": [
+    124776,
+    127341
+   ],
+   "relations": {
+    "124776": "stable",
+    "127341": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218004844",
+   "dead_entities": 1,
+   "entities": [
+    118776,
+    127342
+   ],
+   "relations": {
+    "118776": "stable",
+    "127342": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218005162",
+   "dead_entities": 1,
+   "entities": [
+    125125,
+    127343
+   ],
+   "relations": {
+    "125125": "stable",
+    "127343": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218005209",
+   "dead_entities": 1,
+   "entities": [
+    119278,
+    127344
+   ],
+   "relations": {
+    "119278": "stable",
+    "127344": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218005230",
+   "dead_entities": 1,
+   "entities": [
+    125215,
+    127345
+   ],
+   "relations": {
+    "125215": "stable",
+    "127345": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19339218006312",
+   "dead_entities": 1,
+   "entities": [
+    118588,
+    127346
+   ],
+   "relations": {
+    "118588": "stable",
+    "127346": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19340104000703",
+   "dead_entities": 2,
+   "entities": [
+    123855,
+    127347
+   ],
+   "relations": {
+    "123855": "unknown",
+    "127347": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19345461000359",
+   "dead_entities": 1,
+   "entities": [
+    123308,
+    127386
+   ],
+   "relations": {
+    "123308": "stable",
+    "127386": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299000013",
+   "dead_entities": 0,
+   "entities": [
+    121994,
+    127779,
+    3606
+   ],
+   "relations": {
+    "121994": "split",
+    "127779": "split",
+    "3606": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000020",
+   "dead_entities": 0,
+   "entities": [
+    125022,
+    127389,
+    2053
+   ],
+   "relations": {
+    "125022": "split",
+    "127389": "split",
+    "2053": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000075",
+   "dead_entities": 0,
+   "entities": [
+    124671,
+    127390,
+    2383
+   ],
+   "relations": {
+    "124671": "split",
+    "127390": "split",
+    "2383": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000082",
+   "dead_entities": 0,
+   "entities": [
+    119901,
+    127780,
+    2384
+   ],
+   "relations": {
+    "119901": "split",
+    "127780": "split",
+    "2384": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000099",
+   "dead_entities": 0,
+   "entities": [
+    123774,
+    127781,
+    2084
+   ],
+   "relations": {
+    "123774": "split",
+    "127781": "split",
+    "2084": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000105",
+   "dead_entities": 0,
+   "entities": [
+    120777,
+    127782,
+    2085
+   ],
+   "relations": {
+    "120777": "split",
+    "127782": "split",
+    "2085": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000280",
+   "dead_entities": 0,
+   "entities": [
+    120099,
+    127783,
+    1423
+   ],
+   "relations": {
+    "120099": "split",
+    "127783": "split",
+    "1423": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000297",
+   "dead_entities": 0,
+   "entities": [
+    124558,
+    127391,
+    3573
+   ],
+   "relations": {
+    "124558": "split",
+    "127391": "split",
+    "3573": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000303",
+   "dead_entities": 0,
+   "entities": [
+    124584,
+    127784,
+    2170
+   ],
+   "relations": {
+    "124584": "split",
+    "127784": "split",
+    "2170": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000310",
+   "dead_entities": 0,
+   "entities": [
+    124557,
+    127785,
+    2171
+   ],
+   "relations": {
+    "124557": "split",
+    "127785": "split",
+    "2171": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000327",
+   "dead_entities": 1,
+   "entities": [
+    118924,
+    127392
+   ],
+   "relations": {
+    "118924": "stable",
+    "127392": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299000365",
+   "dead_entities": 0,
+   "entities": [
+    122753,
+    127393,
+    2098
+   ],
+   "relations": {
+    "122753": "split",
+    "127393": "split",
+    "2098": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000372",
+   "dead_entities": 0,
+   "entities": [
+    121315,
+    127786,
+    502
+   ],
+   "relations": {
+    "121315": "split",
+    "127786": "split",
+    "502": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000389",
+   "dead_entities": 0,
+   "entities": [
+    120540,
+    127787,
+    1936
+   ],
+   "relations": {
+    "120540": "split",
+    "127787": "split",
+    "1936": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000396",
+   "dead_entities": 0,
+   "entities": [
+    122307,
+    127788,
+    1935
+   ],
+   "relations": {
+    "122307": "split",
+    "127788": "split",
+    "1935": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000433",
+   "dead_entities": 0,
+   "entities": [
+    120045,
+    127789,
+    2333
+   ],
+   "relations": {
+    "120045": "split",
+    "127789": "split",
+    "2333": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000457",
+   "dead_entities": 0,
+   "entities": [
+    120785,
+    127790,
+    3598
+   ],
+   "relations": {
+    "120785": "split",
+    "127790": "split",
+    "3598": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000471",
+   "dead_entities": 0,
+   "entities": [
+    119850,
+    127791,
+    1215
+   ],
+   "relations": {
+    "119850": "split",
+    "1215": "split",
+    "127791": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000501",
+   "dead_entities": 0,
+   "entities": [
+    122832,
+    127394,
+    2394
+   ],
+   "relations": {
+    "122832": "split",
+    "127394": "merged_suspect",
+    "2394": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:19350299000556",
+   "dead_entities": 0,
+   "entities": [
+    124207,
+    127792,
+    1513
+   ],
+   "relations": {
+    "124207": "split",
+    "127792": "split",
+    "1513": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000563",
+   "dead_entities": 0,
+   "entities": [
+    122148,
+    127793,
+    2348
+   ],
+   "relations": {
+    "122148": "split",
+    "127793": "split",
+    "2348": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000570",
+   "dead_entities": 0,
+   "entities": [
+    123098,
+    127794,
+    123097
+   ],
+   "relations": {
+    "123097": "split",
+    "123098": "split",
+    "127794": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000600",
+   "dead_entities": 0,
+   "entities": [
+    123784,
+    127795,
+    3947
+   ],
+   "relations": {
+    "123784": "split",
+    "127795": "split",
+    "3947": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000631",
+   "dead_entities": 0,
+   "entities": [
+    121347,
+    127796,
+    1888
+   ],
+   "relations": {
+    "121347": "split",
+    "127796": "split",
+    "1888": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000648",
+   "dead_entities": 0,
+   "entities": [
+    122937,
+    127797,
+    1889
+   ],
+   "relations": {
+    "122937": "split",
+    "127797": "split",
+    "1889": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000693",
+   "dead_entities": 0,
+   "entities": [
+    122219,
+    127798,
+    37582
+   ],
+   "relations": {
+    "122219": "split",
+    "127798": "split",
+    "37582": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000808",
+   "dead_entities": 0,
+   "entities": [
+    124896,
+    127395,
+    569
+   ],
+   "relations": {
+    "124896": "split",
+    "127395": "split",
+    "569": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000815",
+   "dead_entities": 0,
+   "entities": [
+    124900,
+    127396,
+    1977
+   ],
+   "relations": {
+    "124900": "split",
+    "127396": "split",
+    "1977": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000853",
+   "dead_entities": 0,
+   "entities": [
+    124877,
+    127799,
+    2038
+   ],
+   "relations": {
+    "124877": "split",
+    "127799": "split",
+    "2038": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299000884",
+   "dead_entities": 1,
+   "entities": [
+    123440,
+    127397
+   ],
+   "relations": {
+    "123440": "stable",
+    "127397": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299000891",
+   "dead_entities": 1,
+   "entities": [
+    120152,
+    127398
+   ],
+   "relations": {
+    "120152": "stable",
+    "127398": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299000945",
+   "dead_entities": 0,
+   "entities": [
+    124884,
+    127800,
+    2904
+   ],
+   "relations": {
+    "124884": "split",
+    "127800": "split",
+    "2904": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001010",
+   "dead_entities": 0,
+   "entities": [
+    124632,
+    127801,
+    2406
+   ],
+   "relations": {
+    "124632": "split",
+    "127801": "split",
+    "2406": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001027",
+   "dead_entities": 0,
+   "entities": [
+    124636,
+    127399,
+    2407
+   ],
+   "relations": {
+    "124636": "split",
+    "127399": "split",
+    "2407": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001034",
+   "dead_entities": 0,
+   "entities": [
+    124642,
+    127802,
+    2408
+   ],
+   "relations": {
+    "124642": "split",
+    "127802": "split",
+    "2408": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001140",
+   "dead_entities": 0,
+   "entities": [
+    120619,
+    127400,
+    1142
+   ],
+   "relations": {
+    "1142": "split",
+    "120619": "split",
+    "127400": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001249",
+   "dead_entities": 0,
+   "entities": [
+    121827,
+    127803,
+    3982
+   ],
+   "relations": {
+    "121827": "split",
+    "127803": "split",
+    "3982": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001256",
+   "dead_entities": 0,
+   "entities": [
+    121590,
+    127401,
+    1583
+   ],
+   "relations": {
+    "121590": "split",
+    "127401": "split",
+    "1583": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001263",
+   "dead_entities": 0,
+   "entities": [
+    121877,
+    127804,
+    4079
+   ],
+   "relations": {
+    "121877": "split",
+    "127804": "split",
+    "4079": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001270",
+   "dead_entities": 0,
+   "entities": [
+    123062,
+    127805,
+    2155
+   ],
+   "relations": {
+    "123062": "split",
+    "127805": "split",
+    "2155": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001287",
+   "dead_entities": 0,
+   "entities": [
+    121715,
+    127806,
+    3567
+   ],
+   "relations": {
+    "121715": "split",
+    "127806": "split",
+    "3567": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001294",
+   "dead_entities": 0,
+   "entities": [
+    120641,
+    127402,
+    2156
+   ],
+   "relations": {
+    "120641": "split",
+    "127402": "split",
+    "2156": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001300",
+   "dead_entities": 0,
+   "entities": [
+    122296,
+    127807,
+    2157
+   ],
+   "relations": {
+    "122296": "split",
+    "127807": "split",
+    "2157": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001317",
+   "dead_entities": 0,
+   "entities": [
+    120316,
+    127808,
+    3234
+   ],
+   "relations": {
+    "120316": "split",
+    "127808": "split",
+    "3234": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001324",
+   "dead_entities": 0,
+   "entities": [
+    123568,
+    127809,
+    1396
+   ],
+   "relations": {
+    "123568": "split",
+    "127809": "split",
+    "1396": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001331",
+   "dead_entities": 0,
+   "entities": [
+    119937,
+    127403,
+    1397
+   ],
+   "relations": {
+    "119937": "split",
+    "127403": "split",
+    "1397": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001348",
+   "dead_entities": 0,
+   "entities": [
+    124534,
+    127404,
+    1398
+   ],
+   "relations": {
+    "124534": "split",
+    "127404": "split",
+    "1398": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001355",
+   "dead_entities": 0,
+   "entities": [
+    124576,
+    127405,
+    2309
+   ],
+   "relations": {
+    "124576": "split",
+    "127405": "split",
+    "2309": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001393",
+   "dead_entities": 0,
+   "entities": [
+    119322,
+    127810,
+    119321
+   ],
+   "relations": {
+    "119321": "split",
+    "119322": "split",
+    "127810": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001409",
+   "dead_entities": 0,
+   "entities": [
+    119324,
+    119323
+   ],
+   "relations": {
+    "119323": "split",
+    "119324": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001461",
+   "dead_entities": 0,
+   "entities": [
+    119048,
+    127811,
+    2446
+   ],
+   "relations": {
+    "119048": "split",
+    "127811": "split",
+    "2446": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001478",
+   "dead_entities": 0,
+   "entities": [
+    119049,
+    127812,
+    2444
+   ],
+   "relations": {
+    "119049": "split",
+    "127812": "split",
+    "2444": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001591",
+   "dead_entities": 0,
+   "entities": [
+    121702,
+    127406,
+    37750
+   ],
+   "relations": {
+    "121702": "split",
+    "127406": "split",
+    "37750": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001607",
+   "dead_entities": 0,
+   "entities": [
+    120516,
+    127813,
+    2388
+   ],
+   "relations": {
+    "120516": "split",
+    "127813": "split",
+    "2388": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001638",
+   "dead_entities": 1,
+   "entities": [
+    124623,
+    127407
+   ],
+   "relations": {
+    "124623": "stable",
+    "127407": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299001652",
+   "dead_entities": 0,
+   "entities": [
+    122380,
+    127814,
+    2045
+   ],
+   "relations": {
+    "122380": "split",
+    "127814": "split",
+    "2045": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001669",
+   "dead_entities": 0,
+   "entities": [
+    120422,
+    127815,
+    749
+   ],
+   "relations": {
+    "120422": "split",
+    "127815": "split",
+    "749": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001737",
+   "dead_entities": 0,
+   "entities": [
+    123228,
+    127408,
+    1853
+   ],
+   "relations": {
+    "123228": "split",
+    "127408": "split",
+    "1853": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001744",
+   "dead_entities": 0,
+   "entities": [
+    123862,
+    127409,
+    2488
+   ],
+   "relations": {
+    "123862": "split",
+    "127409": "split",
+    "2488": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299001751",
+   "dead_entities": 0,
+   "entities": [
+    123453,
+    127410,
+    2489
+   ],
+   "relations": {
+    "123453": "split",
+    "127410": "split",
+    "2489": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299002833",
+   "dead_entities": 0,
+   "entities": [
+    122737,
+    127816,
+    39002
+   ],
+   "relations": {
+    "122737": "split",
+    "127816": "split",
+    "39002": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299002864",
+   "dead_entities": 0,
+   "entities": [
+    120960,
+    127817,
+    36817
+   ],
+   "relations": {
+    "120960": "split",
+    "127817": "split",
+    "36817": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299002949",
+   "dead_entities": 1,
+   "entities": [
+    118797,
+    127411
+   ],
+   "relations": {
+    "118797": "stable",
+    "127411": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299002956",
+   "dead_entities": 0,
+   "entities": [
+    120692,
+    127818,
+    120691
+   ],
+   "relations": {
+    "120691": "split",
+    "120692": "split",
+    "127818": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299002963",
+   "dead_entities": 0,
+   "entities": [
+    122564,
+    127819,
+    2587
+   ],
+   "relations": {
+    "122564": "split",
+    "127819": "split",
+    "2587": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299002970",
+   "dead_entities": 0,
+   "entities": [
+    122846,
+    127820,
+    710
+   ],
+   "relations": {
+    "122846": "split",
+    "127820": "split",
+    "710": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003007",
+   "dead_entities": 1,
+   "entities": [
+    120933,
+    127412
+   ],
+   "relations": {
+    "120933": "stable",
+    "127412": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299003175",
+   "dead_entities": 0,
+   "entities": [
+    119368,
+    127413,
+    2095
+   ],
+   "relations": {
+    "119368": "split",
+    "127413": "split",
+    "2095": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003212",
+   "dead_entities": 0,
+   "entities": [
+    124967,
+    127821,
+    918
+   ],
+   "relations": {
+    "124967": "split",
+    "127821": "split",
+    "918": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003229",
+   "dead_entities": 0,
+   "entities": [
+    124968,
+    127414,
+    2105
+   ],
+   "relations": {
+    "124968": "split",
+    "127414": "split",
+    "2105": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003236",
+   "dead_entities": 0,
+   "entities": [
+    118991,
+    127822,
+    2106
+   ],
+   "relations": {
+    "118991": "split",
+    "127822": "split",
+    "2106": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003243",
+   "dead_entities": 0,
+   "entities": [
+    124969,
+    127823,
+    919
+   ],
+   "relations": {
+    "124969": "split",
+    "127823": "split",
+    "919": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003250",
+   "dead_entities": 0,
+   "entities": [
+    124971,
+    127824,
+    124970
+   ],
+   "relations": {
+    "124970": "split",
+    "124971": "split",
+    "127824": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003298",
+   "dead_entities": 0,
+   "entities": [
+    125000,
+    127415,
+    1958
+   ],
+   "relations": {
+    "125000": "split",
+    "127415": "split",
+    "1958": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003311",
+   "dead_entities": 0,
+   "entities": [
+    124998,
+    127825,
+    1956
+   ],
+   "relations": {
+    "124998": "split",
+    "127825": "split",
+    "1956": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003328",
+   "dead_entities": 0,
+   "entities": [
+    124999,
+    127826,
+    1957
+   ],
+   "relations": {
+    "124999": "split",
+    "127826": "split",
+    "1957": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003335",
+   "dead_entities": 0,
+   "entities": [
+    125014,
+    127416,
+    1953
+   ],
+   "relations": {
+    "125014": "split",
+    "127416": "split",
+    "1953": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003366",
+   "dead_entities": 0,
+   "entities": [
+    119373,
+    127827,
+    927
+   ],
+   "relations": {
+    "119373": "split",
+    "127827": "split",
+    "927": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003373",
+   "dead_entities": 0,
+   "entities": [
+    119372,
+    127417,
+    3401
+   ],
+   "relations": {
+    "119372": "split",
+    "127417": "split",
+    "3401": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003380",
+   "dead_entities": 0,
+   "entities": [
+    119289,
+    127418,
+    2069
+   ],
+   "relations": {
+    "119289": "split",
+    "127418": "split",
+    "2069": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003397",
+   "dead_entities": 0,
+   "entities": [
+    119290,
+    127419,
+    3543
+   ],
+   "relations": {
+    "119290": "split",
+    "127419": "split",
+    "3543": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003540",
+   "dead_entities": 0,
+   "entities": [
+    123703,
+    127828,
+    2836
+   ],
+   "relations": {
+    "123703": "split",
+    "127828": "split",
+    "2836": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003557",
+   "dead_entities": 0,
+   "entities": [
+    122700,
+    127829,
+    2463
+   ],
+   "relations": {
+    "122700": "split",
+    "127829": "split",
+    "2463": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003564",
+   "dead_entities": 0,
+   "entities": [
+    123261,
+    127830,
+    1821
+   ],
+   "relations": {
+    "123261": "split",
+    "127830": "split",
+    "1821": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003663",
+   "dead_entities": 0,
+   "entities": [
+    120123,
+    127831,
+    2230
+   ],
+   "relations": {
+    "120123": "split",
+    "127831": "split",
+    "2230": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003670",
+   "dead_entities": 0,
+   "entities": [
+    124036,
+    127832,
+    1249
+   ],
+   "relations": {
+    "124036": "split",
+    "1249": "split",
+    "127832": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003687",
+   "dead_entities": 0,
+   "entities": [
+    122949,
+    127833,
+    3607
+   ],
+   "relations": {
+    "122949": "split",
+    "127833": "split",
+    "3607": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003694",
+   "dead_entities": 0,
+   "entities": [
+    122655,
+    127420,
+    3608
+   ],
+   "relations": {
+    "122655": "split",
+    "127420": "split",
+    "3608": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003700",
+   "dead_entities": 0,
+   "entities": [
+    122731,
+    127834,
+    3620
+   ],
+   "relations": {
+    "122731": "split",
+    "127834": "split",
+    "3620": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003731",
+   "dead_entities": 0,
+   "entities": [
+    123017,
+    127835,
+    2964
+   ],
+   "relations": {
+    "123017": "split",
+    "127835": "split",
+    "2964": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003748",
+   "dead_entities": 0,
+   "entities": [
+    121327,
+    127836,
+    1481
+   ],
+   "relations": {
+    "121327": "split",
+    "127836": "split",
+    "1481": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003755",
+   "dead_entities": 0,
+   "entities": [
+    120554,
+    127837,
+    31493
+   ],
+   "relations": {
+    "120554": "split",
+    "127837": "split",
+    "31493": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003762",
+   "dead_entities": 0,
+   "entities": [
+    122882,
+    127421,
+    34542
+   ],
+   "relations": {
+    "122882": "split",
+    "127421": "split",
+    "34542": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003816",
+   "dead_entities": 0,
+   "entities": [
+    119292,
+    127838,
+    2060
+   ],
+   "relations": {
+    "119292": "split",
+    "127838": "split",
+    "2060": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003823",
+   "dead_entities": 0,
+   "entities": [
+    119293,
+    127839,
+    2061
+   ],
+   "relations": {
+    "119293": "split",
+    "127839": "split",
+    "2061": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003878",
+   "dead_entities": 0,
+   "entities": [
+    121053,
+    425
+   ],
+   "relations": {
+    "121053": "split",
+    "425": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003885",
+   "dead_entities": 0,
+   "entities": [
+    123031,
+    127840,
+    2522
+   ],
+   "relations": {
+    "123031": "split",
+    "127840": "split",
+    "2522": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003892",
+   "dead_entities": 0,
+   "entities": [
+    127841,
+    980
+   ],
+   "relations": {
+    "127841": "split",
+    "980": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003908",
+   "dead_entities": 0,
+   "entities": [
+    127842,
+    4020
+   ],
+   "relations": {
+    "127842": "split",
+    "4020": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003915",
+   "dead_entities": 0,
+   "entities": [
+    125013,
+    127422,
+    3557
+   ],
+   "relations": {
+    "125013": "split",
+    "127422": "split",
+    "3557": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003922",
+   "dead_entities": 1,
+   "entities": [
+    125032,
+    127423
+   ],
+   "relations": {
+    "125032": "stable",
+    "127423": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299003939",
+   "dead_entities": 1,
+   "entities": [
+    125034,
+    127424
+   ],
+   "relations": {
+    "125034": "stable",
+    "127424": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299003946",
+   "dead_entities": 0,
+   "entities": [
+    125028,
+    127843,
+    3602
+   ],
+   "relations": {
+    "125028": "split",
+    "127843": "split",
+    "3602": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003953",
+   "dead_entities": 0,
+   "entities": [
+    125029,
+    127844,
+    37428
+   ],
+   "relations": {
+    "125029": "split",
+    "127844": "split",
+    "37428": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003960",
+   "dead_entities": 0,
+   "entities": [
+    125030,
+    127845,
+    37430
+   ],
+   "relations": {
+    "125030": "split",
+    "127845": "split",
+    "37430": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003977",
+   "dead_entities": 0,
+   "entities": [
+    125031,
+    127846,
+    37429
+   ],
+   "relations": {
+    "125031": "split",
+    "127846": "split",
+    "37429": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003984",
+   "dead_entities": 0,
+   "entities": [
+    125033,
+    127847,
+    37431
+   ],
+   "relations": {
+    "125033": "split",
+    "127847": "split",
+    "37431": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299003991",
+   "dead_entities": 0,
+   "entities": [
+    121879,
+    127848,
+    1343
+   ],
+   "relations": {
+    "121879": "split",
+    "127848": "split",
+    "1343": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004004",
+   "dead_entities": 0,
+   "entities": [
+    120345,
+    127849,
+    1339
+   ],
+   "relations": {
+    "120345": "split",
+    "127849": "split",
+    "1339": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004011",
+   "dead_entities": 0,
+   "entities": [
+    122351,
+    127425,
+    1340
+   ],
+   "relations": {
+    "122351": "split",
+    "127425": "split",
+    "1340": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004028",
+   "dead_entities": 0,
+   "entities": [
+    121486,
+    127850,
+    1342
+   ],
+   "relations": {
+    "121486": "split",
+    "127850": "split",
+    "1342": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004035",
+   "dead_entities": 1,
+   "entities": [
+    125049,
+    127426
+   ],
+   "relations": {
+    "125049": "stable",
+    "127426": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299004080",
+   "dead_entities": 1,
+   "entities": [
+    119385,
+    127427
+   ],
+   "relations": {
+    "119385": "stable",
+    "127427": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299004134",
+   "dead_entities": 0,
+   "entities": [
+    118705,
+    127851,
+    2903
+   ],
+   "relations": {
+    "118705": "split",
+    "127851": "split",
+    "2903": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004202",
+   "dead_entities": 1,
+   "entities": [
+    124984,
+    127428
+   ],
+   "relations": {
+    "124984": "stable",
+    "127428": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299004219",
+   "dead_entities": 1,
+   "entities": [
+    124983,
+    127429
+   ],
+   "relations": {
+    "124983": "stable",
+    "127429": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299004448",
+   "dead_entities": 0,
+   "entities": [
+    125036,
+    127430,
+    2521
+   ],
+   "relations": {
+    "125036": "split",
+    "127430": "split",
+    "2521": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004752",
+   "dead_entities": 0,
+   "entities": [
+    119898,
+    127852,
+    2104
+   ],
+   "relations": {
+    "119898": "split",
+    "127852": "split",
+    "2104": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004769",
+   "dead_entities": 0,
+   "entities": [
+    120514,
+    127431,
+    4118
+   ],
+   "relations": {
+    "120514": "split",
+    "127431": "split",
+    "4118": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004776",
+   "dead_entities": 0,
+   "entities": [
+    121538,
+    127432,
+    34041
+   ],
+   "relations": {
+    "121538": "split",
+    "127432": "split",
+    "34041": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004837",
+   "dead_entities": 0,
+   "entities": [
+    122083,
+    127433,
+    464
+   ],
+   "relations": {
+    "122083": "split",
+    "127433": "split",
+    "464": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004844",
+   "dead_entities": 0,
+   "entities": [
+    122094,
+    127434,
+    465
+   ],
+   "relations": {
+    "122094": "split",
+    "127434": "split",
+    "465": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004868",
+   "dead_entities": 0,
+   "entities": [
+    119554,
+    127853,
+    3001
+   ],
+   "relations": {
+    "119554": "split",
+    "127853": "split",
+    "3001": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004875",
+   "dead_entities": 0,
+   "entities": [
+    119555,
+    127435,
+    39007
+   ],
+   "relations": {
+    "119555": "split",
+    "127435": "split",
+    "39007": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004882",
+   "dead_entities": 0,
+   "entities": [
+    119556,
+    127436,
+    2846
+   ],
+   "relations": {
+    "119556": "split",
+    "127436": "split",
+    "2846": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299004899",
+   "dead_entities": 0,
+   "entities": [
+    119557,
+    127854,
+    3621
+   ],
+   "relations": {
+    "119557": "split",
+    "127854": "split",
+    "3621": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005117",
+   "dead_entities": 0,
+   "entities": [
+    124327,
+    127437,
+    31787
+   ],
+   "relations": {
+    "124327": "split",
+    "127437": "split",
+    "31787": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005124",
+   "dead_entities": 0,
+   "entities": [
+    119511,
+    127855,
+    1824
+   ],
+   "relations": {
+    "119511": "split",
+    "127855": "split",
+    "1824": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005131",
+   "dead_entities": 0,
+   "entities": [
+    119512,
+    127856,
+    2469
+   ],
+   "relations": {
+    "119512": "split",
+    "127856": "split",
+    "2469": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005162",
+   "dead_entities": 0,
+   "entities": [
+    124245,
+    127857,
+    3390
+   ],
+   "relations": {
+    "124245": "split",
+    "127857": "split",
+    "3390": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005179",
+   "dead_entities": 0,
+   "entities": [
+    123555,
+    127858,
+    2612
+   ],
+   "relations": {
+    "123555": "split",
+    "127858": "split",
+    "2612": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005261",
+   "dead_entities": 0,
+   "entities": [
+    124192,
+    127859,
+    2090
+   ],
+   "relations": {
+    "124192": "split",
+    "127859": "split",
+    "2090": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005278",
+   "dead_entities": 0,
+   "entities": [
+    124010,
+    127438,
+    2091
+   ],
+   "relations": {
+    "124010": "split",
+    "127438": "split",
+    "2091": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005414",
+   "dead_entities": 0,
+   "entities": [
+    124247,
+    127860,
+    37082
+   ],
+   "relations": {
+    "124247": "split",
+    "127860": "split",
+    "37082": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005438",
+   "dead_entities": 0,
+   "entities": [
+    120928,
+    127861,
+    37081
+   ],
+   "relations": {
+    "120928": "split",
+    "127861": "split",
+    "37081": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005605",
+   "dead_entities": 0,
+   "entities": [
+    119581,
+    127862,
+    2470
+   ],
+   "relations": {
+    "119581": "split",
+    "127862": "split",
+    "2470": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005612",
+   "dead_entities": 0,
+   "entities": [
+    118748,
+    127863,
+    2471
+   ],
+   "relations": {
+    "118748": "split",
+    "127863": "split",
+    "2471": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005629",
+   "dead_entities": 1,
+   "entities": [
+    119589,
+    127439
+   ],
+   "relations": {
+    "119589": "stable",
+    "127439": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299005650",
+   "dead_entities": 1,
+   "entities": [
+    119594,
+    127440
+   ],
+   "relations": {
+    "119594": "stable",
+    "127440": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299005667",
+   "dead_entities": 0,
+   "entities": [
+    119595,
+    127441,
+    1925
+   ],
+   "relations": {
+    "119595": "split",
+    "127441": "split",
+    "1925": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005674",
+   "dead_entities": 0,
+   "entities": [
+    119596,
+    127864,
+    475
+   ],
+   "relations": {
+    "119596": "split",
+    "127864": "split",
+    "475": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005698",
+   "dead_entities": 0,
+   "entities": [
+    120253,
+    127865,
+    3571
+   ],
+   "relations": {
+    "120253": "split",
+    "127865": "split",
+    "3571": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005759",
+   "dead_entities": 0,
+   "entities": [
+    120180,
+    120179
+   ],
+   "relations": {
+    "120179": "split",
+    "120180": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005766",
+   "dead_entities": 0,
+   "entities": [
+    122556,
+    122554
+   ],
+   "relations": {
+    "122554": "split",
+    "122556": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299005872",
+   "dead_entities": 0,
+   "entities": [
+    118749,
+    127443,
+    2126
+   ],
+   "relations": {
+    "118749": "split",
+    "127443": "split",
+    "2126": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299006114",
+   "dead_entities": 1,
+   "entities": [
+    119637,
+    127444
+   ],
+   "relations": {
+    "119637": "stable",
+    "127444": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299006176",
+   "dead_entities": 1,
+   "entities": [
+    124829,
+    127445
+   ],
+   "relations": {
+    "124829": "stable",
+    "127445": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299006183",
+   "dead_entities": 1,
+   "entities": [
+    124830,
+    127446
+   ],
+   "relations": {
+    "124830": "stable",
+    "127446": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299006190",
+   "dead_entities": 1,
+   "entities": [
+    124831,
+    127447
+   ],
+   "relations": {
+    "124831": "stable",
+    "127447": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299006268",
+   "dead_entities": 1,
+   "entities": [
+    119634,
+    127448
+   ],
+   "relations": {
+    "119634": "stable",
+    "127448": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:19350299006428",
+   "dead_entities": 0,
+   "entities": [
+    119592,
+    127449,
+    1924
+   ],
+   "relations": {
+    "119592": "split",
+    "127449": "split",
+    "1924": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299006626",
+   "dead_entities": 0,
+   "entities": [
+    124817,
+    127450,
+    1464
+   ],
+   "relations": {
+    "124817": "split",
+    "127450": "split",
+    "1464": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299006886",
+   "dead_entities": 0,
+   "entities": [
+    124775,
+    127866,
+    976
+   ],
+   "relations": {
+    "124775": "split",
+    "127866": "split",
+    "976": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:19350299006909",
+   "dead_entities": 0,
+   "entities": [
+    124816,
+    127451,
+    161
+   ],
+   "relations": {
+    "124816": "split",
+    "127451": "split",
+    "161": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598009311",
+   "dead_entities": 0,
+   "entities": [
+    124919,
+    34846
+   ],
+   "relations": {
+    "124919": "split",
+    "34846": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598011284",
+   "dead_entities": 0,
+   "entities": [
+    125265,
+    127468,
+    1273
+   ],
+   "relations": {
+    "125265": "split",
+    "1273": "split",
+    "127468": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598012038",
+   "dead_entities": 0,
+   "entities": [
+    120402,
+    127867,
+    3518
+   ],
+   "relations": {
+    "120402": "split",
+    "127867": "split",
+    "3518": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598014353",
+   "dead_entities": 0,
+   "entities": [
+    124455,
+    127868,
+    1786
+   ],
+   "relations": {
+    "124455": "split",
+    "127868": "split",
+    "1786": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598014360",
+   "dead_entities": 0,
+   "entities": [
+    123742,
+    127869,
+    1784
+   ],
+   "relations": {
+    "123742": "split",
+    "127869": "split",
+    "1784": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598016043",
+   "dead_entities": 0,
+   "entities": [
+    125363,
+    127870,
+    54049
+   ],
+   "relations": {
+    "125363": "split",
+    "127870": "split",
+    "54049": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598016050",
+   "dead_entities": 0,
+   "entities": [
+    125361,
+    127871,
+    3963
+   ],
+   "relations": {
+    "125361": "split",
+    "127871": "split",
+    "3963": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598016111",
+   "dead_entities": 0,
+   "entities": [
+    125362,
+    127872,
+    3925
+   ],
+   "relations": {
+    "125362": "split",
+    "127872": "split",
+    "3925": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598016272",
+   "dead_entities": 0,
+   "entities": [
+    118234,
+    127873,
+    54050
+   ],
+   "relations": {
+    "118234": "split",
+    "127873": "split",
+    "54050": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057598016289",
+   "dead_entities": 0,
+   "entities": [
+    118235,
+    127469,
+    54051
+   ],
+   "relations": {
+    "118235": "split",
+    "127469": "split",
+    "54051": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:24057599003578",
+   "dead_entities": 1,
+   "entities": [
+    120295,
+    127470
+   ],
+   "relations": {
+    "120295": "stable",
+    "127470": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:25391189080013",
+   "dead_entities": 0,
+   "entities": [
+    124125,
+    127875,
+    647
+   ],
+   "relations": {
+    "124125": "split",
+    "127875": "split",
+    "647": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189091002",
+   "dead_entities": 0,
+   "entities": [
+    124402,
+    127876,
+    648
+   ],
+   "relations": {
+    "124402": "split",
+    "127876": "split",
+    "648": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189102005",
+   "dead_entities": 0,
+   "entities": [
+    121490,
+    127503,
+    3532
+   ],
+   "relations": {
+    "121490": "split",
+    "127503": "split",
+    "3532": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189150259",
+   "dead_entities": 1,
+   "entities": [
+    122516,
+    127504
+   ],
+   "relations": {
+    "122516": "stable",
+    "127504": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:25391189161248",
+   "dead_entities": 0,
+   "entities": [
+    124295,
+    127771,
+    4011
+   ],
+   "relations": {
+    "124295": "split",
+    "127771": "split",
+    "4011": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189200626",
+   "dead_entities": 0,
+   "entities": [
+    123267,
+    4010
+   ],
+   "relations": {
+    "123267": "split",
+    "4010": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189200718",
+   "dead_entities": 0,
+   "entities": [
+    121194,
+    21
+   ],
+   "relations": {
+    "121194": "split",
+    "21": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189210687",
+   "dead_entities": 0,
+   "entities": [
+    121666,
+    127772,
+    2747
+   ],
+   "relations": {
+    "121666": "split",
+    "127772": "split",
+    "2747": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189220716",
+   "dead_entities": 0,
+   "entities": [
+    124100,
+    3472
+   ],
+   "relations": {
+    "124100": "split",
+    "3472": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:25391189230616",
+   "dead_entities": 1,
+   "entities": [
+    124323,
+    127505
+   ],
+   "relations": {
+    "124323": "stable",
+    "127505": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:25391189230692",
+   "dead_entities": 0,
+   "entities": [
+    120067,
+    127773,
+    2318
+   ],
+   "relations": {
+    "120067": "split",
+    "127773": "split",
+    "2318": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29300607179587",
+   "dead_entities": 0,
+   "entities": [
+    29776,
+    127508
+   ],
+   "relations": {
+    "127508": "merged_suspect",
+    "29776": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:29300607179846",
+   "dead_entities": 0,
+   "entities": [
+    29792,
+    127510
+   ],
+   "relations": {
+    "127510": "merged_suspect",
+    "29792": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:29300631385213",
+   "dead_entities": 1,
+   "entities": [
+    123535,
+    127522
+   ],
+   "relations": {
+    "123535": "stable",
+    "127522": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29310160805304",
+   "dead_entities": 0,
+   "entities": [
+    123095,
+    127877,
+    1048
+   ],
+   "relations": {
+    "1048": "split",
+    "123095": "split",
+    "127877": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29310160810117",
+   "dead_entities": 0,
+   "entities": [
+    127878,
+    3631
+   ],
+   "relations": {
+    "127878": "split",
+    "3631": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29310160816638",
+   "dead_entities": 0,
+   "entities": [
+    40998,
+    127879,
+    29112
+   ],
+   "relations": {
+    "127879": "merged_suspect",
+    "29112": "split",
+    "40998": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29310488000849",
+   "dead_entities": 1,
+   "entities": [
+    123382,
+    127570
+   ],
+   "relations": {
+    "123382": "stable",
+    "127570": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29313212101676",
+   "dead_entities": 0,
+   "entities": [
+    124142,
+    127880,
+    124141
+   ],
+   "relations": {
+    "124141": "split",
+    "124142": "split",
+    "127880": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29313212101799",
+   "dead_entities": 1,
+   "entities": [
+    122595,
+    127577
+   ],
+   "relations": {
+    "122595": "stable",
+    "127577": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316090019118",
+   "dead_entities": 0,
+   "entities": [
+    127589,
+    7705
+   ],
+   "relations": {
+    "127589": "split",
+    "7705": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316090020244",
+   "dead_entities": 1,
+   "entities": [
+    127604,
+    30485
+   ],
+   "relations": {
+    "127604": "unknown",
+    "30485": "stable"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626101102",
+   "dead_entities": 1,
+   "entities": [
+    122427,
+    127614
+   ],
+   "relations": {
+    "122427": "stable",
+    "127614": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626101966",
+   "dead_entities": 1,
+   "entities": [
+    121562,
+    127615
+   ],
+   "relations": {
+    "121562": "stable",
+    "127615": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626102062",
+   "dead_entities": 1,
+   "entities": [
+    122128,
+    127616
+   ],
+   "relations": {
+    "122128": "stable",
+    "127616": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626102079",
+   "dead_entities": 1,
+   "entities": [
+    122520,
+    127617
+   ],
+   "relations": {
+    "122520": "stable",
+    "127617": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626102222",
+   "dead_entities": 1,
+   "entities": [
+    121162,
+    127618
+   ],
+   "relations": {
+    "121162": "stable",
+    "127618": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626102314",
+   "dead_entities": 1,
+   "entities": [
+    119783,
+    127619
+   ],
+   "relations": {
+    "119783": "stable",
+    "127619": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626602005",
+   "dead_entities": 1,
+   "entities": [
+    121130,
+    127620
+   ],
+   "relations": {
+    "121130": "stable",
+    "127620": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626602449",
+   "dead_entities": 0,
+   "entities": [
+    120553,
+    127881,
+    3261
+   ],
+   "relations": {
+    "120553": "split",
+    "127881": "split",
+    "3261": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316626602630",
+   "dead_entities": 1,
+   "entities": [
+    121960,
+    127621
+   ],
+   "relations": {
+    "121960": "stable",
+    "127621": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626604542",
+   "dead_entities": 0,
+   "entities": [
+    121487,
+    36385
+   ],
+   "relations": {
+    "121487": "split",
+    "36385": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316626604580",
+   "dead_entities": 1,
+   "entities": [
+    123844,
+    127622
+   ],
+   "relations": {
+    "123844": "stable",
+    "127622": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626604597",
+   "dead_entities": 1,
+   "entities": [
+    121170,
+    127623
+   ],
+   "relations": {
+    "121170": "stable",
+    "127623": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316626604610",
+   "dead_entities": 0,
+   "entities": [
+    123164,
+    127624,
+    36386
+   ],
+   "relations": {
+    "123164": "split",
+    "127624": "merged_suspect",
+    "36386": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316626604627",
+   "dead_entities": 1,
+   "entities": [
+    121108,
+    127625
+   ],
+   "relations": {
+    "121108": "stable",
+    "127625": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29316731000109",
+   "dead_entities": 0,
+   "entities": [
+    123348,
+    127882,
+    36968
+   ],
+   "relations": {
+    "123348": "split",
+    "127882": "split",
+    "36968": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000116",
+   "dead_entities": 0,
+   "entities": [
+    120374,
+    127883,
+    3759
+   ],
+   "relations": {
+    "120374": "split",
+    "127883": "split",
+    "3759": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000123",
+   "dead_entities": 0,
+   "entities": [
+    120139,
+    127884,
+    3590
+   ],
+   "relations": {
+    "120139": "split",
+    "127884": "split",
+    "3590": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000130",
+   "dead_entities": 0,
+   "entities": [
+    119789,
+    127885,
+    36969
+   ],
+   "relations": {
+    "119789": "split",
+    "127885": "split",
+    "36969": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000154",
+   "dead_entities": 0,
+   "entities": [
+    118951,
+    127886,
+    118950
+   ],
+   "relations": {
+    "118950": "split",
+    "118951": "split",
+    "127886": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000178",
+   "dead_entities": 0,
+   "entities": [
+    118952,
+    127887,
+    2147
+   ],
+   "relations": {
+    "118952": "split",
+    "127887": "split",
+    "2147": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29316731000345",
+   "dead_entities": 0,
+   "entities": [
+    125023,
+    127626,
+    4029
+   ],
+   "relations": {
+    "125023": "split",
+    "127626": "split",
+    "4029": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323857000128",
+   "dead_entities": 1,
+   "entities": [
+    120112,
+    127628
+   ],
+   "relations": {
+    "120112": "stable",
+    "127628": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:29323857000869",
+   "dead_entities": 0,
+   "entities": [
+    127888,
+    1444
+   ],
+   "relations": {
+    "127888": "split",
+    "1444": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323911000620",
+   "dead_entities": 0,
+   "entities": [
+    124525,
+    1162
+   ],
+   "relations": {
+    "1162": "split",
+    "124525": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323911000682",
+   "dead_entities": 0,
+   "entities": [
+    120640,
+    127889,
+    1164
+   ],
+   "relations": {
+    "1164": "split",
+    "120640": "split",
+    "127889": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323911001436",
+   "dead_entities": 0,
+   "entities": [
+    122804,
+    1161
+   ],
+   "relations": {
+    "1161": "split",
+    "122804": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323911001634",
+   "dead_entities": 0,
+   "entities": [
+    120211,
+    127890,
+    1805
+   ],
+   "relations": {
+    "120211": "split",
+    "127890": "split",
+    "1805": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29323911001771",
+   "dead_entities": 0,
+   "entities": [
+    119947,
+    1735
+   ],
+   "relations": {
+    "119947": "split",
+    "1735": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:29338689004039",
+   "dead_entities": 1,
+   "entities": [
+    118626,
+    127641
+   ],
+   "relations": {
+    "118626": "stable",
+    "127641": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:30093815998847",
+   "dead_entities": 1,
+   "entities": [
+    120977,
+    127755
+   ],
+   "relations": {
+    "120977": "stable",
+    "127755": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:39310160820885",
+   "dead_entities": 0,
+   "entities": [
+    125019,
+    127673,
+    79193
+   ],
+   "relations": {
+    "125019": "split",
+    "127673": "split",
+    "79193": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:39310160820892",
+   "dead_entities": 1,
+   "entities": [
+    125015,
+    127674
+   ],
+   "relations": {
+    "125015": "stable",
+    "127674": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:39310160820908",
+   "dead_entities": 0,
+   "entities": [
+    125016,
+    127675,
+    79195
+   ],
+   "relations": {
+    "125016": "split",
+    "127675": "split",
+    "79195": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:39310160820915",
+   "dead_entities": 0,
+   "entities": [
+    125017,
+    127676,
+    79196
+   ],
+   "relations": {
+    "125017": "split",
+    "127676": "split",
+    "79196": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:39310160820922",
+   "dead_entities": 0,
+   "entities": [
+    125018,
+    127891,
+    79197
+   ],
+   "relations": {
+    "125018": "split",
+    "127891": "split",
+    "79197": "split"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:39313501063057",
+   "dead_entities": 0,
+   "entities": [
+    127892,
+    27522
+   ],
+   "relations": {
+    "127892": "split",
+    "27522": "merged_suspect"
+   },
+   "verdict": "single_owner"
+  },
+  {
+   "code": "gtin:39418783003095",
+   "dead_entities": 0,
+   "entities": [
+    124364,
+    127680,
+    7827
+   ],
+   "relations": {
+    "124364": "merged_suspect",
+    "127680": "merged_suspect",
+    "7827": "merged_suspect"
+   },
+   "verdict": "merged_suspect"
+  },
+  {
+   "code": "gtin:49339218005309",
+   "dead_entities": 1,
+   "entities": [
+    118284,
+    127698
+   ],
+   "relations": {
+    "118284": "stable",
+    "127698": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:49339218005323",
+   "dead_entities": 1,
+   "entities": [
+    118282,
+    127699
+   ],
+   "relations": {
+    "118282": "stable",
+    "127699": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:49339218005347",
+   "dead_entities": 1,
+   "entities": [
+    118283,
+    127700
+   ],
+   "relations": {
+    "118283": "stable",
+    "127700": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:59314839000275",
+   "dead_entities": 1,
+   "entities": [
+    122488,
+    127704
+   ],
+   "relations": {
+    "122488": "stable",
+    "127704": "unknown"
+   },
+   "verdict": "not_live"
+  },
+  {
+   "code": "gtin:59318242000785",
+   "dead_entities": 1,
+   "entities": [
+    120378,
+    127705
+   ],
+   "relations": {
+    "120378": "stable",
+    "127705": "unknown"
+   },
+   "verdict": "not_live"
+  }
+ ]
+}

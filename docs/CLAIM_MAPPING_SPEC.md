@@ -214,7 +214,7 @@ backfill path and the live-wire path currently disagree about whether a null cla
 information than its element, so it is unwrapped. Multi-element lists do not occur in the fixtures
 and are left for the validator to reject rather than guessed at.
 
-### Quantities — OPEN QUESTION, do not guess
+### Quantities — declared storage units (gr-sx7.3; formerly an open question)
 
 `weight` arrives three ways from three sources:
 
@@ -224,16 +224,22 @@ source 44     780
 source 1386   "30_g"
 ```
 
-`packageQuantity` arrives as both `"750"` and `"750 ml"`.
+The former open question — "the bare integers cannot be proven to use the same unit as the
+strings" — was closed by the AU export (analysis/au-20260814): the **same organization** wrote
+`depth 43` and later `"4.3_cm"` on the same entity, and `weight 99` beside `"100_g"` / `68`
+beside `"0.065_kg"`. Bare numerics are medipim's storage unit — **grams** for `weight`,
+**millimetres** for `width`/`depth`/`length` — and the `"<num>_<unit>"` strings are a later
+editorial serialization of the same fact.
 
-The string forms are clearly the same *kind* of thing as the numbers, but this repository cannot
-prove they use the same **unit**. `859` and `30` are not reconcilable without knowing that the
-integer form is grams — and nothing here says so.
+The mapping therefore normalizes exactly these four **declared** quantity fields to their
+storage unit at claim build (`"30_g"` → `30`, `"4.3_cm"` → `43`, `"0.065_kg"` → `65`), in
+`ClaimMapping.normalize_quantity/2`, shared with `FinerClaims` and mirrored in the PHP port.
+Normalisation is declaration-driven, never sniffed: `packageQuantity` (`"750"` / `"750 ml"`)
+stays unconverted until its unit is declared, digits-only identifier strings (`hsCode`,
+`ospId`, …) pass through untouched, and an unknown-unit string is carried unchanged.
 
-So the mapping deliberately does **not** convert. Survivorship sees distinct values and returns
-`needs_review`, which is the correct answer for "we do not know". Resolving this needs medipim to
-state the unit of each numeric quantity field; until then, `needs_review` is honest and a silent
-conversion would not be.
+Normalisation removes only serialization noise. Genuinely different values (`859` vs `780` vs
+`30` above) still reach survivorship as distinct candidates and tie to `needs_review`.
 
 Note also that `hsCode` (`"340130"`), `offisanteId` (`"90902"`) and `ospId` (`"149806"`) are
 digits-only strings that are **identifiers, not quantities**. Any future normalisation must be

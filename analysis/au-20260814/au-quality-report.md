@@ -51,6 +51,18 @@ A full-export scan of *live* code ownership (adds minus removes) found:
 - These are precisely the cases the engine's `shared`-code marking and barcode-grade merge gating exist for: folded together, each collision either legitimately merges duplicates, or must be marked shared / sent to review. **This list (au_collisions.json) is the pre-migration review queue.**
 - Caveat: `set NULL` events couldn't be attributed to a specific code in this streaming scan, so 587 is an upper bound; the engine fold would give the exact number.
 
+**Engine verdicts (gr-sx7.2, run 2026-08-17 — `verify_collisions.exs` → `au_collision_verdicts.json`).** Each collision group folded jointly through gen.exs → ClaimMapping → Rederivation → LegacyXref:
+
+| verdict | codes | meaning |
+|---|---|---|
+| `single_owner` | 358 | history dissolves the collision — exactly one final key holds the code (incl. the report's worst pack-GTIN example `19350299004134`) |
+| `not_live` | 120 | the code survives on **no** key — the streaming scan's upper-bound artifact (`set NULL` attribution) |
+| `merged_suspect` | 106 | genuine duplicate listings the engine merges, every one bridged by barcode only → flagged `:suspect` (gr-ose) — **this is the actual review queue** |
+| `shared` | 3 | carried on >1 key without fusing |
+| `merged` (trusted) | 0 | expected: AU has no national-grade codes to trust a bridge on |
+
+So the real pre-migration review queue is **106 suspect merges + 3 shared codes**, not 587; 183 of the flagged 587 involve an end-of-life (replaced) entity on at least one side (`dead_entities` in the verdicts file).
+
 ## 6. Verdict
 
 The AU catalog is young and identity-clean — no BE-style held merges, migrations are cosmetic, and id continuity is a non-issue. The actionable quality work, in order of value:
