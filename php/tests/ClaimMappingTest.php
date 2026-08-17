@@ -98,6 +98,27 @@ final class ClaimMappingTest extends TestCase
         self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
     }
 
+    public function test_fr_fixture_matches_the_elixir_reference_exactly(): void
+    {
+        // The cross-language pin (gr-6u6): the FR fixture exercises gr-gh0 (parting-attribute
+        // anchoring) and gr-4iu (nearest-codes anchoring), which the BE fixture does not. These
+        // counts are the Elixir reference's output — if either port drifts, this fails.
+        $raw = json_decode(file_get_contents(__DIR__.'/../../test/ingest/fixtures/medipim_fr_347025.json'), true);
+        [$ok, $env] = EnvelopeLoader::fromMap($raw);
+        self::assertSame('ok', $ok);
+
+        $built = ClaimMapping::build([$env]);
+        self::assertSame([], $built['rejected']);
+        self::assertCount(215, $built['claims']);
+
+        $byKind = [];
+        foreach ($built['claims'] as $c) {
+            $byKind[$c['kind']] = ($byKind[$c['kind']] ?? 0) + 1;
+        }
+        ksort($byKind);
+        self::assertSame(['attribute' => 159, 'edge' => 20, 'grouping' => 22, 'identity' => 14], $byKind);
+    }
+
     public function test_declared_quantities_normalize_to_their_storage_unit(): void
     {
         // gr-sx7.3: bare numerics are the storage unit (g/mm); "<num>_<unit>" strings normalize
