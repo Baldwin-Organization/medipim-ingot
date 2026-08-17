@@ -264,7 +264,57 @@ h2 {
 .ledger-moral strong { color: var(--ink); }
 
 /* ===========================================
-   SLIDE 5 — identity guardrails diagram
+   SLIDE 5 — identity claiming (claims → one record)
+   =========================================== */
+.claim-flow { display: grid; grid-template-columns: 660px 110px 1fr; align-items: center; margin-top: 44px; }
+.claim-col { display: flex; flex-direction: column; gap: 16px; }
+.claim-chip {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 28px; font-family: var(--font-mono); font-size: 23px;
+}
+.claim-chip .who2 {
+    display: block; font-size: 18px; color: var(--bronze);
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+}
+.flow-arrow { font-family: var(--font-mono); font-size: 56px; color: var(--bronze); text-align: center; }
+.golden-chip {
+    border: 2px solid var(--bronze); border-radius: 14px; padding: 32px 40px;
+    background: linear-gradient(180deg, #FFFDF9, #FBF4EA);
+}
+.golden-chip .g-tag {
+    font-family: var(--font-mono); font-size: 19px; color: var(--bronze);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
+}
+.golden-chip .g-name { font-family: var(--font-display); font-size: 40px; font-weight: 600; }
+.golden-chip .g-codes { font-family: var(--font-mono); font-size: 24px; color: var(--ink-2); margin-top: 10px; }
+.golden-chip .g-note { font-size: 22px; color: var(--ink-2); font-style: italic; margin-top: 14px; }
+.wins { display: flex; flex-direction: column; gap: 24px; margin-top: 42px; max-width: 1500px; }
+.win { display: grid; grid-template-columns: 72px 1fr; gap: 28px; align-items: start; }
+.win .win-mark {
+    width: 72px; height: 72px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 36px; font-weight: 700; color: var(--good);
+}
+.win h3 { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-bottom: 5px; }
+.win p { font-size: 25px; line-height: 1.4; color: var(--ink-2); max-width: 1300px; }
+
+/* ===========================================
+   SLIDE 7 — legacy identifiers resolved (forwarding)
+   =========================================== */
+.xrefs { display: flex; flex-direction: column; gap: 30px; margin-top: 50px; }
+.xref-row { display: grid; grid-template-columns: 520px 100px 1fr; align-items: center; }
+.legacy-chip {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 30px; font-family: var(--font-mono); font-size: 26px;
+}
+.legacy-chip small { display: block; font-size: 18px; color: var(--ink-2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+.xref-verdict { padding-left: 40px; }
+.xref-verdict p { font-size: 25px; color: var(--ink-2); margin-top: 10px; max-width: 1000px; line-height: 1.4; }
+.verdict-pill.info { background: var(--ink-2); color: #fff; }
+
+/* ===========================================
+   SLIDE 6 — identity guardrails diagram
    =========================================== */
 .pairs { display: flex; flex-direction: column; gap: 42px; margin-top: 60px; }
 .pair { display: grid; grid-template-columns: 420px 150px 420px 1fr; align-items: center; gap: 0; }
@@ -459,7 +509,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
     <!-- ============ SLIDE 4 · THE IDEA ============ -->
     <section class="slide" aria-label="The idea">
         <div class="pad">
-            <p class="eyebrow reveal">THE FIX — PART 1</p>
+            <p class="eyebrow reveal">THE FIX — THE LEDGER</p>
             <h2 class="reveal">Keep everything. Like an accountant.</h2>
             <div class="ledger-compare">
                 <div class="ledger-col reveal d1">
@@ -479,14 +529,47 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
                 </div>
             </div>
             <p class="ledger-moral reveal d3">Accountants never erase an entry — they add new ones, and the balance is <strong>calculated</strong>. Ingot treats product facts the same way: every statement from every supplier is kept forever, and what we publish is calculated from them. So we can <strong>explain any answer, rewind to any date, and recalculate everything</strong> if a rule changes.</p>
-            <div class="foot"><span>ingot</span><span>the fix · 1 of 2</span></div>
+            <div class="foot"><span>ingot</span><span>the fix · ledger</span></div>
         </div>
     </section>
 
-    <!-- ============ SLIDE 5 · IDENTITY GUARDRAILS ============ -->
+    <!-- ============ SLIDE 5 · IDENTITY CLAIMING ============ -->
+    <section class="slide" aria-label="Identity claiming">
+        <div class="pad">
+            <p class="eyebrow reveal">THE FIX — IDENTITY</p>
+            <h2 class="reveal">Identity that maintains itself.</h2>
+            <div class="claim-flow reveal d1">
+                <div class="claim-col">
+                    <div class="claim-chip"><span class="who2">Supplier A claims</span>national 3612173 · barcode …4577</div>
+                    <div class="claim-chip"><span class="who2">Supplier B claims</span>national 3612173</div>
+                    <div class="claim-chip"><span class="who2">Supplier C claims</span>barcode …4577</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="golden-chip">
+                    <div class="g-tag">one golden record</div>
+                    <div class="g-name">Dafalgan 1g 60 tabs</div>
+                    <div class="g-codes">national 3612173 · barcode …4577</div>
+                    <div class="g-note">nobody assigned this — it's computed from what suppliers actually say</div>
+                </div>
+            </div>
+            <div class="wins">
+                <div class="win reveal d2">
+                    <div class="win-mark">✓</div>
+                    <div><h3>No manual stitching, ever.</h3><p>When a supplier adds, moves, or withdraws a code, the record follows automatically. The catalog heals itself instead of drifting.</p></div>
+                </div>
+                <div class="win reveal d3">
+                    <div class="win-mark">✓</div>
+                    <div><h3>Every code has a paper trail.</h3><p>"Why is this barcode on this product?" always has an answer: who claimed it, from when until when.</p></div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>the fix · identity</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 6 · IDENTITY GUARDRAILS ============ -->
     <section class="slide" aria-label="Identity guardrails">
         <div class="pad">
-            <p class="eyebrow reveal">THE FIX — PART 2</p>
+            <p class="eyebrow reveal">THE FIX — GUARDRAILS</p>
             <h2 class="reveal">Official codes decide what's the same product — with guardrails.</h2>
             <div class="pairs">
                 <div class="pair reveal d1">
@@ -521,11 +604,47 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
                 </div>
             </div>
             <p class="ledger-moral reveal d3">The old system trusted its own internal numbering. Ingot trusts <strong>the codes printed on the actual product</strong> — and when a code isn't trustworthy enough, it asks instead of guessing. <strong>Wrong merges (the wrong photo on a medicine) become structurally impossible to do silently.</strong></p>
-            <div class="foot"><span>ingot</span><span>the fix · 2 of 2</span></div>
+            <div class="foot"><span>ingot</span><span>the fix · guardrails</span></div>
         </div>
     </section>
 
-    <!-- ============ SLIDE 6 · PROOF ============ -->
+    <!-- ============ SLIDE 7 · LEGACY IDENTIFIERS ============ -->
+    <section class="slide" aria-label="Legacy identifiers">
+        <div class="pad">
+            <p class="eyebrow reveal">THE FIX — CONTINUITY</p>
+            <h2 class="reveal">The switch breaks nothing that exists today.</h2>
+            <div class="xrefs">
+                <div class="xref-row reveal d1">
+                    <div class="legacy-chip"><small>old internal number</small>#422156</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="xref-verdict">
+                        <span class="verdict-pill ok">unchanged</span>
+                        <p>Most of the catalog: same product, same record. Old links and integrations resolve exactly as before.</p>
+                    </div>
+                </div>
+                <div class="xref-row reveal d2">
+                    <div class="legacy-chip"><small>old internal numbers</small>#118705 · #127851</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="xref-verdict">
+                        <span class="verdict-pill warn">merged</span>
+                        <p>Duplicates disappear — but <em>both</em> old numbers keep pointing at the one combined record. Nobody's bookmark dies.</p>
+                    </div>
+                </div>
+                <div class="xref-row reveal d3">
+                    <div class="legacy-chip"><small>old internal number</small>#10701</div>
+                    <div class="flow-arrow">→</div>
+                    <div class="xref-verdict">
+                        <span class="verdict-pill info">replaced</span>
+                        <p>A discontinued product doesn't go dark — its record names the successor, so customers get pointed forward.</p>
+                    </div>
+                </div>
+            </div>
+            <p class="ledger-moral lanes-moral reveal d4">Think postal forwarding after a move: <strong>every old identifier resolves to the right new record, labeled with what happened.</strong> Customers and integrations never notice the migration — they just get better answers.</p>
+            <div class="foot"><span>ingot</span><span>the fix · continuity</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 8 · PROOF ============ -->
     <section class="slide" aria-label="Proof">
         <div class="pad">
             <p class="eyebrow reveal">PROOF</p>
@@ -552,7 +671,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 7 · BEYOND PRODUCTS ============ -->
+    <!-- ============ SLIDE 9 · BEYOND PRODUCTS ============ -->
     <section class="slide" aria-label="Beyond products">
         <div class="pad">
             <p class="eyebrow reveal">BEYOND PRODUCTS</p>
@@ -584,7 +703,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 8 · WHAT IT UNLOCKS ============ -->
+    <!-- ============ SLIDE 10 · WHAT IT UNLOCKS ============ -->
     <section class="slide" aria-label="What it unlocks">
         <div class="pad">
             <p class="eyebrow reveal">WHY IT MATTERS</p>
@@ -634,7 +753,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
 <!-- deck chrome: navigation outside the slide stage -->
 <nav class="deck-controls" aria-label="Slide navigation">
     <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
-    <span class="page-count" id="pageCount">1 / 8</span>
+    <span class="page-count" id="pageCount">1 / 10</span>
     <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
 </nav>
 
