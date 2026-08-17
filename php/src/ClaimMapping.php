@@ -437,13 +437,14 @@ final class ClaimMapping
     public static function codesAt(array $periods, mixed $entity, ?string $source, int $at): array
     {
         if ($source !== null) {
-            foreach ($periods[self::makeKey($entity, $source)] ?? [] as $period) {
-                if (self::covers($period, $at)) {
-                    return Sets::valuesSorted($period['codes']);
-                }
+            $ps = $periods[self::makeKey($entity, $source)] ?? [];
+            $codes = self::codesCovering($ps, $at);
+            if ($codes === []) {
+                // gr-4iu: the source DID identify this listing but spoke outside its held window.
+                $codes = self::nearestCodes($ps, $at);
             }
 
-            return [];
+            return Sets::valuesSorted($codes);
         }
 
         $union = [];
@@ -452,15 +453,69 @@ final class ClaimMapping
             if ((string) $keyEntity !== (string) $entity) {
                 continue;
             }
-            foreach ($listingPeriods as $period) {
-                if (self::covers($period, $at)) {
-                    $union = Sets::union($union, $period['codes']);
-                    break;
-                }
-            }
+            $union = Sets::union($union, self::codesCovering($listingPeriods, $at));
         }
 
         return Sets::valuesSorted($union);
+    }
+
+    /**
+     * The codes the covering period holds — with the gr-gh0 exception: periods are half-open, so
+     * the period OPENING at an instant owns it, which is right for identity but wrong for an
+     * attribute stated in the same batch as a delisting. At the exact instant a source delists,
+     * anchor to the codes the CLOSING period held. Mirrors codes_covering/2.
+     *
+     * @param list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}> $ps
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private static function codesCovering(array $ps, int $at): array
+    {
+        foreach ($ps as $period) {
+            if (!self::covers($period, $at)) {
+                continue;
+            }
+            if ($period['codes'] === [] && $period['from'] === $at) {
+                foreach ($ps as $closing) {
+                    if ($closing['to'] === $at) {
+                        return $closing['codes'];
+                    }
+                }
+
+                return [];
+            }
+
+            return $period['codes'];
+        }
+
+        return [];
+    }
+
+    /**
+     * gr-4iu: a source that spoke outside the window it held codes anchors to the codes it held
+     * nearest in the past (bridging a delisting gap), or — before it first identified — to the
+     * earliest codes it ever asserted on this listing. A source that never asserted a code still
+     * anchors to nothing and the event is refused. Mirrors nearest_codes/2 (periods are
+     * chronological, so a forward scan is the take_while).
+     *
+     * @param list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}> $ps
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private static function nearestCodes(array $ps, int $at): array
+    {
+        $held = array_values(array_filter($ps, static fn (array $p): bool => $p['codes'] !== []));
+
+        $past = null;
+        foreach ($held as $p) {
+            if ($p['from'] > $at) {
+                break;
+            }
+            $past = $p;
+        }
+        if ($past !== null) {
+            return $past['codes'];
+        }
+
+        return $held === [] ? [] : $held[0]['codes'];
     }
 
     /**
