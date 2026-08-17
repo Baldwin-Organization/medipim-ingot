@@ -9,15 +9,15 @@ namespace Ingot;
  *
  * Folds contract-C HistoryEnvelopes into canonical claims (`canonicalClaims`) and composes them
  * into engine claims plus the `shared` code set (`build`). Per listing = (legacy_entity, source):
- * replay identity events into a final code-set, canonicalize/partition, then synthesize identity /
- * grouping / attribute / member_of claims, plus first-class lane records (media + descriptions) tied
- * back by depicts/describes edges. Claims are stamped with a chronological `order`.
+ * replay identity events into code-set `Period`s, canonicalize/partition, then synthesize identity /
+ * grouping / attribute / member_of claims, plus first-class lane records (media + descriptions +
+ * leaflets) tied back by depicts/describes edges. Claims are stamped with a chronological `order`.
+ *
+ * Internals speak the domain value objects — `Code`, `CodeSet`, `Period`, `Listing` — so the fold
+ * reads as language; the public API keeps the engine's array shapes (`Sets` code-sets, wire maps).
  */
 final class ClaimMapping
 {
-    /** National short codes, in anchor preference order. */
-    private const NATIONAL_PRIMARY = ['cnk', 'cip_acl7', 'cefip', 'pzn', 'sukl', 'pzn_austria', 'national_code', 'cn'];
-
     // artg_id (gr-sx7.1): an identity code one ARTG registration shares across pack sizes — never fuses.
     private const NON_BRIDGING_SCHEMES = ['mpn', 'supplier_ref', 'artg_id'];
 
@@ -34,18 +34,15 @@ final class ClaimMapping
      * Map envelopes to ['claims' => [ClaimAsserted...], 'shared' => code-set].
      *
      * @param list<array<string,mixed>> $envelopes
-     * @return array{claims: list<array<string,mixed>>, shared: array<string, array{0: string, 1: string}>}
+     * @return array{claims: list<array<string,mixed>>, shared: array<string, array{0: string, 1: string}>, rejected: list<array<string,mixed>>}
      */
     public static function build(array $envelopes): array
     {
-        $folded = self::foldRaw($envelopes);
-
-        $canonical = self::canonical($envelopes, $folded);
-        $claims = self::stamp(CanonicalClaims::toEngineBang($canonical));
-        $shared = self::sharedCodes(self::listingCodes($folded));
-        $rejected = self::rejected($envelopes);
-
-        return ['claims' => $claims, 'shared' => $shared, 'rejected' => $rejected];
+        return [
+            'claims' => self::stamp(CanonicalClaims::toEngineBang(self::canonical($envelopes))),
+            'shared' => self::sharedCodes(self::codesByListing($envelopes))->toSets(),
+            'rejected' => self::rejected($envelopes),
+        ];
     }
 
     /**
@@ -56,26 +53,26 @@ final class ClaimMapping
      */
     public static function canonicalClaims(array $envelopes): array
     {
-        return self::canonical($envelopes, self::foldRaw($envelopes));
+        return self::canonical($envelopes);
     }
 
     /**
-     * Just the folded, canonicalized code-set per listing — keyed "entity\x1fsource".
+     * Just the folded, canonicalized code-set per listing — keyed "entity\x1fsource", in the
+     * engine's `Sets` shape.
      *
      * @param list<array<string,mixed>> $envelopes
      * @return array<string, array<string, array{0: string, 1: string}>>
      */
     public static function listings(array $envelopes): array
     {
-        return self::listingCodes(self::foldRaw($envelopes));
+        return array_map(static fn (CodeSet $codes): array => $codes->toSets(), self::codesByListing($envelopes));
     }
 
     /**
      * @param list<array<string,mixed>> $envelopes
-     * @param array<string, array{raw: array<string, array<string,true>>, last_at: int}> $folded
      * @return list<array<string,mixed>>
      */
-    private static function canonical(array $envelopes, array $folded): array
+    private static function canonical(array $envelopes): array
     {
         // A claim is ABOUT a code — cnk, ean, cn — and about ONE OR MORE of them. So the anchor is
         // every code the asserting source itself held AT THE TIME it spoke, read out of that
@@ -88,34 +85,34 @@ final class ClaimMapping
         $identity = [];
         $grouping = [];
         foreach ($orderedKeys as $key) {
-            [$entity, $source] = self::splitKey($key);
+            $listing = Listing::fromKey($key);
 
             foreach ($periods[$key] as $period) {
-                $sortedCodes = Sets::valuesSorted($period['codes']);
+                $heldCodes = $period->codes->sorted();
 
                 // One identity claim PER PERIOD. A code that was attached and later removed keeps
                 // an interval saying so, instead of silently never having existed.
                 $identity[] = [
                     'kind' => 'identity',
-                    'source' => $source,
-                    'ref' => $entity.':'.$source,
-                    'codes' => array_map(CanonicalClaims::codeString(...), $sortedCodes),
-                    'valid_from' => $period['from'],
-                    'valid_to' => $period['to'],
-                    'recorded_at' => $period['from'],
+                    'source' => $listing->source,
+                    'ref' => $listing->ref(),
+                    'codes' => array_map(strval(...), $heldCodes),
+                    'valid_from' => $period->from,
+                    'valid_to' => $period->to,
+                    'recorded_at' => $period->from,
                 ];
 
                 // Grouping tracks the same periods. Dating it at the end of the fold left a window
                 // where a code existed but belonged to no legacy product.
-                foreach ($sortedCodes as $code) {
+                foreach ($heldCodes as $code) {
                     $grouping[] = [
                         'kind' => 'grouping',
-                        'source' => $source,
-                        'code' => CanonicalClaims::codeString($code),
-                        'product' => self::entityValue($entity),
-                        'valid_from' => $period['from'],
-                        'valid_to' => $period['to'],
-                        'recorded_at' => $period['from'],
+                        'source' => $listing->source,
+                        'code' => (string) $code,
+                        'product' => $listing->entity,
+                        'valid_from' => $period->from,
+                        'valid_to' => $period->to,
+                        'recorded_at' => $period->from,
                     ];
                 }
             }
@@ -131,7 +128,7 @@ final class ClaimMapping
                     $attribute[] = [
                         'kind' => 'attribute',
                         'source' => $ev['source'],
-                        'code' => CanonicalClaims::codeString($code),
+                        'code' => (string) $code,
                         'field' => self::fieldDim($ev),
                         'value' => self::attributeValue($ev['data']['field'], $ev['data']['value']),
                         'valid_from' => $ev['valid_from'],
@@ -160,7 +157,7 @@ final class ClaimMapping
                     $memberOf[] = [
                         'kind' => 'member_of',
                         'source' => $ev['source'],
-                        'code' => CanonicalClaims::codeString($code),
+                        'code' => (string) $code,
                         'collection' => $ev['data']['collection'],
                         'member' => self::toStringValue($ev['data']['value']),
                         'valid_from' => $ev['valid_from'],
@@ -170,22 +167,21 @@ final class ClaimMapping
             }
         }
 
-        $laneEntities = self::laneEntities($envelopes, $periods);
-
-        return array_merge($identity, $grouping, $attribute, $memberOf, $laneEntities);
+        return array_merge($identity, $grouping, $attribute, $memberOf, self::laneEntities($envelopes, $periods));
     }
 
     /**
-     * First-class lane records (media + descriptions): fold per (entity, source, collection), emit
-     * an identity claim in the entity's lane + a typed edge back to the listing's anchor.
+     * First-class lane records (media + descriptions + leaflets): fold per (listing, collection),
+     * emit an identity claim in the entity's lane + a typed edge back to every code the entity
+     * held at that instant.
      *
      * @param list<array<string,mixed>> $envelopes
-     * @param array<string, list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}>> $periods
+     * @param array<string, list<Period>> $periods
      * @return list<array<string,mixed>>
      */
     private static function laneEntities(array $envelopes, array $periods): array
     {
-        $refs = self::laneRefs($envelopes); // key "entity\x1fsource\x1fcollection" => {ids, last, entity, source, collection}
+        $refs = self::laneRefs($envelopes);
 
         $keys = array_keys($refs);
         sort($keys, SORT_STRING);
@@ -221,7 +217,7 @@ final class ClaimMapping
                         'source' => $ref['source'],
                         'from' => $scheme.':'.$id,
                         'relation' => $relation,
-                        'to' => CanonicalClaims::codeString($code),
+                        'to' => (string) $code,
                         'valid_from' => $vf ?? $at,
                         'recorded_at' => $at,
                     ];
@@ -233,8 +229,8 @@ final class ClaimMapping
     }
 
     /**
-     * Fold media events per (entity, source||source_system, collection): add/remove churn on the
-     * asset id, so only surviving references remain.
+     * Fold media events per (listing-or-source_system, collection): add/remove churn on the asset
+     * id, so only surviving references remain.
      *
      * @param list<array<string,mixed>> $envelopes
      * @return array<string, array{ids: array<string,true>, last: array<string, array{0: mixed, 1: mixed}>, entity: mixed, source: string, collection: string}>
@@ -250,16 +246,16 @@ final class ClaimMapping
                 if (!isset(self::LANE_COLLECTIONS[$ev['data']['collection']])) {
                     continue;
                 }
-                $source = $ev['source'] ?? $env['source_system'];
-                $key = self::makeKey($env['legacy_entity'], $source)."\x1f".$ev['data']['collection'];
+                $listing = new Listing($env['legacy_entity'], $ev['source'] ?? $env['source_system']);
+                $key = $listing->key()."\x1f".$ev['data']['collection'];
                 $id = self::toStringValue($ev['data']['asset']);
 
                 if (!isset($acc[$key])) {
                     $acc[$key] = [
                         'ids' => [],
                         'last' => [],
-                        'entity' => $env['legacy_entity'],
-                        'source' => $source,
+                        'entity' => $listing->entity,
+                        'source' => $listing->source,
                         'collection' => $ev['data']['collection'],
                     ];
                 }
@@ -275,28 +271,18 @@ final class ClaimMapping
         return $acc;
     }
 
-    // ── fold ────────────────────────────────────────────────────────────────────
+    // ── the per-listing fold ─────────────────────────────────────────────────────
 
     /**
-     * Replay identity events into per-listing raw code-sets, keyed by medipim scheme name.
+     * Per-listing code-set `Period`s — mirrors ClaimMapping.listing_periods/1.
+     *
+     * A final-state fold answers "which codes does this listing carry now" and throws the history
+     * away. That is wrong for any code that can move: a barcode transferred to another pack leaves
+     * no trace it was ever here. This replays the same events but snapshots the code set after
+     * each one, coalescing runs where the set did not change.
      *
      * @param list<array<string,mixed>> $envelopes
-     * @return array<string, array{raw: array<string, array<string,true>>, last_at: int}>
-     */
-    /**
-     * Per-listing code-set PERIODS — mirrors ClaimMapping.listing_periods/1.
-     *
-     * foldRaw() answers "which codes does this listing carry now" and throws the history away.
-     * That is wrong for any code that can move: a barcode transferred to another pack leaves no
-     * trace it was ever here. This replays the same events but snapshots the code set after each
-     * one, coalescing runs where the set did not change.
-     *
-     * Half-open [from, to); the last period has to = null. Runs inside one UTC day coalesce too:
-     * every reader works at day granularity, and a same-day interval would fail the live-wire
-     * rule that valid_to must be later than valid_from.
-     *
-     * @param list<array<string,mixed>> $envelopes
-     * @return array<string, list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}>>
+     * @return array<string, list<Period>>
      */
     public static function listingPeriods(array $envelopes): array
     {
@@ -309,7 +295,7 @@ final class ClaimMapping
                     continue;
                 }
 
-                $key = self::makeKey($env['legacy_entity'], $ev['source']);
+                $key = (new Listing($env['legacy_entity'], $ev['source']))->key();
                 $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
                 $periods[$key] = self::appendPeriod(
                     $periods[$key] ?? [],
@@ -323,54 +309,292 @@ final class ClaimMapping
     }
 
     /**
-     * @param list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}> $periods
-     * @param array<string, array{0: string, 1: string}> $codes
-     * @return list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}>
+     * @param list<Period> $periods chronological; the last one is still open
+     * @return list<Period>
      */
-    private static function appendPeriod(array $periods, array $codes, int $at): array
+    private static function appendPeriod(array $periods, CodeSet $codes, int $at): array
     {
         if ($periods === []) {
-            return [['from' => $at, 'to' => null, 'codes' => $codes]];
+            return [new Period($at, null, $codes)];
         }
 
-        $last = count($periods) - 1;
-        $current = $periods[$last];
+        $current = $periods[count($periods) - 1];
 
         // The set did not change — the current period simply continues.
-        if (self::sameCodes($current['codes'], $codes)) {
+        if ($current->codes->equals($codes)) {
             return $periods;
         }
 
-        // Same UTC day: replace rather than leave an interval that can never apply.
-        if (intdiv($current['from'], 86400) === intdiv($at, 86400)) {
-            $periods[$last] = ['from' => $current['from'], 'to' => null, 'codes' => $codes];
+        // Same UTC day: replace rather than leave an interval that can never apply — every reader
+        // works at day granularity, and the live wire rejects a same-day interval anyway.
+        if ($current->openedSameUtcDayAs($at)) {
+            $periods[count($periods) - 1] = $current->withCodes($codes);
 
             return $periods;
         }
 
-        $periods[$last]['to'] = $at;
-        $periods[] = ['from' => $at, 'to' => null, 'codes' => $codes];
+        $periods[count($periods) - 1] = $current->closedAt($at);
+        $periods[] = new Period($at, null, $codes);
 
         return $periods;
     }
 
     /**
-     * @param array<string, array{0: string, 1: string}> $a
-     * @param array<string, array{0: string, 1: string}> $b
+     * The identifiers a claim is about, as of the instant it was made — mirrors codes_at/4.
+     *
+     * A SOURCED event is about the codes that source itself held then — or, when it held none at
+     * that instant but did identify this listing at some point, the nearest codes it held (gr-4iu).
+     * An UNSOURCED event is scoped to the legacy entity, and the entity id is an identifier in its
+     * own right (that is what grouping claims make first-class), so it is about every code the
+     * entity carried then, across listings.
+     *
+     * @param array<string, list<Period>> $periods
+     * @return list<Code> deterministically ordered
      */
-    private static function sameCodes(array $a, array $b): bool
+    public static function codesAt(array $periods, mixed $entity, ?string $source, int $at): array
     {
-        if (count($a) !== count($b)) {
-            return false;
+        if ($source !== null) {
+            $listingPeriods = $periods[(new Listing($entity, $source))->key()] ?? [];
+            $codes = self::codesCovering($listingPeriods, $at);
+            if ($codes->isEmpty()) {
+                // gr-4iu: the source DID identify this listing but spoke outside its held window.
+                $codes = self::nearestCodes($listingPeriods, $at);
+            }
+
+            return $codes->sorted();
         }
-        foreach ($a as $k => $_) {
-            if (!isset($b[$k])) {
-                return false;
+
+        $union = CodeSet::none();
+        foreach ($periods as $key => $listingPeriods) {
+            if (!Listing::fromKey($key)->isFor($entity)) {
+                continue;
+            }
+            $union = $union->union(self::codesCovering($listingPeriods, $at));
+        }
+
+        return $union->sorted();
+    }
+
+    /**
+     * The codes the covering period holds — with the gr-gh0 exception: periods are half-open, so
+     * the period OPENING at an instant owns it, which is right for identity but wrong for an
+     * attribute stated in the same batch as a delisting. At the exact instant a source delists,
+     * anchor to the codes the CLOSING period held. Mirrors codes_covering/2.
+     *
+     * @param list<Period> $periods
+     */
+    private static function codesCovering(array $periods, int $at): CodeSet
+    {
+        foreach ($periods as $period) {
+            if (!$period->covers($at)) {
+                continue;
+            }
+            if ($period->isDelisting() && $period->opensAt($at)) {
+                foreach ($periods as $closing) {
+                    if ($closing->closesAt($at)) {
+                        return $closing->codes;
+                    }
+                }
+
+                return CodeSet::none();
+            }
+
+            return $period->codes;
+        }
+
+        return CodeSet::none();
+    }
+
+    /**
+     * gr-4iu: a source that spoke outside the window it held codes anchors to the codes it held
+     * nearest in the past (bridging a delisting gap), or — before it first identified — to the
+     * earliest codes it ever asserted on this listing. A source that never asserted a code still
+     * anchors to nothing and the event is refused. Mirrors nearest_codes/2 (periods are
+     * chronological, so a forward scan is the take_while).
+     *
+     * @param list<Period> $periods
+     */
+    private static function nearestCodes(array $periods, int $at): CodeSet
+    {
+        $held = array_values(array_filter($periods, static fn (Period $p): bool => !$p->isDelisting()));
+
+        $past = null;
+        foreach ($held as $period) {
+            if ($period->from > $at) {
+                break;
+            }
+            $past = $period;
+        }
+        if ($past !== null) {
+            return $past->codes;
+        }
+
+        return $held === [] ? CodeSet::none() : $held[0]->codes;
+    }
+
+    /**
+     * Events that cannot become claims, with the reason — mirrors rejected/1.
+     *
+     * A claim is about one or more identifiers. An event whose source held no code when it spoke
+     * has nothing to be about, so it is refused rather than dropped quietly.
+     *
+     * @param list<array<string,mixed>> $envelopes
+     * @return list<array<string,mixed>>
+     */
+    public static function rejected(array $envelopes): array
+    {
+        $periods = self::listingPeriods($envelopes);
+
+        $out = [];
+        foreach ($envelopes as $env) {
+            foreach ($env['events'] as $ev) {
+                if (!in_array($ev['kind'], ['attribute', 'edge'], true)) {
+                    continue;
+                }
+                if (self::codesAt($periods, $env['legacy_entity'], $ev['source'], $ev['recorded_at']) !== []) {
+                    continue;
+                }
+                $out[] = [
+                    'entity' => $env['legacy_entity'],
+                    'source' => $ev['source'],
+                    'kind' => $ev['kind'],
+                    'detail' => $ev['kind'] === 'attribute' ? self::fieldDim($ev) : $ev['data']['collection'],
+                    'recorded_at' => $ev['recorded_at'],
+                    'reason' => $ev['source'] === null ? 'unsourced' : 'source_held_no_code',
+                ];
             }
         }
 
-        return true;
+        return $out;
     }
+
+    /**
+     * The final (current) code-set per listing, delisted (now-empty) listings dropped.
+     *
+     * @param list<array<string,mixed>> $envelopes
+     * @return array<string, CodeSet>
+     */
+    private static function codesByListing(array $envelopes): array
+    {
+        $raw = [];
+        foreach ($envelopes as $env) {
+            foreach ($env['events'] as $ev) {
+                if ($ev['kind'] !== 'identity') {
+                    continue;
+                }
+                $key = (new Listing($env['legacy_entity'], $ev['source']))->key();
+                $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
+            }
+        }
+
+        $out = [];
+        foreach ($raw as $key => $schemes) {
+            $codes = self::engineCodes($schemes);
+            if (!$codes->isEmpty()) {
+                $out[$key] = $codes;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Apply one identity delta (set/add/remove/delete) to a raw code-set (scheme => set-of-values).
+     * Folding runs on medipim's own scheme names so eanGtin13(set) and ean(add) don't interfere;
+     * `engineCodes` maps to engine schemes afterwards.
+     *
+     * @param array<string, array<string,true>> $raw
+     * @param array<string,mixed> $ev
+     * @return array<string, array<string,true>>
+     */
+    private static function applyIdentity(array $raw, array $ev): array
+    {
+        $scheme = $ev['data']['scheme'];
+        $code = $ev['data']['code'] ?? null;
+
+        switch ($ev['op']) {
+            case 'set':
+                if ($code === null) {
+                    unset($raw[$scheme]);
+                } else {
+                    $raw[$scheme] = [(string) $code => true];
+                }
+
+                return $raw;
+            case 'add':
+                $raw[$scheme][(string) $code] = true;
+
+                return $raw;
+            case 'remove':
+                if (isset($raw[$scheme])) {
+                    unset($raw[$scheme][(string) $code]);
+                    if ($raw[$scheme] === []) {
+                        unset($raw[$scheme]);
+                    }
+                }
+
+                return $raw;
+            case 'delete':
+                unset($raw[$scheme]);
+
+                return $raw;
+            default:
+                return $raw;
+        }
+    }
+
+    /**
+     * raw (medipim scheme → values) → the canonicalized engine `CodeSet`.
+     *
+     * @param array<string, array<string,true>> $raw
+     */
+    private static function engineCodes(array $raw): CodeSet
+    {
+        $codes = CodeSet::none();
+        foreach ($raw as $scheme => $values) {
+            foreach (array_keys($values) as $value) {
+                $codes = $codes->with((new Code(CodeRegistry::scheme($scheme), (string) $value))->canonical());
+            }
+        }
+
+        return $codes;
+    }
+
+    /** @param array<string, CodeSet> $codesByListing */
+    private static function sharedCodes(array $codesByListing): CodeSet
+    {
+        $shared = CodeSet::none();
+        foreach ($codesByListing as $codes) {
+            foreach ($codes as $code) {
+                if (self::neverBridges($code)) {
+                    $shared = $shared->with($code);
+                }
+            }
+        }
+
+        return $shared;
+    }
+
+    /**
+     * May this code never bridge two products? Restricted/in-store GTINs and the non-bridging
+     * schemes (supplier refs, ARTG registrations) are carried but never fuse.
+     */
+    public static function neverBridges(Code $code): bool
+    {
+        return $code->isRestricted() || in_array($code->scheme, self::NON_BRIDGING_SCHEMES, true);
+    }
+
+    /**
+     * Engine-shape variant of `neverBridges` for callers still speaking `[scheme, value]` pairs.
+     *
+     * @param array{0: string, 1: string} $code
+     */
+    public static function isShared(array $code): bool
+    {
+        return self::neverBridges(Code::fromPair($code));
+    }
+
+    // ── attribute values ─────────────────────────────────────────────────────────
 
     /**
      * medipim emits allowedSpecies both as "human" and as ["human"]. A one-element list carries no
@@ -417,323 +641,6 @@ final class ClaimMapping
         return abs($scaled - $rounded) < 1.0e-9 ? $rounded : $scaled;
     }
 
-    /** Half-open: from inclusive, to exclusive, null to means still applicable. */
-    private static function covers(array $period, int $at): bool
-    {
-        return $at >= $period['from'] && ($period['to'] === null || $at < $period['to']);
-    }
-
-    /**
-     * The identifiers a claim is about, as of the instant it was made — mirrors codes_at/4.
-     *
-     * A SOURCED event is about the codes that source itself held then; none means it identified
-     * nothing. An UNSOURCED event is scoped to the legacy entity, and the entity id is an
-     * identifier in its own right (that is what grouping claims make first-class), so it is about
-     * every code the entity carried then, across listings.
-     *
-     * @param array<string, list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}>> $periods
-     * @return list<array{0: string, 1: string}>
-     */
-    public static function codesAt(array $periods, mixed $entity, ?string $source, int $at): array
-    {
-        if ($source !== null) {
-            $ps = $periods[self::makeKey($entity, $source)] ?? [];
-            $codes = self::codesCovering($ps, $at);
-            if ($codes === []) {
-                // gr-4iu: the source DID identify this listing but spoke outside its held window.
-                $codes = self::nearestCodes($ps, $at);
-            }
-
-            return Sets::valuesSorted($codes);
-        }
-
-        $union = [];
-        foreach ($periods as $key => $listingPeriods) {
-            [$keyEntity, $_source] = self::splitKey($key);
-            if ((string) $keyEntity !== (string) $entity) {
-                continue;
-            }
-            $union = Sets::union($union, self::codesCovering($listingPeriods, $at));
-        }
-
-        return Sets::valuesSorted($union);
-    }
-
-    /**
-     * The codes the covering period holds — with the gr-gh0 exception: periods are half-open, so
-     * the period OPENING at an instant owns it, which is right for identity but wrong for an
-     * attribute stated in the same batch as a delisting. At the exact instant a source delists,
-     * anchor to the codes the CLOSING period held. Mirrors codes_covering/2.
-     *
-     * @param list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}> $ps
-     * @return array<string, array{0: string, 1: string}>
-     */
-    private static function codesCovering(array $ps, int $at): array
-    {
-        foreach ($ps as $period) {
-            if (!self::covers($period, $at)) {
-                continue;
-            }
-            if ($period['codes'] === [] && $period['from'] === $at) {
-                foreach ($ps as $closing) {
-                    if ($closing['to'] === $at) {
-                        return $closing['codes'];
-                    }
-                }
-
-                return [];
-            }
-
-            return $period['codes'];
-        }
-
-        return [];
-    }
-
-    /**
-     * gr-4iu: a source that spoke outside the window it held codes anchors to the codes it held
-     * nearest in the past (bridging a delisting gap), or — before it first identified — to the
-     * earliest codes it ever asserted on this listing. A source that never asserted a code still
-     * anchors to nothing and the event is refused. Mirrors nearest_codes/2 (periods are
-     * chronological, so a forward scan is the take_while).
-     *
-     * @param list<array{from: int, to: ?int, codes: array<string, array{0: string, 1: string}>}> $ps
-     * @return array<string, array{0: string, 1: string}>
-     */
-    private static function nearestCodes(array $ps, int $at): array
-    {
-        $held = array_values(array_filter($ps, static fn (array $p): bool => $p['codes'] !== []));
-
-        $past = null;
-        foreach ($held as $p) {
-            if ($p['from'] > $at) {
-                break;
-            }
-            $past = $p;
-        }
-        if ($past !== null) {
-            return $past['codes'];
-        }
-
-        return $held === [] ? [] : $held[0]['codes'];
-    }
-
-    /**
-     * Events that cannot become claims, with the reason — mirrors rejected/1.
-     *
-     * A claim is about one or more identifiers. An event whose source held no code when it spoke
-     * has nothing to be about, so it is refused rather than dropped quietly.
-     *
-     * @param list<array<string,mixed>> $envelopes
-     * @return list<array<string,mixed>>
-     */
-    public static function rejected(array $envelopes): array
-    {
-        $periods = self::listingPeriods($envelopes);
-
-        $out = [];
-        foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if (!in_array($ev['kind'], ['attribute', 'edge'], true)) {
-                    continue;
-                }
-                if (self::codesAt($periods, $env['legacy_entity'], $ev['source'], $ev['recorded_at']) !== []) {
-                    continue;
-                }
-                $out[] = [
-                    'entity' => $env['legacy_entity'],
-                    'source' => $ev['source'],
-                    'kind' => $ev['kind'],
-                    'detail' => $ev['kind'] === 'attribute' ? self::fieldDim($ev) : $ev['data']['collection'],
-                    'recorded_at' => $ev['recorded_at'],
-                    'reason' => $ev['source'] === null ? 'unsourced' : 'source_held_no_code',
-                ];
-            }
-        }
-
-        return $out;
-    }
-
-    private static function foldRaw(array $envelopes): array
-    {
-        $acc = [];
-        foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'identity') {
-                    continue;
-                }
-                $key = self::makeKey($env['legacy_entity'], $ev['source']);
-                if (!isset($acc[$key])) {
-                    $acc[$key] = ['raw' => [], 'last_at' => 0];
-                }
-                $acc[$key]['raw'] = self::applyIdentity($acc[$key]['raw'], $ev);
-                $acc[$key]['last_at'] = max($acc[$key]['last_at'], $ev['recorded_at']);
-            }
-        }
-
-        return $acc;
-    }
-
-    /**
-     * Apply one identity delta (set/add/remove/delete) to a raw code-set (scheme => set-of-values).
-     *
-     * @param array<string, array<string,true>> $raw
-     * @param array<string,mixed> $ev
-     * @return array<string, array<string,true>>
-     */
-    private static function applyIdentity(array $raw, array $ev): array
-    {
-        $scheme = $ev['data']['scheme'];
-        $code = $ev['data']['code'] ?? null;
-
-        switch ($ev['op']) {
-            case 'set':
-                if ($code === null) {
-                    unset($raw[$scheme]);
-                } else {
-                    $raw[$scheme] = [(string) $code => true];
-                }
-
-                return $raw;
-            case 'add':
-                $raw[$scheme][(string) $code] = true;
-
-                return $raw;
-            case 'remove':
-                if (isset($raw[$scheme])) {
-                    unset($raw[$scheme][(string) $code]);
-                    if ($raw[$scheme] === []) {
-                        unset($raw[$scheme]);
-                    }
-                }
-
-                return $raw;
-            case 'delete':
-                unset($raw[$scheme]);
-
-                return $raw;
-            default:
-                return $raw;
-        }
-    }
-
-    /**
-     * raw (medipim scheme → values) → code-set of canonicalized engine codes.
-     *
-     * @param array<string, array<string,true>> $raw
-     * @return array<string, array{0: string, 1: string}>
-     */
-    private static function engineCodes(array $raw): array
-    {
-        $set = [];
-        foreach ($raw as $scheme => $values) {
-            foreach (array_keys($values) as $v) {
-                $code = Codes::canonicalize([CodeRegistry::scheme($scheme), (string) $v]);
-                $set[Codes::key($code)] = $code;
-            }
-        }
-
-        return $set;
-    }
-
-    /**
-     * Per-listing canonicalized code-sets, with delisted (now-empty) listings dropped.
-     *
-     * @param array<string, array{raw: array<string, array<string,true>>, last_at: int}> $folded
-     * @return array<string, array<string, array{0: string, 1: string}>>
-     */
-    private static function listingCodes(array $folded): array
-    {
-        $out = [];
-        foreach ($folded as $key => $v) {
-            $set = self::engineCodes($v['raw']);
-            if ($set !== []) {
-                $out[$key] = $set;
-            }
-        }
-
-        return $out;
-    }
-
-    // ── helpers ──────────────────────────────────────────────────────────────────
-
-    /**
-     * @param array<string, array<string, array{0: string, 1: string}>> $listingCodes
-     * @return array<string, array<string, array{0: string, 1: string}>> entity => code-set
-     */
-    private static function unionByEntity(array $listingCodes): array
-    {
-        $acc = [];
-        foreach ($listingCodes as $key => $set) {
-            [$entity] = self::splitKey($key);
-            $acc[$entity] = isset($acc[$entity]) ? Sets::union($acc[$entity], $set) : $set;
-        }
-
-        return $acc;
-    }
-
-    /**
-     * Primary anchor code: national short code ▸ non-restricted GTIN ▸ any GTIN ▸ acl13 ▸ cip13 ▸
-     * lowest code.
-     *
-     * @param list<array{0: string, 1: string}> $codes already sorted by [scheme, value]
-     * @return array{0: string, 1: string}|null
-     */
-    public static function primary(array $codes): ?array
-    {
-        if ($codes === []) {
-            return null;
-        }
-
-        $national = self::nationalShort($codes);
-        if ($national !== null) {
-            return $national;
-        }
-
-        foreach ($codes as $c) {
-            if ($c[0] === 'gtin' && !Codes::restricted($c)) {
-                return $c;
-            }
-        }
-        foreach ($codes as $c) {
-            if ($c[0] === 'gtin') {
-                return $c;
-            }
-        }
-        foreach ($codes as $c) {
-            if ($c[0] === 'acl13') {
-                return $c;
-            }
-        }
-        foreach ($codes as $c) {
-            if ($c[0] === 'cip13') {
-                return $c;
-            }
-        }
-
-        $sorted = $codes;
-        usort($sorted, Sets::compareCodes(...));
-
-        return $sorted[0];
-    }
-
-    /**
-     * @param list<array{0: string, 1: string}> $codes
-     * @return array{0: string, 1: string}|null
-     */
-    private static function nationalShort(array $codes): ?array
-    {
-        foreach (self::NATIONAL_PRIMARY as $scheme) {
-            foreach ($codes as $c) {
-                if ($c[0] === $scheme) {
-                    return $c;
-                }
-            }
-        }
-
-        return null;
-    }
-
     /** @param array<string,mixed> $ev */
     public static function fieldDim(array $ev): string
     {
@@ -742,29 +649,7 @@ final class ClaimMapping
         return $locale === null ? $ev['data']['field'] : $ev['data']['field'].':'.$locale;
     }
 
-    /**
-     * @param array<string, array<string, array{0: string, 1: string}>> $listingCodes
-     * @return array<string, array{0: string, 1: string}>
-     */
-    private static function sharedCodes(array $listingCodes): array
-    {
-        $out = [];
-        foreach ($listingCodes as $set) {
-            foreach (Sets::values($set) as $code) {
-                if (self::isShared($code)) {
-                    $out[Codes::key($code)] = $code;
-                }
-            }
-        }
-
-        return $out;
-    }
-
-    /** @param array{0: string, 1: string} $code */
-    public static function isShared(array $code): bool
-    {
-        return Codes::restricted($code) || in_array($code[0], self::NON_BRIDGING_SCHEMES, true);
-    }
+    // ── ordering + scalar plumbing ──────────────────────────────────────────────
 
     /**
      * Chronological order stamp: later recorded_at ⇒ higher order; stable on emission index.
@@ -794,39 +679,6 @@ final class ClaimMapping
     private static function numeric(mixed $v): int|float
     {
         return is_numeric($v) ? 0 + $v : 0;
-    }
-
-    private static function makeKey(mixed $entity, string $source): string
-    {
-        return self::entityKeyPart($entity)."\x1f".$source;
-    }
-
-    /** @return array{0: mixed, 1: string} */
-    private static function splitKey(string $key): array
-    {
-        $parts = explode("\x1f", $key, 2);
-
-        return [self::decodeEntity($parts[0]), $parts[1] ?? ''];
-    }
-
-    private static function entityKeyPart(mixed $entity): string
-    {
-        // Encode the entity scalar so an int 1 and string "1" can't collide in the key.
-        return (is_int($entity) ? 'i:' : 's:').$entity;
-    }
-
-    private static function decodeEntity(string $part): mixed
-    {
-        if (str_starts_with($part, 'i:')) {
-            return (int) substr($part, 2);
-        }
-
-        return substr($part, 2);
-    }
-
-    private static function entityValue(mixed $entity): mixed
-    {
-        return $entity;
     }
 
     /**
