@@ -79,6 +79,10 @@ defmodule CodeRegistry do
     "snomedMpuu" => {:snomed_mpuu, :external_ref},
     # a supplier's own reference — the engine already has the non-bridging :supplier_ref notion.
     "supplierReference" => {:supplier_ref, :external_ref},
+    # AU end-of-life (gr-sx7.4): status := replaced, replacement := the successor's NEW-SYSTEM id
+    # ("MD…"), then codes are nulled. The successor id is a reference into the new system — carried
+    # so the golden record answers "replaced by X" instead of going dark; never bridges.
+    "replacement" => {:replacement_id, :external_ref},
 
     # ── identity — the books vertical (gr-vgb: the genericity gate) ──────────────
     # ISBN rows are DATA, exactly like adding a pharma market. isbn13 is the canonical scheme

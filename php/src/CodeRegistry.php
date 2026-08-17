@@ -58,6 +58,8 @@ final class CodeRegistry
         'snomedTpuu' => ['snomed_tpuu', 'external_ref'],
         'snomedMpuu' => ['snomed_mpuu', 'external_ref'],
         'supplierReference' => ['supplier_ref', 'external_ref'],
+        // AU end-of-life (gr-sx7.4): the successor's new-system id — carried, never bridges.
+        'replacement' => ['replacement_id', 'external_ref'],
         'isbn13' => ['isbn13', 'identity'],
         'isbn10' => ['isbn10', 'identity'],
         'productId' => ['product_id', 'entity_id'],

@@ -81,6 +81,56 @@ defmodule AuMarketTest do
     end
   end
 
+  describe "replacement lifecycle (gr-sx7.4)" do
+    defp attr(source, field, value, at),
+      do: %{
+        "recorded_at" => at,
+        "source" => source,
+        "op" => "set",
+        "kind" => "attribute",
+        "field" => field,
+        "value" => value
+      }
+
+    test "an end-of-life entity answers 'replaced by X' instead of going dark" do
+      # The real AU pattern (entity 10701): status := replaced, replacement := new-system id,
+      # then the EAN removed and GTIN fields nulled — identity intentionally dies.
+      day = 86_400
+
+      env =
+        envelope(10_701, [
+          id("1", "add", "ean", "9338475000364", 1 * day),
+          attr("1", "status", "active", 2 * day),
+          attr("1", "status", "replaced", 100 * day),
+          attr("1", "replacement", "M05EE5029F", 100 * day),
+          id("1", "remove", "ean", "9338475000364", 110 * day),
+          id("1", "set", "eanGtin13", nil, 110 * day)
+        ])
+
+      # Nothing is refused: the post-hoc statements anchor to the codes the source held (gr-4iu).
+      assert ClaimMapping.rejected([env]) == []
+
+      # As of any date the entity still held codes, the golden record answers "replaced by X".
+      t = Temporal.run([env])
+      epoch = ~D[1970-01-01]
+
+      assert [%{product: 10_701, variants: [variant]}] =
+               Temporal.golden_as_of(t.log, Date.add(epoch, 105))
+
+      decisions = Map.new(variant.attributes)
+      assert %{value: "replaced", status: :resolved} = decisions["status"]
+      assert %{value: "M05EE5029F", status: :resolved} = decisions["replacement"]
+
+      assert CodeRegistry.classification("replacement") == :external_ref
+
+      # After the codes are nulled the identity is deliberately dead — no live record, in the
+      # current-state fold and the as-of projection alike. The forwarding pointer is not lost:
+      # it lives in every as-of projection before the death.
+      assert Temporal.golden_as_of(t.log, Date.add(epoch, 200)) == []
+      assert Rederivation.run([env], 200 * day) |> GoldenRecords.project() |> Map.fetch!(:records) == []
+    end
+  end
+
   describe "leaflets" do
     test "become media-lane records under :leaflet_id, distinct from same-numbered media assets" do
       env =
