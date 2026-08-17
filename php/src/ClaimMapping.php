@@ -18,12 +18,16 @@ final class ClaimMapping
     /** National short codes, in anchor preference order. */
     private const NATIONAL_PRIMARY = ['cnk', 'cip_acl7', 'cefip', 'pzn', 'sukl', 'pzn_austria', 'national_code', 'cn'];
 
-    private const NON_BRIDGING_SCHEMES = ['mpn', 'supplier_ref'];
+    // artg_id (gr-sx7.1): an identity code one ARTG registration shares across pack sizes — never fuses.
+    private const NON_BRIDGING_SCHEMES = ['mpn', 'supplier_ref', 'artg_id'];
 
     /** medipim edge collections that reference first-class entities. collection => [scheme, lane, relation]. */
     private const LANE_COLLECTIONS = [
         'descriptions' => ['text_id', 'description', 'describes'],
         'media' => ['asset_id', 'media', 'depicts'],
+        // AU leaflets (gr-sx7.1): own scheme — leaflet ids live in a different medipim table
+        // than media ids, so sharing asset_id would collide id-spaces.
+        'leaflets' => ['leaflet_id', 'media', 'depicts'],
     ];
 
     /**

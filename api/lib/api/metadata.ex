@@ -26,6 +26,7 @@ defmodule Api.Metadata do
         {"substance_id", "substance_id", "identity"},
         {"text_id", "text_id", "identity"},
         {"asset_id", "asset_id", "identity"},
+        {"leaflet_id", "leaflet_id", "identity"},
         {"uuid", "uuid", "identity"}
       ]
       |> Enum.reject(fn {wire_name, _, _} -> MapSet.member?(declared_wire_names, wire_name) end)

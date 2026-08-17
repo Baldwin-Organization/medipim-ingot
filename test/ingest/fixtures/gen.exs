@@ -55,7 +55,7 @@ defmodule Gen do
   @op %{"1" => "set", "2" => "add", "3" => "remove", "4" => "delete"}
   # identity field-set comes from the registry at runtime (see classify/0). These three are NOT
   # codes and stay decoder-local: media collections, structural edges, and dropped meta fields.
-  @media ~w(media descriptions)
+  @media ~w(media descriptions leaflets)
   @edge ~w(publicCategories brands labos internationalBrands medipimCategories organizations)
   @meta_drop ~w(updatedAt updatedBy createdAt createdBy legacyId)
 

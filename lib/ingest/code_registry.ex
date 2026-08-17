@@ -61,6 +61,25 @@ defmodule CodeRegistry do
     "cisCode" => {:cis_code, :external_ref},
     "publicPageIdentifier" => {:public_page_identifier, :external_ref},
 
+    # ── the AU market (gr-sx7.1; evidence: analysis/au-20260814/au-quality-report.md §1) ─
+    # artgId is an IDENTITY code that must NEVER BRIDGE: one ARTG registration covers many
+    # pack sizes/variants (3,807 of 9,944 live ARTG numbers sit on >1 entity, worst 90 — the
+    # AU export itself refutes the report's national-grade recommendation). Same treatment as
+    # restricted in-store GTINs: folded into the code-set, marked shared by ClaimMapping
+    # (@non_bridging_schemes), bridge_grade :none.
+    "artgId" => {:artg_id, :identity},
+    # AMT concept ids (SNOMED CT-AU): identify clinical concepts in another system, not this
+    # trade item — carried, never bridge.
+    "snomedCtpp" => {:snomed_ctpp, :external_ref},
+    "snomedTpp" => {:snomed_tpp, :external_ref},
+    "snomedMpp" => {:snomed_mpp, :external_ref},
+    "snomedTp" => {:snomed_tp, :external_ref},
+    "snomedMp" => {:snomed_mp, :external_ref},
+    "snomedTpuu" => {:snomed_tpuu, :external_ref},
+    "snomedMpuu" => {:snomed_mpuu, :external_ref},
+    # a supplier's own reference — the engine already has the non-bridging :supplier_ref notion.
+    "supplierReference" => {:supplier_ref, :external_ref},
+
     # ── identity — the books vertical (gr-vgb: the genericity gate) ──────────────
     # ISBN rows are DATA, exactly like adding a pharma market. isbn13 is the canonical scheme
     # (an ISBN-13 is a Bookland EAN-13); the 10 → 13 VALUE conversion is the adapter's job
@@ -103,7 +122,8 @@ defmodule CodeRegistry do
   # :ean / :upc are accepted spellings of the GTIN family (Codes.canonicalize folds them to
   # :gtin); :mpn / :supplier_ref are the non-bridging schemes ClaimMapping knows. The lane
   # schemes (gr-dig) identify NON-PRODUCT entities — substances (:cas/:unii/:substance_id),
-  # descriptions (:text_id), media (:asset_id) — plus :uuid, the engine-minted shared scheme;
+  # descriptions (:text_id), media (:asset_id/:leaflet_id) — plus :uuid, the engine-minted shared
+  # scheme;
   # Lanes.lane_of_scheme/1 routes each to its entity lane.
   @engine_schemes %{
                     "mpn" => :mpn,
@@ -115,6 +135,7 @@ defmodule CodeRegistry do
                     "substance_id" => :substance_id,
                     "text_id" => :text_id,
                     "asset_id" => :asset_id,
+                    "leaflet_id" => :leaflet_id,
                     "uuid" => :uuid
                   }
                   |> Map.merge(

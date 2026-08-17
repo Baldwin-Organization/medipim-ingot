@@ -98,6 +98,18 @@ final class ClaimMappingTest extends TestCase
         self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
     }
 
+    public function test_artg_id_is_identity_but_shared_never_bridges(): void
+    {
+        // gr-sx7.1: one ARTG registration covers many pack sizes — identity code, no fuse.
+        $env = $this->envelope(1, [
+            $this->id('1', 'add', 'ean', '9338475000364', 10),
+            $this->id('1', 'set', 'artgId', '207479', 20),
+        ]);
+        $built = ClaimMapping::build([$env]);
+        self::assertContains(['artg_id', '207479'], Sets::values($built['shared']));
+        self::assertSame('none', \Ingot\CodeRegistry::bridgeGrade('artg_id'));
+    }
+
     public function test_bridging_codes_not_shared(): void
     {
         $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10), $this->id('A', 'add', 'gtin', '5012345678900', 20)]);

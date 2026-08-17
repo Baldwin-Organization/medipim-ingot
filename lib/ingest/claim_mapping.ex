@@ -55,7 +55,9 @@ defmodule ClaimMapping do
   @national_primary [:cnk, :cip_acl7, :cefip, :pzn, :sukl, :pzn_austria, :national_code, :cn]
 
   # schemes that identify a *supplier's* reference, not a globally-unique product — never bridge.
-  @non_bridging_schemes MapSet.new([:mpn, :supplier_ref])
+  # :artg_id (gr-sx7.1): one AU ARTG registration covers many pack sizes (3,807 live ARTG numbers
+  # sit on >1 entity), so it is an identity code carried like a restricted GTIN — shared, no fuse.
+  @non_bridging_schemes MapSet.new([:mpn, :supplier_ref, :artg_id])
 
   # medipim edge collections that reference FIRST-CLASS entities, not collection membership
   # (gr-kek): each referenced id becomes an identity claim in its own lane plus a typed edge
@@ -64,7 +66,10 @@ defmodule ClaimMapping do
   # member_of: edges union and do not retract.
   @lane_collections %{
     "descriptions" => {"text_id", "description", "describes"},
-    "media" => {"asset_id", "media", "depicts"}
+    "media" => {"asset_id", "media", "depicts"},
+    # AU leaflets (gr-sx7.1): a third first-class asset collection. Own scheme — leaflet ids come
+    # from a different medipim table than media ids, so sharing :asset_id would collide id-spaces.
+    "leaflets" => {"leaflet_id", "media", "depicts"}
   }
 
   @doc """

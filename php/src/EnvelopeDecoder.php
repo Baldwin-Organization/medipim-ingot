@@ -33,7 +33,7 @@ final class EnvelopeDecoder
     private const OP = ['1' => 'set', '2' => 'add', '3' => 'remove', '4' => 'delete'];
 
     /** Collections that reference first-class lane entities (media + descriptions). */
-    private const MEDIA = ['media', 'descriptions'];
+    private const MEDIA = ['media', 'descriptions', 'leaflets'];
 
     /** Structural edge collections (membership in a grouping namespace). */
     private const EDGE = ['publicCategories', 'brands', 'labos', 'internationalBrands', 'medipimCategories', 'organizations'];

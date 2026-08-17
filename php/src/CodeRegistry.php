@@ -46,6 +46,18 @@ final class CodeRegistry
         'offisanteId' => ['offisante_id', 'external_ref'],
         'cisCode' => ['cis_code', 'external_ref'],
         'publicPageIdentifier' => ['public_page_identifier', 'external_ref'],
+        // AU (gr-sx7.1): artgId is identity but NEVER bridges — one ARTG registration covers
+        // many pack sizes (3,807 live ARTG numbers on >1 entity). ClaimMapping marks it shared;
+        // bridge grade stays 'none'. snomed* are AMT concept ids — another system's concepts.
+        'artgId' => ['artg_id', 'identity'],
+        'snomedCtpp' => ['snomed_ctpp', 'external_ref'],
+        'snomedTpp' => ['snomed_tpp', 'external_ref'],
+        'snomedMpp' => ['snomed_mpp', 'external_ref'],
+        'snomedTp' => ['snomed_tp', 'external_ref'],
+        'snomedMp' => ['snomed_mp', 'external_ref'],
+        'snomedTpuu' => ['snomed_tpuu', 'external_ref'],
+        'snomedMpuu' => ['snomed_mpuu', 'external_ref'],
+        'supplierReference' => ['supplier_ref', 'external_ref'],
         'isbn13' => ['isbn13', 'identity'],
         'isbn10' => ['isbn10', 'identity'],
         'productId' => ['product_id', 'entity_id'],
@@ -66,6 +78,7 @@ final class CodeRegistry
         'substance_id' => 'substance_id',
         'text_id' => 'text_id',
         'asset_id' => 'asset_id',
+        'leaflet_id' => 'leaflet_id',
         'uuid' => 'uuid',
     ];
 

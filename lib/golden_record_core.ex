@@ -261,7 +261,8 @@ defmodule Lanes do
     unii: :substance,
     substance_id: :substance,
     text_id: :description,
-    asset_id: :media
+    asset_id: :media,
+    leaflet_id: :media
   }
 
   # Lane-qualified surrogate-key prefixes. :product keeps the legacy "SK" so existing logs,
