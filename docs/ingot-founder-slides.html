@@ -289,6 +289,9 @@ h2 {
     text-align: center; font-family: var(--font-mono); font-size: 23px;
     color: var(--good); font-weight: 600; background: rgba(46, 125, 79, 0.06);
 }
+.poison-lines { display: flex; flex-direction: column; gap: 18px; }
+.poison-lines p { font-size: 24px; line-height: 1.42; color: var(--ink-2); }
+.poison-lines strong { color: var(--ink); font-weight: 600; }
 
 /* ===========================================
    SLIDE 5 — identity claiming (claims → one record)
@@ -533,7 +536,34 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 4 · THE IDEA ============ -->
+    <!-- ============ SLIDE 4 · THE POISONED LINK ============ -->
+    <section class="slide" aria-label="The poisoned link">
+        <div class="pad">
+            <p class="eyebrow reveal">THE PROBLEM — WORST CASE</p>
+            <h2 class="reveal">One wrong link poisons a product. Today, there's no antidote.</h2>
+            <p class="lede reveal">A barcode gets coupled to the wrong product — it happens. From that moment, <strong>every import flowing through that barcode</strong> — photos, price, description — lands on the wrong record.</p>
+            <div class="ledger-compare">
+                <div class="ledger-col reveal d1">
+                    <div class="tag old">Today — irreversible</div>
+                    <div class="poison-lines">
+                        <p><strong>Which facts came in through the bad link?</strong> Unknown — imports overwrote fields in place, keeping no trace of the route.</p>
+                        <p><strong>Undo?</strong> Impossible. The fix is manual archaeology, field by field, hoping you found everything.</p>
+                    </div>
+                </div>
+                <div class="ledger-col winner reveal d2">
+                    <div class="tag new">Ingot — one correction, clean sweep</div>
+                    <div class="poison-lines">
+                        <p><strong>Every fact is stamped with the code it arrived through.</strong> Detach the wrong code, and every fact it carried leaves with it — automatically.</p>
+                        <p><strong>Records recompute from the corrected evidence,</strong> and out comes an exact list of everything that changed.</p>
+                    </div>
+                </div>
+            </div>
+            <p class="ledger-moral lanes-moral reveal d3">In ingot, a wrong coupling is <strong>one correction plus a recomputation — with a printable list of everything it touched.</strong> Today it's an archaeology project with no guarantee of completeness.</p>
+            <div class="foot"><span>ingot</span><span>today · worst case</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 5 · THE IDEA ============ -->
     <section class="slide" aria-label="The idea">
         <div class="pad">
             <p class="eyebrow reveal">THE FIX — THE LEDGER</p>
@@ -560,7 +590,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 5 · IDENTITY CLAIMING ============ -->
+    <!-- ============ SLIDE 6 · IDENTITY CLAIMING ============ -->
     <section class="slide" aria-label="Identity claiming">
         <div class="pad">
             <p class="eyebrow reveal">THE FIX — IDENTITY</p>
@@ -593,7 +623,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 6 · IDENTITY GUARDRAILS ============ -->
+    <!-- ============ SLIDE 7 · IDENTITY GUARDRAILS ============ -->
     <section class="slide" aria-label="Identity guardrails">
         <div class="pad">
             <p class="eyebrow reveal">THE FIX — GUARDRAILS</p>
@@ -635,7 +665,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 7 · LEGACY IDENTIFIERS ============ -->
+    <!-- ============ SLIDE 8 · LEGACY IDENTIFIERS ============ -->
     <section class="slide" aria-label="Legacy identifiers">
         <div class="pad">
             <p class="eyebrow reveal">THE FIX — CONTINUITY</p>
@@ -671,7 +701,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 8 · PROOF ============ -->
+    <!-- ============ SLIDE 9 · PROOF ============ -->
     <section class="slide" aria-label="Proof">
         <div class="pad">
             <p class="eyebrow reveal">PROOF</p>
@@ -698,7 +728,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 9 · BEYOND PRODUCTS ============ -->
+    <!-- ============ SLIDE 10 · BEYOND PRODUCTS ============ -->
     <section class="slide" aria-label="Beyond products">
         <div class="pad">
             <p class="eyebrow reveal">BEYOND PRODUCTS</p>
@@ -730,7 +760,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 10 · TECHNOLOGY ============ -->
+    <!-- ============ SLIDE 11 · TECHNOLOGY ============ -->
     <section class="slide" aria-label="Technology choice">
         <div class="pad">
             <p class="eyebrow reveal">TECHNOLOGY</p>
@@ -771,7 +801,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
         </div>
     </section>
 
-    <!-- ============ SLIDE 11 · WHAT IT UNLOCKS ============ -->
+    <!-- ============ SLIDE 12 · WHAT IT UNLOCKS ============ -->
     <section class="slide" aria-label="What it unlocks">
         <div class="pad">
             <p class="eyebrow reveal">WHY IT MATTERS</p>
@@ -821,7 +851,7 @@ body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outli
 <!-- deck chrome: navigation outside the slide stage -->
 <nav class="deck-controls" aria-label="Slide navigation">
     <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
-    <span class="page-count" id="pageCount">1 / 11</span>
+    <span class="page-count" id="pageCount">1 / 12</span>
     <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
 </nav>
 
