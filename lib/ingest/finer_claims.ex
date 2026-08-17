@@ -76,7 +76,11 @@ defmodule FinerClaims do
         Substrate.claim(
           ev.source,
           :attribute,
-          %{code: a, field: ClaimMapping.field_dim(ev), value: ev.data.value},
+          %{
+            code: a,
+            field: ClaimMapping.field_dim(ev),
+            value: ClaimMapping.normalize_quantity(ev.data.field, ev.data.value)
+          },
           to_date(ev.valid_from),
           to_date(ev.recorded_at)
         )

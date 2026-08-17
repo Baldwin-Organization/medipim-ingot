@@ -133,7 +133,7 @@ final class ClaimMapping
                         'source' => $ev['source'],
                         'code' => CanonicalClaims::codeString($code),
                         'field' => self::fieldDim($ev),
-                        'value' => self::attributeValue($ev['data']['value']),
+                        'value' => self::attributeValue($ev['data']['field'], $ev['data']['value']),
                         'valid_from' => $ev['valid_from'],
                         'recorded_at' => $ev['recorded_at'],
                     ];
@@ -375,15 +375,46 @@ final class ClaimMapping
     /**
      * medipim emits allowedSpecies both as "human" and as ["human"]. A one-element list carries no
      * more information than its element, so the two spellings stop looking like a contradiction.
-     * Longer lists are left alone. Mirrors attribute_value/1.
+     * Longer lists are left alone. Mirrors attribute_value/2.
      */
-    private static function attributeValue(mixed $value): mixed
+    private static function attributeValue(string $field, mixed $value): mixed
     {
         if (is_array($value) && count($value) === 1 && array_is_list($value)) {
-            return $value[0];
+            return self::normalizeQuantity($field, $value[0]);
         }
 
-        return $value;
+        return self::normalizeQuantity($field, $value);
+    }
+
+    /**
+     * Quantity fields with a DECLARED storage unit (gr-sx7.3): medipim stores weight in grams and
+     * dimensions in millimetres; "<num>_<unit>" strings serialize the SAME fact. Declaration-driven,
+     * never sniffed — an undeclared field's digits-only string passes through untouched. Mirrors
+     * ClaimMapping.normalize_quantity/2.
+     */
+    private const QUANTITY_UNITS = [
+        'weight' => ['g' => 1, 'kg' => 1000],
+        'width' => ['mm' => 1, 'cm' => 10],
+        'depth' => ['mm' => 1, 'cm' => 10],
+        'length' => ['mm' => 1, 'cm' => 10],
+    ];
+
+    private static function normalizeQuantity(string $field, mixed $value): mixed
+    {
+        if (!is_string($value) || !isset(self::QUANTITY_UNITS[$field])) {
+            return $value;
+        }
+        $parts = explode('_', $value);
+        if (count($parts) !== 2 || !isset(self::QUANTITY_UNITS[$field][$parts[1]])) {
+            return $value;
+        }
+        if (preg_match('/^\d+(\.\d+)?$/', $parts[0]) !== 1) {
+            return $value;
+        }
+        $scaled = (float) $parts[0] * self::QUANTITY_UNITS[$field][$parts[1]];
+        $rounded = (int) round($scaled);
+
+        return abs($scaled - $rounded) < 1.0e-9 ? $rounded : $scaled;
     }
 
     /** Half-open: from inclusive, to exclusive, null to means still applicable. */

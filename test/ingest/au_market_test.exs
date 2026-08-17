@@ -131,6 +131,49 @@ defmodule AuMarketTest do
     end
   end
 
+  describe "unit normalization (gr-sx7.3)" do
+    test "two serializations of the same dimension stop looking like a disagreement" do
+      day = 86_400
+
+      # The AU false-tie class: org 1 writes bare millimetres, org 220 writes "<cm>_cm" strings.
+      env =
+        envelope(104, [
+          id("1", "add", "ean", "9338475000364", 1 * day),
+          id("220", "add", "ean", "9338475000364", 1 * day),
+          %{
+            "recorded_at" => 2 * day,
+            "source" => "1",
+            "op" => "set",
+            "kind" => "attribute",
+            "field" => "depth",
+            "value" => 43
+          },
+          %{
+            "recorded_at" => 3 * day,
+            "source" => "220",
+            "op" => "set",
+            "kind" => "attribute",
+            "field" => "depth",
+            "value" => "4.3_cm"
+          }
+        ])
+
+      values =
+        for c <- ClaimMapping.canonical_claims([env]),
+            c["kind"] == "attribute",
+            c["field"] == "depth",
+            uniq: true,
+            do: c["value"]
+
+      assert values == [43]
+
+      # An undeclared field's digits-only string is untouched — declaration-driven, never sniffed.
+      assert ClaimMapping.normalize_quantity("hsCode", "340130") == "340130"
+      assert ClaimMapping.normalize_quantity("weight", "0.065_kg") == 65
+      assert ClaimMapping.normalize_quantity("weight", "12_stone") == "12_stone"
+    end
+  end
+
   describe "leaflets" do
     test "become media-lane records under :leaflet_id, distinct from same-numbered media assets" do
       env =

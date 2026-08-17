@@ -98,6 +98,31 @@ final class ClaimMappingTest extends TestCase
         self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
     }
 
+    public function test_declared_quantities_normalize_to_their_storage_unit(): void
+    {
+        // gr-sx7.3: bare numerics are the storage unit (g/mm); "<num>_<unit>" strings normalize
+        // onto them. Declaration-driven: an undeclared field's string passes through untouched.
+        $day = 86_400;
+        $env = $this->envelope(1, [
+            $this->id('1', 'add', 'ean', '9338475000364', 1 * $day),
+            ['recorded_at' => 2 * $day, 'source' => '1', 'op' => 'set', 'kind' => 'attribute', 'field' => 'depth', 'value' => 43],
+            ['recorded_at' => 3 * $day, 'source' => '1', 'op' => 'set', 'kind' => 'attribute', 'field' => 'depth', 'value' => '4.3_cm'],
+            ['recorded_at' => 3 * $day, 'source' => '1', 'op' => 'set', 'kind' => 'attribute', 'field' => 'weight', 'value' => '0.065_kg'],
+            ['recorded_at' => 3 * $day, 'source' => '1', 'op' => 'set', 'kind' => 'attribute', 'field' => 'hsCode', 'value' => '340130'],
+        ]);
+
+        $values = [];
+        foreach (ClaimMapping::canonicalClaims([$env]) as $c) {
+            if ($c['kind'] === 'attribute') {
+                $values[$c['field']][] = $c['value'];
+            }
+        }
+
+        self::assertSame([43, 43], $values['depth']);
+        self::assertSame([65], $values['weight']);
+        self::assertSame(['340130'], $values['hsCode']);
+    }
+
     public function test_artg_id_is_identity_but_shared_never_bridges(): void
     {
         // gr-sx7.1: one ARTG registration covers many pack sizes — identity code, no fuse.

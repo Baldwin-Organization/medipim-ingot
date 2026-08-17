@@ -164,7 +164,7 @@ defmodule ClaimMapping do
           "source" => ev.source,
           "code" => CanonicalClaims.code_string(code),
           "field" => field_dim(ev),
-          "value" => attribute_value(ev.data.value),
+          "value" => attribute_value(ev.data.field, ev.data.value),
           "valid_from" => ev.valid_from,
           "recorded_at" => ev.recorded_at
         }
@@ -493,8 +493,40 @@ defmodule ClaimMapping do
   # a contradiction to survivorship. Longer lists are left alone — none occur in the fixtures, and
   # the right shape for a genuine multi-value field (several claims? member_of?) is undecided.
   # See docs/CLAIM_MAPPING_SPEC.md.
-  defp attribute_value([single]), do: single
-  defp attribute_value(value), do: value
+  defp attribute_value(field, [single]), do: normalize_quantity(field, single)
+  defp attribute_value(field, value), do: normalize_quantity(field, value)
+
+  # Quantity fields with a DECLARED storage unit (gr-sx7.3, closing the spec's former OPEN
+  # QUESTION): medipim stores weight in grams and dimensions in millimetres; "<num>_<unit>"
+  # strings are a later editorial serialization of the SAME fact. Proven against the AU export —
+  # the same org wrote `depth 43` and later `"4.3_cm"` on the same entity (and `99` next to
+  # `"100_g"`, `68` next to `"0.065_kg"`). Normalisation is declaration-driven, never sniffed:
+  # an undeclared field's digits-only string (hsCode, ospId, …) passes through untouched.
+  @quantity_units %{
+    "weight" => %{"g" => 1, "kg" => 1000},
+    "width" => %{"mm" => 1, "cm" => 10},
+    "depth" => %{"mm" => 1, "cm" => 10},
+    "length" => %{"mm" => 1, "cm" => 10}
+  }
+
+  @doc false
+  # Shared with FinerClaims — both folds must serialize a quantity the same way. An unparseable
+  # or unknown-unit string is carried unchanged: honest, and survivorship will surface it.
+  def normalize_quantity(field, value) when is_binary(value) do
+    with %{} = units <- Map.get(@quantity_units, field, :undeclared),
+         [num, unit] <- String.split(value, "_"),
+         {:ok, factor} <- Map.fetch(units, unit),
+         true <- Regex.match?(~r/^\d+(\.\d+)?$/, num),
+         {n, ""} <- Float.parse(num) do
+      scaled = n * factor
+      rounded = round(scaled)
+      if abs(scaled - rounded) < 1.0e-9, do: rounded, else: scaled
+    else
+      _ -> value
+    end
+  end
+
+  def normalize_quantity(_field, value), do: value
 
   @doc false
   # Shared with FinerClaims.

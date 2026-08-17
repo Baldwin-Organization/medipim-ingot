@@ -42,7 +42,7 @@ defmodule ClaimMappingSpecTest do
   end
 
   describe "documented gaps — these pin CURRENT behaviour, not desired behaviour" do
-    test "quantities are NOT unit-converted, so a mixed-representation field stays unresolved",
+    test "declared quantities normalize to their storage unit; real disagreements still tie",
          %{attrs: attrs} do
       values =
         attrs
@@ -50,11 +50,15 @@ defmodule ClaimMappingSpecTest do
         |> Enum.map(& &1.data.value)
         |> Enum.sort_by(&inspect/1)
 
-      # Three sources, three representations. The engine cannot prove the integer form is grams,
-      # so it does not convert — see the OPEN QUESTION in docs/CLAIM_MAPPING_SPEC.md.
-      assert "30_g" in values
-      assert Enum.any?(values, &is_integer/1)
+      # gr-sx7.3 closed the former open question: bare numerics ARE the storage unit (grams),
+      # proven by the AU export, so "30_g" now normalizes to 30 at claim build — see
+      # "Quantities" in docs/CLAIM_MAPPING_SPEC.md.
+      refute "30_g" in values
+      assert 30 in values
+      assert Enum.all?(values, &is_integer/1)
 
+      # Normalisation removes serialization noise only: three sources genuinely disagree
+      # (859 vs 780 vs 30), so survivorship still refuses to invent a winner.
       decision = Survivorship.decide("weight", entries(attrs, "weight"), Priority.new(%{}, []))
       assert decision.status == :needs_review
       assert decision.value == nil
