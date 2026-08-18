@@ -19,6 +19,8 @@
 # bridges on. The GTIN family (ean/gtin/eanGtin*/upc*/…) all collapse to :gtin; national codes
 # keep their own atom. The only field-name ≠ canonical-code mismatch is cipOrAcl7 -> :cip_acl7.
 
+alias GoldenRecord.{Codes}
+
 defmodule CodeRegistry do
   # medipim field name => {engine scheme atom, classification}.
   @registry %{

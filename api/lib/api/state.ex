@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Substrate, Cluster, IdentityLedger, Catalog, History}
+
 defmodule Api.State do
   @moduledoc """
   The materialized fold over the event log — everything reads need, maintained incrementally:

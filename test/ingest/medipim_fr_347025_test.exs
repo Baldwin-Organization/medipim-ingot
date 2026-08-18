@@ -13,6 +13,8 @@
 # and/or acl13 3401344408137 — so this is the single-entity `:stable` analog of 422156: one cluster,
 # one surrogate key, one golden product. (The cross-entity over-merge cases are gr-ose's concern.)
 
+alias GoldenRecord.{Events, Codes, Api, PublicId}
+
 defmodule MedipimFr347025Test do
   use ExUnit.Case, async: true
 

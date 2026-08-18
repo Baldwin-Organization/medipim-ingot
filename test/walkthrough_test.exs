@@ -13,6 +13,8 @@
 # (This is the executable spec for bead gr-ccf. The Part-2 French scenario was the
 #  RED TARGET — it is green since gr-6k4 taught the engine the French codes.)
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Catalog, History}
+
 defmodule WalkthroughTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

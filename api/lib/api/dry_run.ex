@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Lanes, Stewardship}
+
 defmodule Api.DryRun do
   @moduledoc """
   `POST /v1/dry-run` (gr-rlq): the FULL claims pipeline — validate → canonicalize → cluster →

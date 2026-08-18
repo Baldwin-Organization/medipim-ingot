@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Codes, Lanes, Catalog, History}
+
 defmodule Api.Reads do
   @moduledoc """
   The Product API reads. Current product/code reads use indexed per-key projections; historical

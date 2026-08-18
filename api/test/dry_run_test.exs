@@ -5,6 +5,8 @@
 # sections and counts on a contrived batch with a known conflict, merge candidate, code collision
 # and mint, (d) the product token gates the endpoint. async: false — shared tables.
 
+alias GoldenRecord.{Events}
+
 defmodule Api.DryRunTest do
   use ExUnit.Case, async: false
   import Plug.Test

@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Codes, Lanes, Relations, Substrate, Cluster, Stewardship}
+
 defmodule Api.Writes do
   @moduledoc """
   The Product API's two write paths, sharing ONE reconcile pipeline:

@@ -5,6 +5,8 @@
 # attributes). Then: replaying the backfill changes NOTHING (byte-identical snapshot), and
 # rebuild! re-folds the whole realistic log from zero and confirms the snapshot. async: false.
 
+alias GoldenRecord.{Priority, History}
+
 defmodule Api.E2eTruthTest do
   use ExUnit.Case, async: false
   import Plug.Test

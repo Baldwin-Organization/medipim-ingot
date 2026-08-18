@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Lanes, Relations, Substrate}
+
 defmodule SchemeRegistryTest do
   use ExUnit.Case, async: true
 

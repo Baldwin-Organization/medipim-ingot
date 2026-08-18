@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Substrate}
+
 defmodule SourceRecords do
   @moduledoc """
   Pure lifecycle rules for one upstream record.

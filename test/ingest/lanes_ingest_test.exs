@@ -5,6 +5,8 @@
 # their own lanes, each tied to the product by a describes/depicts edge. Brands/organizations/
 # ATC stay collection membership.
 
+alias GoldenRecord.{Lanes}
+
 defmodule LanesIngestTest do
   use ExUnit.Case, async: true
 

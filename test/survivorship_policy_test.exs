@@ -5,6 +5,8 @@
 #   * injected fn  -> context-aware rank (medipim's off-product penalty lives HERE, not in Priority).
 # Attribute rankings are ALWAYS applied — there is no "off" for attribute survivorship (the toggle
 # we want lives on identity-conflict guarding instead; see test/identity_conflict_explained_test.exs).
+alias GoldenRecord.{Priority, Survivorship}
+
 defmodule SurvivorshipPolicyTest do
   use ExUnit.Case, async: true
 

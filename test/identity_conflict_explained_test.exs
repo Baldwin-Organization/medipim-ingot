@@ -6,6 +6,8 @@
 # pharmacy "CNK", and a barcode like a "GTIN"), and the system has to decide when two descriptions
 # are really the SAME product.
 
+alias GoldenRecord.{Events, Codes, Substrate, Priority, Cluster, IdentityLedger, History}
+
 defmodule IdentityConflictExplainedTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

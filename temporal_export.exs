@@ -18,6 +18,8 @@
 # still claims) are retired from the as-of view. This finer fold is NOT yet in the engine — it's a
 # presentation-layer prototype here. GENERATED FILE — do not hand-edit temporal.json; re-run this.
 
+alias GoldenRecord.{Events, Codes, Substrate, Priority, Cluster, IdentityLedger, History}
+
 defmodule TemporalExport do
   @fixture "test/ingest/fixtures/medipim_be_422156.json"
   @out "viz/src/data/temporal.json"

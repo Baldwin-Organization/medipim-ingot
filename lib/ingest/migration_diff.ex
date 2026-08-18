@@ -29,6 +29,8 @@
 # code_registry.ex (gr-ose owns those this wave) — it consumes the `:suspect` relation variant they
 # emit purely as input.
 
+alias GoldenRecord.{PublicId}
+
 defmodule MigrationDiff do
   @doc """
   Build the migration-diff report from a re-derivation result `%{log: log, ledger: ledger}` (the

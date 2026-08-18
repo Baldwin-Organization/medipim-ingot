@@ -8,6 +8,8 @@
 # CNK MERGE into one key, and a shared (in-store) GTIN that rides along but never bridges two
 # products. Mirrors claim_mapping_test.exs conventions (terse synthetic-envelope helpers).
 
+alias GoldenRecord.{Events, Codes, Lanes, Api, PublicId}
+
 defmodule RederivationTest do
   use ExUnit.Case, async: true
 

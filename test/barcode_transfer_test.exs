@@ -8,6 +8,8 @@
 # the key already meant, and national codes (assigned once, never reissued) decide that — not the
 # barcode, which is explicitly reassignable.
 
+alias GoldenRecord.{Events, Codes, Substrate, Cluster, IdentityLedger}
+
 defmodule BarcodeTransferTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

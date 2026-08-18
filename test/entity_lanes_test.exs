@@ -5,6 +5,8 @@
 # derived read-time traversal — "product C newly contains substance A ⇒ A's descriptions appear
 # on C" is a fold recomputing, never a copy.
 
+alias GoldenRecord.{Lanes, Uuid, Substrate, Priority, IdentityLedger, Stewardship, Catalog}
+
 defmodule EntityLanesTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

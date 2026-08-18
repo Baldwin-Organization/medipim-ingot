@@ -35,6 +35,8 @@
 # SCOPE BOUNDARY: this bead produces ONLY the projection. It does NOT build the LegacyXref /
 # legacy⟷SK map (gr-0c2), nor the demo script / synthetic fixtures (gr-bxf).
 
+alias GoldenRecord.{Events, Substrate, Priority, Catalog, PublicId}
+
 defmodule GoldenRecords do
   @moduledoc """
   Projects the re-derived ingest log into customer-facing golden records — products ▸ variants ▸

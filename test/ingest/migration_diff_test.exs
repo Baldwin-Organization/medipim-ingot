@@ -11,6 +11,8 @@
 # COLLISION, built from a hand-assembled identity log so PublicId.collisions(:cnk, log) returns a
 # real invariant violation.
 
+alias GoldenRecord.{Events, PublicId}
+
 defmodule MigrationDiffTest do
   use ExUnit.Case, async: true
 

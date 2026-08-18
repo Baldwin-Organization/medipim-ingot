@@ -5,6 +5,8 @@
 # beat the demo's narration depends on. If the engine stops behaving like the story says, this
 # fails — the demo cannot silently drift from engine behaviour.
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Stewardship, History}
+
 defmodule DemoExportTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

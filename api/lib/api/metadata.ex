@@ -1,3 +1,5 @@
+alias GoldenRecord.{Lanes, Relations}
+
 defmodule Api.Metadata do
   @moduledoc "Wire-safe registry and decision-policy metadata for API clients."
 

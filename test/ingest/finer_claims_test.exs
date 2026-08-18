@@ -10,6 +10,8 @@
 # (The batch fold, with no prior keys to gate against, sees one cluster and one variant — the
 # silent over-merge this whole design exists to prevent.)
 
+alias GoldenRecord.{Events, Lanes, Substrate}
+
 defmodule FinerClaimsTest do
   use ExUnit.Case, async: true
 

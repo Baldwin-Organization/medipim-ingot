@@ -1,6 +1,8 @@
 # medipim_policy_test.exs — the concrete medipim survivorship policy (gr-7yw), decomposed
 # against SourcesRanker's verified semantics (gr-6y2 audit). The generic engine only sees the
 # injected rank fn; every case here is a SourcesRanker behavior the policy must reproduce.
+alias GoldenRecord.{Lanes, Substrate, Survivorship, IdentityLedger}
+
 defmodule MedipimPolicyTest do
   use ExUnit.Case, async: true
 

@@ -29,6 +29,8 @@
 # surrogate key is backed by (a listing = a (legacy_entity, source) pair, and ClaimMapping stamps
 # each grouping claim with its listing `source`).
 
+alias GoldenRecord.{Events, Lanes}
+
 defmodule LegacyXref do
   @doc """
   Build the cross-reference from a re-derivation result `%{log: log, ledger: ledger}` (the map

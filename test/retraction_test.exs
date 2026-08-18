@@ -6,6 +6,8 @@
 # products imported via canonical claims, then one retracted by submitting an identity claim
 # with codes: []. The reconciler detects the vanished key and emits IdentityRetracted.
 
+alias GoldenRecord.{Events, Substrate, Cluster, IdentityLedger, Stewardship}
+
 defmodule RetractionTest do
   use ExUnit.Case, async: true
 

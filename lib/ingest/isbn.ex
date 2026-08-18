@@ -12,6 +12,8 @@
 # mod-11 check digit (X = 10, final position only). Only 978-prefixed ISBN-13s have an ISBN-10
 # form; 979 titles are 13-only.
 
+alias GoldenRecord.{Codes}
+
 defmodule Isbn do
   @moduledoc """
   ISBN checksum validation and canonicalization to ISBN-13 (`docs/CLAIMS_CONTRACT.md`'s

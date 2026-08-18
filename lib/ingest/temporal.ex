@@ -54,6 +54,8 @@
 # temporal_test.exs) and the runnable demo (gr-aqb, temporal_ingest.exs) are SEPARATE beads that
 # dispatch after this one lands — creating them here would collide on those files.
 
+alias GoldenRecord.{Events, Lanes, Substrate, IdentityLedger, History}
+
 defmodule Temporal do
   @moduledoc """
   The temporal pass: a second fold over the ingest's claims that recovers *when* identity changed.

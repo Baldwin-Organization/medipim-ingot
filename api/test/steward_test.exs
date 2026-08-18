@@ -7,6 +7,8 @@
 # previously fused with one decision now decides twice (`approve!/3`). Decisions also carry an
 # optional reason, recorded in the log and visible in the queue and the change feed.
 
+alias GoldenRecord.{Events}
+
 defmodule Api.StewardTest do
   use ExUnit.Case, async: false
   import Plug.Test

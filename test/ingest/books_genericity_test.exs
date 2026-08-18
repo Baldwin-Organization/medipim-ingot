@@ -6,6 +6,8 @@
 # The API-level loop (dry-run → cutover → reads) lives in api/test/books_e2e_test.exs;
 # this suite proves the same claims resolve correctly in the bare engine.
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, Stewardship}
+
 defmodule BooksGenericityTest do
   use ExUnit.Case, async: true
 

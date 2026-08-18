@@ -26,6 +26,8 @@
 # AS OF that event (the running snapshot), falling back to the listing's FINAL primary when the
 # listing has no codes yet — data is never dropped just because identity arrived later.
 
+alias GoldenRecord.{Lanes, Substrate, IdentityLedger}
+
 defmodule FinerClaims do
   @moduledoc """
   Per-event identity fold over `%HistoryEnvelope{}`s: one dated identity claim per (listing,

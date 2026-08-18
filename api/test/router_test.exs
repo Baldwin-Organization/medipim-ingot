@@ -1,6 +1,8 @@
 # Scaffold contract tests (bead gr-0de): health, the two-token separation, and the second-port
 # split. Endpoints themselves land with their own beads — here the surfaces 404 once authorized.
 
+alias GoldenRecord.{Substrate}
+
 defmodule Api.RouterTest do
   use ExUnit.Case, async: false
   import Plug.Test

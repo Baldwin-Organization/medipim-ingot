@@ -7,6 +7,8 @@
 # way through the engine (cluster + reconcile) to prove the loop end-to-end. Modules compiled
 # from lib/; ExUnit starts in test/test_helper.exs.
 
+alias GoldenRecord.{Events, Lanes, Substrate, Cluster, IdentityLedger, Stewardship}
+
 defmodule ClaimMappingTest do
   use ExUnit.Case, async: true
 

@@ -14,6 +14,8 @@
 #                GTIN-shaped or fail the mod-10 check digit (checksums are advisory — open
 #                question 2 in the spec), media roles that silently become "secondary".
 
+alias GoldenRecord.{Codes, Lanes, Relations}
+
 defmodule ClaimsValidator do
   @moduledoc """
   Contract-level validator for canonical claims JSON (`docs/CLAIMS_CONTRACT.md`).

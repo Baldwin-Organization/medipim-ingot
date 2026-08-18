@@ -17,6 +17,8 @@
 #     instead of ISO dates — the backfill carries the historical `recorded_at` the live
 #     contract reserves for the server.
 
+alias GoldenRecord.{Lanes, Relations, Substrate}
+
 defmodule CanonicalClaims do
   @moduledoc """
   Generic canonical-claims → engine-claims translation (`docs/CLAIMS_CONTRACT.md`).

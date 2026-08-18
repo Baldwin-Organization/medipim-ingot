@@ -4,6 +4,8 @@
 # histories. If the mapping changes, one of these fails and the spec gets updated with it —
 # a spec nobody executes is a spec that drifts.
 
+alias GoldenRecord.{Priority, Survivorship}
+
 defmodule ClaimMappingSpecTest do
   use ExUnit.Case, async: true
 

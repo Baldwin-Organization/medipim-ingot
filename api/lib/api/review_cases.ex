@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Codes, Lanes, Relations, Survivorship}
+
 defmodule Api.ReviewCases do
   @moduledoc """
   Evidence snapshots for human decisions.

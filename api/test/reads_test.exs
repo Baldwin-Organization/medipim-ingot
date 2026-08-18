@@ -2,6 +2,8 @@
 # read), by-code with canonicalization, as-of time travel from the log, the change feed, and
 # legacy-id continuity across a merge. async: false — shared tables.
 
+alias GoldenRecord.{Substrate, Cluster, IdentityLedger, Stewardship}
+
 defmodule Api.ReadsTest do
   use ExUnit.Case, async: false
   import Plug.Test
