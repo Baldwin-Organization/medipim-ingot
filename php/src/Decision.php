@@ -21,11 +21,6 @@ final readonly class Decision
     ) {
     }
 
-    public function resolved(): bool
-    {
-        return $this->status !== 'needs_review';
-    }
-
     public function needsReview(): bool
     {
         return $this->status === 'needs_review';
