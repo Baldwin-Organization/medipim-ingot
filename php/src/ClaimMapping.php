@@ -674,16 +674,22 @@ final class ClaimMapping
      */
     private static function stamp(array $claims): array
     {
-        $indexed = [];
-        foreach ($claims as $i => $c) {
-            $indexed[] = [$c->recordedAt, $i, $c];
+        if ($claims === []) {
+            return [];
         }
-        usort($indexed, static function (array $a, array $b): int {
-            return [self::numeric($a[0]), $a[1]] <=> [self::numeric($b[0]), $b[1]];
-        });
+
+        // Column sort instead of usort: the comparator allocated two tuples per comparison.
+        // The emission-index column makes it stable, same order as [numeric, i] <=> [numeric, i].
+        $at = [];
+        $idx = [];
+        foreach ($claims as $i => $c) {
+            $at[] = self::numeric($c->recordedAt);
+            $idx[] = $i;
+        }
+        array_multisort($at, SORT_ASC, SORT_REGULAR, $idx, SORT_ASC, SORT_NUMERIC, $claims);
 
         $out = [];
-        foreach ($indexed as $order => [$_at, $_i, $c]) {
+        foreach ($claims as $order => $c) {
             $out[] = $c->withOrder($order);
         }
 
