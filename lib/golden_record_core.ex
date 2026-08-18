@@ -1723,6 +1723,10 @@ defmodule History do
   end
 
   @doc false
+  # ponytail: re-runs clustering + reconciliation at EVERY temporal boundary date —
+  # O(boundaries × claims × cluster cost) per query (GH #57). Acceptable for point-in-time
+  # audits on one entity's history; a hot bitemporal read path needs materialized per-boundary
+  # state (the api/ read models are the intended home).
   def state_bitemporal(log, known_at, %Date{} = effective_at) do
     known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
 
@@ -2029,6 +2033,10 @@ defmodule Api do
   def members(log), do: ledger(log).members
 
   @doc "Customer lookup by code — the robust access pattern. Returns the current record + identity block."
+  # ponytail: raw-log lookup/get refold the ENTIRE log per call (ledger fold + a full History.now
+  # projection) — fine at POC scale, not at catalog scale (GH #57). Callers doing many reads use
+  # resolve_key(members, _) / get_projected(projection, _, _); production reads belong on the
+  # api/ Postgres read models. ACT 3 of golden_record_stress.exs measures where this falls over.
   def lookup(log, code, priority) do
     case resolve_key(log, code) do
       nil -> {:not_found, Codes.canonicalize(code)}
