@@ -865,6 +865,9 @@ defmodule Cluster do
 
   defp code_signature(codes), do: Enum.sort(codes)
 
+  # ponytail: union-find without path compression — O(n²) worst case on chained merges. Per-lane
+  # cluster sizes make that irrelevant; thread compressed parents through the reduce if it ever
+  # shows up in a profile (GH #59).
   defp root(parent, node) do
     case Map.fetch!(parent, node) do
       ^node -> node
@@ -1177,6 +1180,10 @@ defmodule IdentityLedger do
 
   defp key_prefix(key), do: key |> String.split("_") |> Enum.drop(-1) |> Enum.join("_")
 
+  # BOTH counters are load-bearing, not legacy duplication (GH #59): the scalar `next` is the
+  # cross-prefix max that decide/split mint from on a COMBINED ledger (all lanes folded into
+  # one — switching them to next_by_prefix[prefix] would renumber minted keys and break parity
+  # pins); `next_by_prefix` is what per_lane/1 seeds each lane's own ledger from.
   defp advance(%__MODULE__{} = s, key) do
     next = key_num(key) + 1
     prefix = key_prefix(key)
@@ -1184,7 +1191,7 @@ defmodule IdentityLedger do
     %{
       s
       | next: max(s.next, next),
-        next_by_prefix: Map.update(Map.get(s, :next_by_prefix, %{}), prefix, next, &max(&1, next))
+        next_by_prefix: Map.update(s.next_by_prefix, prefix, next, &max(&1, next))
     }
   end
 
@@ -1198,14 +1205,14 @@ defmodule IdentityLedger do
     Map.new(Lanes.lanes(), fn lane ->
       members = Map.fetch!(members_by_lane, lane)
       prefix = Lanes.prefix(lane)
-      next = Map.get(Map.get(ledger, :next_by_prefix, %{}), prefix, next_key(members))
+      next = Map.get(ledger.next_by_prefix, prefix, next_key(members))
 
       {lane,
        %__MODULE__{
          members: members,
          next: next,
          prefix: prefix,
-         next_by_prefix: Map.get(ledger, :next_by_prefix, %{})
+         next_by_prefix: ledger.next_by_prefix
        }}
     end)
   end
@@ -1719,6 +1726,9 @@ defmodule History do
   def state_bitemporal(log, known_at, %Date{} = effective_at) do
     known = Enum.filter(log, &Bitemporal.known?(&1, known_at))
 
+    # Two temporal semantics on purpose, with an expiry date (GH #59): the ingest fold does not
+    # emit SourceRecordRevised yet (only SourceRecords does), so ingest-produced logs still take
+    # legacy_state. DELETE the legacy branch once every producer emits source records.
     if Enum.any?(known, &match?(%Events.SourceRecordRevised{}, &1)) do
       source_record_state(known, effective_at)
     else
