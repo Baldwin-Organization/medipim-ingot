@@ -172,6 +172,42 @@ final class ClaimMappingTest extends TestCase
         self::assertSame(['7:A', '7:B'], $refs);
     }
 
+    public function test_unsourced_identity_event_folds_instead_of_crashing(): void
+    {
+        // gr-c37: Elixir keys listings on {entity, nil}; a non-nullable Listing::$source made the
+        // same envelope a TypeError here.
+        $env = $this->envelope(1, [
+            ['recorded_at' => 10, 'op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '111'],
+        ]);
+
+        $identity = array_values(array_filter(ClaimMapping::canonicalClaims([$env]), static fn (array $c): bool => $c['kind'] === 'identity'));
+        self::assertCount(1, $identity);
+        self::assertNull($identity[0]['source']);
+        self::assertSame(['cnk:111'], $identity[0]['codes']);
+    }
+
+    public function test_int_and_string_entities_with_the_same_numeral_do_not_collide(): void
+    {
+        // gr-c37: isFor erased the int/string distinction key() preserves — an unsourced event
+        // anchored to the union of both listings; Elixir's e == entity keeps them apart.
+        [$ok1, $intEnv] = EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => 422156, 'events' => [
+            $this->id('A', 'set', 'cnk', '111', 10),
+            ['recorded_at' => 20, 'source' => null, 'op' => 'set', 'kind' => 'attribute', 'field' => 'name', 'value' => 'int entity'],
+        ]]);
+        [$ok2, $strEnv] = EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => '422156', 'events' => [
+            $this->id('B', 'set', 'cnk', '222', 10),
+        ]]);
+        self::assertSame(['ok', 'ok'], [$ok1, $ok2]);
+
+        $anchors = [];
+        foreach (ClaimMapping::canonicalClaims([$intEnv, $strEnv]) as $c) {
+            if ($c['kind'] === 'attribute') {
+                $anchors[] = $c['code'];
+            }
+        }
+        self::assertSame(['cnk:111'], $anchors);
+    }
+
     public function test_unsourced_event_anchors_only_to_its_own_entity_in_a_multi_entity_batch(): void
     {
         // gr-e1i: the unsourced path resolves listings through a per-entity index — an unsourced

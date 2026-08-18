@@ -523,7 +523,7 @@ final class ClaimMapping
      */
     private function codesAtMemoized(mixed $entity, ?string $source, int $at): array
     {
-        $key = (is_int($entity) ? 'i:' : 's:').$entity."\x1f".($source ?? "\x00")."\x1f".$at;
+        $key = Listing::entityTag($entity)."\x1f".($source ?? "\x00")."\x1f".$at;
         if (isset($this->codesAtMemo[$key])) {
             return $this->codesAtMemo[$key];
         }
@@ -534,7 +534,7 @@ final class ClaimMapping
 
         $this->entityListings ??= self::entityListings($this->periods);
         $union = CodeSet::none();
-        foreach ($this->entityListings[(string) $entity] ?? [] as $listingKey) {
+        foreach ($this->entityListings[Listing::entityTag($entity)] ?? [] as $listingKey) {
             $union = $union->union(self::codesCovering($this->periods[$listingKey], $at));
         }
 
@@ -542,8 +542,8 @@ final class ClaimMapping
     }
 
     /**
-     * Listing keys grouped per entity, in $periods order. Keyed by the same string cast
-     * {@see Listing::isFor} compares with, so the indexed union matches codesAt exactly.
+     * Listing keys grouped per entity, in $periods order. Keyed by the tagged entity scalar
+     * {@see Listing::isFor} distinguishes on, so the indexed union matches codesAt exactly.
      *
      * @param array<string, list<Period>> $periods
      * @return array<string, list<string>>
@@ -552,7 +552,7 @@ final class ClaimMapping
     {
         $out = [];
         foreach (array_keys($periods) as $key) {
-            $out[(string) Listing::fromKey($key)->entity][] = $key;
+            $out[Listing::entityTag(Listing::fromKey($key)->entity)][] = $key;
         }
 
         return $out;
