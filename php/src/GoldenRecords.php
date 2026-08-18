@@ -28,14 +28,24 @@ final class GoldenRecords
         $priority ??= self::defaultPriority();
         $log = $rederivation['log'];
         $ledger = $rederivation['ledger'];
+        $live = $rederivation['live'] ?? self::liveClaims($log);
 
-        $projected = Catalog::project($ledger->members, $rederivation['live'] ?? self::liveClaims($log), $priority, self::NO_OVERRIDES);
+        $projected = Catalog::project($ledger->members, $live, $priority, self::NO_OVERRIDES);
+
+        // Identity slots are kind-tagged, so filtering the live view equals folding the log's
+        // identity claims alone — computed once for every variant's public-id resolution.
+        $liveIdentity = [];
+        foreach ($live as $c) {
+            if ($c->kind === 'identity') {
+                $liveIdentity[] = $c;
+            }
+        }
 
         $records = [];
         foreach ($projected as $p) {
             $variants = [];
             foreach ($p->variants as $variant) {
-                $variants[] = self::enrich($variant, $log, $priority);
+                $variants[] = self::enrich($variant, $ledger, $liveIdentity, $priority);
             }
             $records[] = new GoldenRecord($p->product, $variants);
         }
@@ -60,10 +70,10 @@ final class GoldenRecords
         return Priority::new([], []);
     }
 
-    /** @param list<DomainEvent> $log */
-    private static function enrich(Variant $variant, array $log, Priority|callable $priority): Variant
+    /** @param list<Claim> $liveIdentity */
+    private static function enrich(Variant $variant, LedgerState $ledger, array $liveIdentity, Priority|callable $priority): Variant
     {
-        return $variant->withCnk(PublicId::canonical('cnk', $variant->key, $log, $priority));
+        return $variant->withCnk(PublicId::canonicalFrom('cnk', $ledger->members[$variant->key] ?? [], $liveIdentity, $priority));
     }
 
     /**

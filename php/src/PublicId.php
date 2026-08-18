@@ -22,7 +22,29 @@ final class PublicId
      */
     public static function canonical(string $scheme, string $key, array $log, Priority|callable $priority): ?array
     {
-        $members = self::ledger($log)->members[$key] ?? [];
+        return self::resolve($scheme, self::ledger($log)->members[$key] ?? [], static fn (): array => self::identityClaims($log), $priority);
+    }
+
+    /**
+     * Like {@see canonical}, but from already-folded state — the key's member code-set and the
+     * live identity claims — so a caller resolving many variants doesn't refold the log per key.
+     *
+     * @param array<string, array{0: string, 1: string}> $members
+     * @param list<Claim> $idclaims live identity claims (Substrate::current of the log's identity claims)
+     * @return array<string,mixed>|null
+     */
+    public static function canonicalFrom(string $scheme, array $members, array $idclaims, Priority|callable $priority): ?array
+    {
+        return self::resolve($scheme, $members, static fn (): array => $idclaims, $priority);
+    }
+
+    /**
+     * @param array<string, array{0: string, 1: string}> $members
+     * @param callable(): list<Claim> $idclaims only needed (and only called) on the multi-code path
+     * @return array<string,mixed>|null
+     */
+    private static function resolve(string $scheme, array $members, callable $idclaims, Priority|callable $priority): ?array
+    {
         $codes = [];
         foreach (Sets::values($members) as $code) {
             if ($code[0] === $scheme) {
@@ -39,7 +61,7 @@ final class PublicId
             return ['canonical' => $codes[0], 'aliases' => []];
         }
 
-        $idclaims = self::identityClaims($log);
+        $idclaims = $idclaims();
 
         $entries = [];
         foreach ($codes as $code) {
