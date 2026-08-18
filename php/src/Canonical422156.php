@@ -14,8 +14,8 @@ namespace Ingot;
 final class Canonical422156
 {
     /**
-     * @param array{records: list<array<string,mixed>>} $gr
-     * @param array{legacy_to_key: array<string, array<string,mixed>>} $xref
+     * @param array{records: list<GoldenRecord>} $gr
+     * @param array{legacy_to_key: array<string, Placement>} $xref
      * @param array<string,mixed> $diff
      * @return array<string,mixed>
      */
@@ -24,10 +24,10 @@ final class Canonical422156
         $products = [];
         foreach ($gr['records'] as $record) {
             $variants = [];
-            foreach ($record['variants'] as $v) {
+            foreach ($record->variants as $v) {
                 $variants[] = self::variant($v);
             }
-            $products[] = ['product' => $record['product'], 'variants' => $variants];
+            $products[] = ['product' => $record->product, 'variants' => $variants];
         }
 
         return [
@@ -43,22 +43,19 @@ final class Canonical422156
         return json_encode(self::sort($document), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * @param array<string,mixed> $v
-     * @return array<string,mixed>
-     */
-    private static function variant(array $v): array
+    /** @return array<string,mixed> */
+    private static function variant(Variant $v): array
     {
         return [
-            'key' => $v['key'],
-            'codes' => array_map(self::codeString(...), $v['codes']),
-            'cnk' => self::cnk($v['cnk']),
-            'product' => self::productDecision($v['product']),
-            'attributes' => self::attributes($v['attributes']),
-            'categories' => array_map(self::category(...), $v['categories']),
-            'media' => array_map(self::media(...), $v['media']),
-            'substances' => array_map(self::substance(...), $v['substances']),
-            'descriptions' => array_map(self::description(...), $v['descriptions']),
+            'key' => $v->key,
+            'codes' => array_map(self::codeString(...), $v->codes),
+            'cnk' => self::cnk($v->cnk),
+            'product' => self::productDecision($v->product),
+            'attributes' => self::attributes($v->attributes),
+            'categories' => array_map(self::category(...), $v->categories),
+            'media' => array_map(self::media(...), $v->media),
+            'substances' => array_map(self::substance(...), $v->substances),
+            'descriptions' => array_map(self::description(...), $v->descriptions),
         ];
     }
 
@@ -84,19 +81,16 @@ final class Canonical422156
         ];
     }
 
-    /**
-     * @param array<string,mixed> $p
-     * @return array<string,mixed>
-     */
-    private static function productDecision(array $p): array
+    /** @return array<string,mixed> */
+    private static function productDecision(Decision $p): array
     {
         return [
-            'value' => self::productValue($p['value']),
-            'winner' => self::stringOrNull($p['winner']),
-            'status' => (string) $p['status'],
+            'value' => self::productValue($p->value),
+            'winner' => self::stringOrNull($p->winner),
+            'status' => $p->status,
             'candidates' => array_map(
                 static fn (array $c): array => [(string) $c[0], self::productValue($c[1])],
-                $p['candidates']
+                $p->candidates
             ),
         ];
     }
@@ -111,25 +105,22 @@ final class Canonical422156
         return $value;
     }
 
-    /**
-     * @param array<string,mixed> $d
-     * @return array<string,mixed>
-     */
-    private static function decision(array $d): array
+    /** @return array<string,mixed> */
+    private static function decision(Decision $d): array
     {
         return [
-            'value' => $d['value'],
-            'winner' => self::stringOrNull($d['winner']),
-            'status' => (string) $d['status'],
+            'value' => $d->value,
+            'winner' => self::stringOrNull($d->winner),
+            'status' => $d->status,
             'candidates' => array_map(
                 static fn (array $c): array => [(string) $c[0], $c[1]],
-                $d['candidates']
+                $d->candidates
             ),
         ];
     }
 
     /**
-     * @param list<array{0: string, 1: array<string,mixed>}> $attrs
+     * @param list<array{0: string, 1: Decision}> $attrs
      * @return array<string, array<string,mixed>>
      */
     private static function attributes(array $attrs): array
@@ -210,7 +201,7 @@ final class Canonical422156
     }
 
     /**
-     * @param array<string, array<string,mixed>> $legacyToKey
+     * @param array<string, Placement> $legacyToKey
      * @return array<string, array<string,mixed>>
      */
     private static function xref(array $legacyToKey): array
@@ -219,9 +210,9 @@ final class Canonical422156
         foreach ($legacyToKey as $entityKey => $placement) {
             $entity = self::decodeEntity($entityKey);
             $out[(string) $entity] = [
-                'primary' => $placement['primary'],
-                'all' => $placement['all'],
-                'relation' => self::relation($placement['relation']),
+                'primary' => $placement->primary,
+                'all' => $placement->all,
+                'relation' => self::relation($placement->relation),
             ];
         }
 

@@ -46,16 +46,14 @@ final class GoldenRecordsPolicyTest extends TestCase
         ];
     }
 
-    /** @param array<string,mixed> $variant */
-    private function field(array $variant, string $name): array
+    private function field(\Ingot\Variant $variant, string $name): \Ingot\Decision
     {
-        foreach ($variant['attributes'] as [$field, $decision]) {
-            if ($field === $name) {
-                return $decision;
-            }
+        $decision = $variant->attribute($name);
+        if ($decision === null) {
+            self::fail("field {$name} not found");
         }
 
-        self::fail("field {$name} not found");
+        return $decision;
     }
 
     public function test_permissive_default_surfaces_conflict_as_needs_review(): void
@@ -63,8 +61,8 @@ final class GoldenRecordsPolicyTest extends TestCase
         $gr = GoldenRecords::fromEnvelopes($this->twoSourceConflict(), 1);
 
         self::assertCount(1, $gr['records']);
-        $variant = $gr['records'][0]['variants'][0];
-        self::assertSame('needs_review', $this->field($variant, 'name')['status']);
+        $variant = $gr['records'][0]->variants[0];
+        self::assertSame('needs_review', $this->field($variant, 'name')->status);
     }
 
     public function test_supplied_priority_resolves_to_the_ranked_winner(): void
@@ -72,11 +70,11 @@ final class GoldenRecordsPolicyTest extends TestCase
         $priority = Priority::new([], [['A'], ['B']]);
         $gr = GoldenRecords::fromEnvelopes($this->twoSourceConflict(), 1, $priority);
 
-        $variant = $gr['records'][0]['variants'][0];
+        $variant = $gr['records'][0]->variants[0];
         $d = $this->field($variant, 'name');
-        self::assertSame('Alpha', $d['value']);
-        self::assertSame('A', $d['winner']);
-        self::assertSame('resolved', $d['status']);
+        self::assertSame('Alpha', $d->value);
+        self::assertSame('A', $d->winner);
+        self::assertSame('resolved', $d->status);
     }
 
     public function test_injected_policy_fn_reaches_the_fold_entry_and_its_context_picks_the_winner(): void
@@ -85,15 +83,15 @@ final class GoldenRecordsPolicyTest extends TestCase
             static fn (string $dim, ?string $src): int => $src === $preferred ? 0 : 1;
 
         $grB = GoldenRecords::fromEnvelopes($this->twoSourceConflict(), 1, $prefer('B'));
-        $dB = $this->field($grB['records'][0]['variants'][0], 'name');
-        self::assertSame('Beta', $dB['value']);
-        self::assertSame('B', $dB['winner']);
-        self::assertSame('resolved', $dB['status']);
+        $dB = $this->field($grB['records'][0]->variants[0], 'name');
+        self::assertSame('Beta', $dB->value);
+        self::assertSame('B', $dB->winner);
+        self::assertSame('resolved', $dB->status);
 
         $grA = GoldenRecords::fromEnvelopes($this->twoSourceConflict(), 1, $prefer('A'));
-        $dA = $this->field($grA['records'][0]['variants'][0], 'name');
-        self::assertSame('Alpha', $dA['value']);
-        self::assertSame('A', $dA['winner']);
-        self::assertSame('resolved', $dA['status']);
+        $dA = $this->field($grA['records'][0]->variants[0], 'name');
+        self::assertSame('Alpha', $dA->value);
+        self::assertSame('A', $dA->winner);
+        self::assertSame('resolved', $dA->status);
     }
 }

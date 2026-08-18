@@ -33,7 +33,7 @@ final class MigrationDiff
     }
 
     /**
-     * @param array<string, array<string,mixed>> $legacyToKey
+     * @param array<string, Placement> $legacyToKey
      * @param list<array{code: array{0: string, 1: string}, keys: list<string>}> $collisions
      * @return array{findings: list<array<string,mixed>>, counts: array<string,int>, needs_review: list<array<string,mixed>>}
      */
@@ -77,27 +77,23 @@ final class MigrationDiff
         return json_encode($report, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * @param mixed $entity
-     * @param array<string,mixed> $placement
-     * @return array<string,mixed>
-     */
-    private static function legacyFinding(mixed $entity, array $placement): array
+    /** @return array<string,mixed> */
+    private static function legacyFinding(mixed $entity, Placement $placement): array
     {
-        $relation = $placement['relation'];
+        $relation = $placement->relation;
 
         if ($relation === 'stable') {
             return [
-                'category' => 'confirmed', 'legacy_entity' => $entity, 'keys' => $placement['all'],
-                'primary' => $placement['primary'], 'relation' => 'stable', 'evidence' => [],
+                'category' => 'confirmed', 'legacy_entity' => $entity, 'keys' => $placement->all,
+                'primary' => $placement->primary, 'relation' => 'stable', 'evidence' => [],
                 'confidence' => 'high', 'needs_review' => false,
             ];
         }
         if ($relation === 'split') {
             return [
-                'category' => 'split', 'legacy_entity' => $entity, 'keys' => $placement['all'],
-                'primary' => $placement['primary'], 'relation' => 'split',
-                'evidence' => ['fragments' => $placement['all']],
+                'category' => 'split', 'legacy_entity' => $entity, 'keys' => $placement->all,
+                'primary' => $placement->primary, 'relation' => 'split',
+                'evidence' => ['fragments' => $placement->all],
                 'confidence' => 'high', 'needs_review' => false,
             ];
         }
@@ -106,16 +102,16 @@ final class MigrationDiff
         $suspect = isset($relation[2]) && $relation[2] === 'suspect';
         if ($suspect) {
             return [
-                'category' => 'merged', 'legacy_entity' => $entity, 'keys' => $placement['all'],
-                'primary' => $placement['primary'], 'relation' => 'merged',
+                'category' => 'merged', 'legacy_entity' => $entity, 'keys' => $placement->all,
+                'primary' => $placement->primary, 'relation' => 'merged',
                 'evidence' => ['merged_with' => $others, 'bridge' => 'barcode'],
                 'confidence' => 'low', 'needs_review' => true,
             ];
         }
 
         return [
-            'category' => 'merged', 'legacy_entity' => $entity, 'keys' => $placement['all'],
-            'primary' => $placement['primary'], 'relation' => 'merged',
+            'category' => 'merged', 'legacy_entity' => $entity, 'keys' => $placement->all,
+            'primary' => $placement->primary, 'relation' => 'merged',
             'evidence' => ['merged_with' => $others],
             'confidence' => 'high', 'needs_review' => false,
         ];

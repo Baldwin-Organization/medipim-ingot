@@ -21,7 +21,7 @@ final class GoldenRecords
      * not just {@see Survivorship::decide()}.
      *
      * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
-     * @return array{records: list<array<string,mixed>>, log: list<DomainEvent>}
+     * @return array{records: list<GoldenRecord>, log: list<DomainEvent>}
      */
     public static function project(array $rederivation, Priority|callable|null $priority = null): array
     {
@@ -34,10 +34,10 @@ final class GoldenRecords
         $records = [];
         foreach ($projected as $p) {
             $variants = [];
-            foreach ($p['variants'] as $variant) {
+            foreach ($p->variants as $variant) {
                 $variants[] = self::enrich($variant, $log, $priority);
             }
-            $records[] = ['product' => $p['product'], 'variants' => $variants];
+            $records[] = new GoldenRecord($p->product, $variants);
         }
 
         return ['records' => $records, 'log' => $log];
@@ -47,7 +47,7 @@ final class GoldenRecords
      * Convenience: re-derive envelopes at `at`, then project.
      *
      * @param list<array<string,mixed>> $envelopes
-     * @return array{records: list<array<string,mixed>>, log: list<array<string,mixed>>}
+     * @return array{records: list<GoldenRecord>, log: list<DomainEvent>}
      */
     public static function fromEnvelopes(array $envelopes, mixed $at, Priority|callable|null $priority = null): array
     {
@@ -60,16 +60,10 @@ final class GoldenRecords
         return Priority::new([], []);
     }
 
-    /**
-     * @param array<string,mixed> $variant
-     * @param list<DomainEvent> $log
-     * @return array<string,mixed>
-     */
-    private static function enrich(array $variant, array $log, Priority|callable $priority): array
+    /** @param list<DomainEvent> $log */
+    private static function enrich(Variant $variant, array $log, Priority|callable $priority): Variant
     {
-        $variant['cnk'] = PublicId::canonical('cnk', $variant['key'], $log, $priority);
-
-        return $variant;
+        return $variant->withCnk(PublicId::canonical('cnk', $variant->key, $log, $priority));
     }
 
     /**

@@ -15,7 +15,7 @@ final class LegacyXref
 {
     /**
      * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
-     * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, array<string,mixed>>}
+     * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, Placement>}
      */
     public static function build(array $rederivation): array
     {
@@ -69,7 +69,7 @@ final class LegacyXref
 
     /**
      * @param list<array<string,mixed>> $envelopes
-     * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, array<string,mixed>>}
+     * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, Placement>}
      */
     public static function fromEnvelopes(array $envelopes, mixed $at): array
     {
@@ -96,7 +96,7 @@ final class LegacyXref
      * @param array<string, list<mixed>> $keyToLegacy
      * @param array<string, array<string,mixed>> $perKey
      * @param array<string, array{value: mixed, codes: array<string, array{0: string, 1: string}>}> $entityCodes
-     * @return array<string, array<string,mixed>>
+     * @return array<string, Placement>
      */
     private static function invert(array $keyToLegacy, array $perKey, array $entityCodes): array
     {
@@ -116,11 +116,11 @@ final class LegacyXref
             $all = array_values(array_unique($keys));
             usort($all, static fn (string $a, string $b): int => self::keyNum($a) <=> self::keyNum($b));
 
-            $out[(string) $ek] = [
-                'primary' => self::primary($all, $perKey),
-                'all' => $all,
-                'relation' => self::relation($all, $entityValue[$ek], $keyToLegacy, $entityCodes),
-            ];
+            $out[(string) $ek] = new Placement(
+                self::primary($all, $perKey),
+                $all,
+                self::relation($all, $entityValue[$ek], $keyToLegacy, $entityCodes),
+            );
         }
 
         return $out;

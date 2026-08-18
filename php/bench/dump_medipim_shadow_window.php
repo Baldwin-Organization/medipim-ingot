@@ -93,14 +93,14 @@ function projectPhase(array $claims, array $shared, string $recordedAt): array
     $golden = GoldenRecords::project($fold, Priority::new([], []));
 
     foreach ($golden['records'] as $record) {
-        foreach ($record['variants'] as $variant) {
+        foreach ($record->variants as $variant) {
             $codes = array_map(
                 static fn (array $code): string => $code[0].':'.$code[1],
-                $variant['codes'],
+                $variant->codes,
             );
 
             if (in_array(TARGET_CODE, $codes, true)) {
-                return normalizeVariant($variant, Api::identityStatus($golden['log'], $variant['key']));
+                return normalizeVariant($variant, Api::identityStatus($golden['log'], $variant->key));
             }
         }
     }
@@ -111,34 +111,32 @@ function projectPhase(array $claims, array $shared, string $recordedAt): array
 /**
  * Normalize the PHP projection to the stable subset also available from GET /v1/products/422156.
  *
- * @param array<string,mixed> $variant
- * @param array<string,mixed> $identityStatus
  * @return array<string,mixed>
  */
-function normalizeVariant(array $variant, array $identityStatus): array
+function normalizeVariant(\Ingot\Variant $variant, \Ingot\IdentityStatus $identityStatus): array
 {
     $codes = array_map(
         static fn (array $code): string => $code[0].':'.$code[1],
-        $variant['codes'],
+        $variant->codes,
     );
     sort($codes, SORT_STRING);
 
     $attributes = [];
-    foreach ($variant['attributes'] as [$field, $decision]) {
+    foreach ($variant->attributes as [$field, $decision]) {
         $candidates = array_map(
             static fn (array $candidate): array => [
                 'source' => $candidate[0] === null ? null : (string) $candidate[0],
                 'value' => $candidate[1],
             ],
-            $decision['candidates'],
+            $decision->candidates,
         );
         usort($candidates, static fn (array $left, array $right): int => stableKey($left) <=> stableKey($right));
 
         $attributes[] = [
             'field' => (string) $field,
-            'value' => $decision['value'],
-            'winner' => $decision['winner'] === null ? null : (string) $decision['winner'],
-            'status' => (string) $decision['status'],
+            'value' => $decision->value,
+            'winner' => $decision->winner,
+            'status' => $decision->status,
             'candidates' => $candidates,
         ];
     }
@@ -149,12 +147,12 @@ function normalizeVariant(array $variant, array $identityStatus): array
             'source' => (string) $item['source'],
             'uri' => $item['uri'],
         ],
-        $variant['media'],
+        $variant->media,
     );
     usort($media, static fn (array $left, array $right): int => stableKey($left) <=> stableKey($right));
 
     return [
-        'status' => (string) $identityStatus['status'],
+        'status' => $identityStatus->status,
         'codes' => $codes,
         'attributes' => $attributes,
         'media_count' => count($media),

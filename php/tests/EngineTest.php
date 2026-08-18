@@ -119,15 +119,15 @@ final class EngineTest extends TestCase
     }
 
     /**
-     * @param list<array<string,mixed>> $log
-     * @return list<array<string,mixed>> variants across all products
+     * @param list<DomainEvent> $log
+     * @return list<\Ingot\Variant> variants across all products
      */
     private function nowVariants(array $log): array
     {
         $records = $this->project($log);
         $variants = [];
         foreach ($records as $r) {
-            foreach ($r['variants'] as $v) {
+            foreach ($r->variants as $v) {
                 $variants[] = $v;
             }
         }
@@ -147,10 +147,10 @@ final class EngineTest extends TestCase
         return Catalog::project($members, Substrate::current($claims), $this->priority, ['attr' => [], 'product' => []]);
     }
 
-    private function findVariant(array $variants, array $code): ?array
+    private function findVariant(array $variants, array $code): ?\Ingot\Variant
     {
         foreach ($variants as $v) {
-            foreach ($v['codes'] as $c) {
+            foreach ($v->codes as $c) {
                 if ($c === $code) {
                     return $v;
                 }
@@ -160,14 +160,14 @@ final class EngineTest extends TestCase
         return null;
     }
 
-    private function attr(array $variant, string $field): array
+    private function attr(\Ingot\Variant $variant, string $field): \Ingot\Decision
     {
-        foreach ($variant['attributes'] as [$f, $d]) {
-            if ($f === $field) {
-                return $d;
-            }
+        $d = $variant->attribute($field);
+        if ($d === null) {
+            self::fail("no attribute $field");
         }
-        self::fail("no attribute $field");
+
+        return $d;
     }
 
     // ── identity resolution ──────────────────────────────────────────────────────
@@ -181,8 +181,8 @@ final class EngineTest extends TestCase
 
         $variants = $this->nowVariants($log);
         self::assertCount(1, $variants);
-        self::assertContains(['gtin', '0111'], $variants[0]['codes']);
-        self::assertContains(['upc', '9111'], $variants[0]['codes']);
+        self::assertContains(['gtin', '0111'], $variants[0]->codes);
+        self::assertContains(['upc', '9111'], $variants[0]->codes);
     }
 
     public function test_equivalent_ean_gtin_resolve_to_one_variant(): void
@@ -194,7 +194,7 @@ final class EngineTest extends TestCase
 
         $variants = $this->nowVariants($log);
         self::assertCount(1, $variants);
-        self::assertSame([['gtin', '05012345678900']], $variants[0]['codes']);
+        self::assertSame([['gtin', '05012345678900']], $variants[0]->codes);
     }
 
     // ── survivorship ──────────────────────────────────────────────────────────────
@@ -208,9 +208,9 @@ final class EngineTest extends TestCase
         ]);
 
         $d = $this->attr($this->findVariant($this->nowVariants($log), ['gtin', '0111']), 'weight_g');
-        self::assertSame(255, $d['value']);
-        self::assertSame('manufacturer', $d['winner']);
-        self::assertSame('resolved', $d['status']);
+        self::assertSame(255, $d->value);
+        self::assertSame('manufacturer', $d->winner);
+        self::assertSame('resolved', $d->status);
     }
 
     public function test_three_way_tie_is_needs_review(): void
@@ -223,8 +223,8 @@ final class EngineTest extends TestCase
         ]);
 
         $d = $this->attr($this->findVariant($this->nowVariants($log), ['gtin', '0555']), 'color');
-        self::assertSame('needs_review', $d['status']);
-        self::assertCount(3, $d['candidates']);
+        self::assertSame('needs_review', $d->status);
+        self::assertCount(3, $d->candidates);
     }
 
     public function test_shared_barcode_with_different_national_ids_is_held_and_flagged(): void
@@ -300,7 +300,7 @@ final class EngineTest extends TestCase
 
         [$log] = $this->resolve($claims);
         $variant = $this->findVariant($this->nowVariants($log), ['gtin', '0777']);
-        self::assertSame('needs_review', $variant['product']['status']);
+        self::assertSame('needs_review', $variant->product->status);
     }
 
     // ── the steward merge gate ──────────────────────────────────────────────────
