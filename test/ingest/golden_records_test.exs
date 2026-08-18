@@ -10,6 +10,8 @@
 # default, and resolves to the ranked winner when a Priority is supplied. Mirrors
 # rederive_test.exs / claim_mapping_test.exs conventions (terse synthetic-envelope helpers).
 
+alias GoldenRecord.{Codes, Priority, Api, PublicId}
+
 defmodule GoldenRecordsTest do
   use ExUnit.Case, async: true
 

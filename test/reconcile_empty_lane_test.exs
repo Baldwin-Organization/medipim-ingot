@@ -9,6 +9,8 @@
 #     drops a product from as-of projections after its validity window closes.
 #
 # If one of these tests breaks because the behaviors were "unified", that is the bug.
+alias GoldenRecord.{Events, Lanes, Substrate, History}
+
 defmodule ReconcileEmptyLaneTest do
   use ExUnit.Case, async: true
 

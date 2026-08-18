@@ -24,6 +24,8 @@
 #   [3] the off-product penalty makes a source's rank depend on the PRODUCT's orgs; Priority.rank/3
 #       and Survivorship.decide/3 take no product context, so ONE static Priority cannot reproduce
 #       both contexts — the single structural GAP (test_context_penalty_is_the_gap).
+alias GoldenRecord.{Priority, Survivorship}
+
 defmodule SurvivorshipParitySpikeTest do
   use ExUnit.Case, async: true
 

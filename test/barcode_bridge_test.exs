@@ -8,6 +8,8 @@
 # stand alone — each carries a non-barcode code of its own — and the reassignable code is the only
 # thing tying them together. That is the shape of an NHSBSA GTIN transfer, and nothing else.
 
+alias GoldenRecord.{Events, Substrate, Cluster, IdentityLedger}
+
 defmodule BarcodeBridgeTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

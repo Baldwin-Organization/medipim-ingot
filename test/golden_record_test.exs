@@ -4,6 +4,19 @@
 #
 # Engine modules are compiled from lib/; ExUnit is started in test/test_helper.exs.
 
+alias GoldenRecord.{
+  Events,
+  Codes,
+  Substrate,
+  Priority,
+  Cluster,
+  IdentityLedger,
+  Stewardship,
+  History,
+  Api,
+  PublicId
+}
+
 defmodule CodesTest do
   use ExUnit.Case, async: true
 

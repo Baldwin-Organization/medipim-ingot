@@ -4,6 +4,8 @@
 # from grouping evidence for backfilled keys, freshly allocated above the max for new ones — and a
 # legacy id keeps resolving across merges (to the survivor) and splits (the kept key).
 
+alias GoldenRecord.{Events, Substrate, Cluster, IdentityLedger, Stewardship}
+
 defmodule LegacyIdsTest do
   use ExUnit.Case, async: true
   import Substrate, only: [claim: 5]

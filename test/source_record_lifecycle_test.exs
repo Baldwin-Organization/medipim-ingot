@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Substrate, IdentityLedger}
+
 defmodule SourceRecordLifecycleTest do
   use ExUnit.Case, async: true
 

@@ -21,6 +21,8 @@
 #
 # Stdlib only, no Hex deps. Presentation only — it changes nothing about identity or the engine.
 
+alias GoldenRecord.{Events, Catalog}
+
 defmodule Demo do
   @fixture "test/ingest/fixtures/medipim_be_422156.json"
 

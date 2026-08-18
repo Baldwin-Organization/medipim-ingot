@@ -21,6 +21,8 @@
 # epoch→Date conversion + same-day collapse staying order-sequenced. Mirrors
 # golden_records_test.exs conventions (terse synthetic-envelope helpers).
 
+alias GoldenRecord.{Events, Codes, IdentityLedger, Stewardship}
+
 defmodule TemporalTest do
   use ExUnit.Case, async: true
 

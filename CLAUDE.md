@@ -74,9 +74,11 @@ can move claim-count pins in ALL THREE (spec tests, parity snapshots, and
 
 ## Architecture Overview
 
-- `lib/golden_record_core.ex` — the engine: flat modules (`Codes`, `Substrate`, `Cluster`,
-  `IdentityLedger`, `Stewardship`, `Catalog`, `History`, `Api`, `PublicId`, …), pure functions,
-  event-sourced. Loaded by Mix; cross-referenced by the ingest.
+- `lib/golden_record/` — the engine: one module per file under the `GoldenRecord.*` namespace
+  (`Codes`, `Substrate`, `Cluster`, `IdentityLedger`, `Stewardship`, `Catalog`, `History`,
+  `Api`, `PublicId`, …), pure functions, event-sourced. Consumers take one
+  `alias GoldenRecord.{…}` line and keep short call sites. Loaded by Mix; cross-referenced by
+  the ingest.
 - `lib/ingest/` — the legacy-medipim ingest pipeline: `envelope_loader.ex` (parse/validate the
   contract-C `HistoryEnvelope`, spec in `docs/HISTORY_ENVELOPE.md`) → `claim_mapping.ex` (fold
   listings → canonicalize/partition → engine claims, spec in `docs/CLAIM_MAPPING_SPEC.md`) →
@@ -91,6 +93,6 @@ can move claim-count pins in ALL THREE (spec tests, parity snapshots, and
 
 - **No external dependencies.** Reach for the stdlib first (e.g. the built-in `JSON`); adding a Hex
   dep is a deliberate decision, not a default.
-- **Flat module names** for now (no `GoldenRecord.*` namespace) — a known future follow-up.
+- **Engine modules are namespaced** `GoldenRecord.*` (GH #58); ingest/contract modules stay flat.
 - **Pure functions, no GenServers** — there is no runtime state to manage; the event log is the
   system of record and every projection is a fold over it.

@@ -3,6 +3,8 @@
 # and is idempotent, validation rejects whole batches, and a live bridge between established keys
 # is FLAGGED — never auto-merged. async: false — shared tables, truncated per test.
 
+alias GoldenRecord.{Events, Lanes}
+
 defmodule Api.WritesTest do
   use ExUnit.Case, async: false
   import Plug.Test

@@ -17,7 +17,7 @@ at the repo root.
 
 | Path | What it is |
 |------|------------|
-| `lib/golden_record_core.ex` | The engine (library): contexts, aggregates, events, resolution, projection. |
+| `lib/golden_record/` | The engine (library, `GoldenRecord.*`): contexts, aggregates, events, resolution, projection. |
 | `lib/ingest/envelope_loader.ex` | Legacy-medipim ingest stage 1 — load + validate `HistoryEnvelope` JSON (contract C). |
 | `lib/ingest/claim_mapping.ex` | Ingest stage 2 — fold listings, canonicalize/partition, build engine claims. |
 | `lib/ingest/parity.ex` | The whole-product parity harness — engine fold vs the applier's snapshot, divergences classified. |

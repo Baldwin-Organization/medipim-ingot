@@ -1,3 +1,14 @@
+alias GoldenRecord.{
+  Events,
+  Codes,
+  IdentityLedger,
+  Lanes,
+  Relations,
+  Priority,
+  Survivorship,
+  Stewardship
+}
+
 defmodule Api.Codec do
   @moduledoc """
   Explicit JSON encoding for events and projection rows.
@@ -24,7 +35,14 @@ defmodule Api.Codec do
     Events.ReviewCaseEndorsed
   ]
 
+  # Stored rows written before the GoldenRecord.* rename (GH #58) carry the old flat names
+  # ("Events.ClaimAsserted") — keep decoding both spellings.
   @modules_by_name Map.new(@event_modules, &{inspect(&1), &1})
+                   |> Map.merge(
+                     Map.new(@event_modules, fn m ->
+                       {m |> Module.split() |> Enum.drop(1) |> Enum.join("."), m}
+                     end)
+                   )
   @atom_vocabulary_modules [
     CodeRegistry,
     Codes,

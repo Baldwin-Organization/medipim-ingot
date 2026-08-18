@@ -8,6 +8,8 @@
 #   ACT 2 — two sources claim the SAME id but they are two   (code collision -> steward marks the
 #           different products — what happens?                code SHARED -> clean two-product split)
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Stewardship, History, Api}
+
 defmodule Stress do
   import Substrate, only: [claim: 5]
 

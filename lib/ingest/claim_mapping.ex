@@ -38,6 +38,8 @@
 # NOT here: media claims (out of scope for gr-beo), survivorship/clustering (the engine owns it),
 # and edge removals (a snapshot-v1 simplification — member_of unions and does not retract).
 
+alias GoldenRecord.{Codes}
+
 defmodule ClaimMapping do
   @moduledoc """
   The medipim reference adapter: folds contract-C `HistoryEnvelope`s into canonical claims

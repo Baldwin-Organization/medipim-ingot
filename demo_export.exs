@@ -21,6 +21,8 @@
 #
 # GENERATED FILE — do not hand-edit story.json; re-run this script.
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Stewardship, History}
+
 defmodule DemoExport do
   @out "viz/src/data/story.json"
 

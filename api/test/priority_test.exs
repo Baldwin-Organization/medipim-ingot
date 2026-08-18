@@ -1,3 +1,5 @@
+alias GoldenRecord.{Priority}
+
 defmodule Api.PriorityTest do
   use ExUnit.Case, async: false
 

@@ -1,6 +1,8 @@
 # Pure fold-state coverage (bead gr-l27): every event type the log can carry must fold — the
 # snapshot is only as trustworthy as apply_event/2.
 
+alias GoldenRecord.{Events, Substrate, Priority}
+
 defmodule Api.StateTest do
   use ExUnit.Case, async: true
 

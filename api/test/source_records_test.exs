@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events}
+
 defmodule Api.SourceRecordsTest do
   use ExUnit.Case, async: false
   import Plug.Conn

@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Codes, Lanes, IdentityLedger, Stewardship}
+
 defmodule Api.Steward do
   @moduledoc """
   The steward surface's logic: the open queue (merge proposals from the log + attribute ties

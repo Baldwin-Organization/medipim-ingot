@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events, Lanes, IdentityLedger, Catalog, History}
+
 defmodule Api.ReadModels do
   @moduledoc """
   Rebuildable, indexed Postgres projections.

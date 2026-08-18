@@ -24,6 +24,8 @@
 # does NOT do their work — gr-0c2 = LegacyXref (legacy ⟷ SK map + relation :stable/:split/:merged),
 # gr-8r6 = the golden-record projection (Catalog/Api output). No xref, no relation, no projection.
 
+alias GoldenRecord.{Lanes, Substrate, Cluster, IdentityLedger}
+
 defmodule Rederivation do
   @doc """
   Re-derive identity from raw `%HistoryEnvelope{}`s at instant `at`. Builds claims via

@@ -1,6 +1,8 @@
 # Event-store contract: durable offsets, JSON round-trips, transactional indexed projections,
 # and unlimited rebuild. async: false — these tests share the projection tables.
 
+alias GoldenRecord.{Events, Substrate}
+
 defmodule Api.StoreTest do
   use ExUnit.Case, async: false
 
@@ -177,7 +179,7 @@ defmodule Api.StoreTest do
 
     decoded = JSON.decode!(payload)
     assert decoded["$type"] == "struct"
-    assert decoded["module"] == "Events.ClaimAsserted"
+    assert decoded["module"] == "GoldenRecord.Events.ClaimAsserted"
     assert decoded["fields"]["source"]["value"] == "a"
 
     %{rows: [[nil]]} =

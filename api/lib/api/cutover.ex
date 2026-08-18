@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events}
+
 defmodule Api.Cutover do
   @moduledoc """
   `POST /v1/cutover` (gr-w4l): commit a migration batch — the explicit cutover of the

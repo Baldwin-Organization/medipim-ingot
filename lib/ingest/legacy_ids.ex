@@ -16,6 +16,8 @@
 # SURVIVOR (the absorbed id becomes an alias); a split key keeps its id on the KEPT key and the
 # carved-out keys allocate fresh ones on the next `decide/4`.
 
+alias GoldenRecord.{Events, Api}
+
 defmodule LegacyIds do
   @moduledoc """
   Legacy medipim IDs as first-class, event-sourced continuity: `decide/4` proposes

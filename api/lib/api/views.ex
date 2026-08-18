@@ -1,3 +1,5 @@
+alias GoldenRecord.{Events}
+
 defmodule Api.Views do
   @moduledoc "JSON-shaped views over engine structures — serialization only, no decisions."
 

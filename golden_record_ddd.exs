@@ -5,6 +5,8 @@
 # Shows: an append-only event log as system of record; golden as a fold; transaction-time and
 # valid-time travel; conflict events (attribute tie + a gated identity merge); steward verdicts.
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Stewardship, History}
+
 defmodule Demo do
   import Substrate, only: [claim: 5]
 

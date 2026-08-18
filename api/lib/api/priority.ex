@@ -1,3 +1,5 @@
+alias GoldenRecord.{Priority}
+
 defmodule Api.Priority do
   @moduledoc """
   Survivorship priority shared by reads, dry-run, and steward surfaces.

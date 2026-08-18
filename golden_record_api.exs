@@ -5,6 +5,8 @@
 #
 #   Run:  mix run golden_record_api.exs
 
+alias GoldenRecord.{Events, Substrate, Priority, Cluster, IdentityLedger, Stewardship, History, Api, PublicId}
+
 defmodule ApiDemo do
   import Substrate, only: [claim: 5]
 

@@ -9,6 +9,8 @@
 #     ids come from a different medipim table than media asset ids — sharing :asset_id would
 #     collide id-spaces).
 
+alias GoldenRecord.{Lanes, Substrate, Survivorship, Cluster}
+
 defmodule AuMarketTest do
   use ExUnit.Case, async: true
 

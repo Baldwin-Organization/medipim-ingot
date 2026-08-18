@@ -9,6 +9,8 @@
 # (golden record + xref + a stable/confirmed diff) through the three synthetic scenarios (merge,
 # split, collision). Mirrors the terse synthetic-envelope helpers from migration_diff_test.exs.
 
+alias GoldenRecord.{Events, PublicId}
+
 defmodule IngestWalkthroughTest do
   use ExUnit.Case, async: true
 

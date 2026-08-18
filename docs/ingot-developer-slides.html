@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingot for Developers</title>
+
+<!-- Typography: Fraunces (warm ledger serif) for display, IBM Plex Sans/Mono for body & data -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<style>
+/* ===========================================
+   THEME — the ingot identity (paper / ink / bronze)
+   =========================================== */
+:root {
+    --stage-bg: #211D17;          /* letterbox ground */
+    --slide-bg: #F7F5F1;          /* warm paper */
+    --ink: #1C2026;
+    --ink-2: #5A6675;
+    --line: #DDD8CF;
+    --bronze: #9A5B23;
+    --bronze-deep: #7C4213;
+    --bronze-soft: #F0E4D6;
+    --card: #FFFFFF;
+    --good: #2E7D4F;
+    --bad: #A8402F;
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--stage-bg, #000);
+}
+.deck-stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    background: var(--slide-bg, #fff);
+}
+.slide {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    display: block;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    background: var(--slide-bg, #fff);
+}
+.slide.active,
+.slide.visible {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+@media print {
+    @page { size: 1920px 1080px; margin: 0; }
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide {
+        position: relative;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        width: 1920px; height: 1080px;
+        break-after: page; page-break-after: always;
+    }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .reveal { opacity: 1 !important; transform: none !important; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+}
+
+/* ===========================================
+   SLIDE SCAFFOLD — shared layout at 1920×1080
+   =========================================== */
+.slide { font-family: var(--font-body); color: var(--ink); transition: opacity 0.45s var(--ease); }
+.pad { position: absolute; inset: 0; padding: 96px 130px; display: flex; flex-direction: column; }
+
+.eyebrow {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bronze);
+    margin-bottom: 26px;
+}
+h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 118px;
+    line-height: 1.03;
+    letter-spacing: -0.015em;
+    max-width: 1350px;
+}
+h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 76px;
+    line-height: 1.06;
+    letter-spacing: -0.01em;
+    margin-bottom: 22px;
+    max-width: 1500px;
+}
+.lede { font-size: 32px; line-height: 1.5; color: var(--ink-2); max-width: 1250px; }
+.lede strong { color: var(--ink); font-weight: 600; }
+.lede code, .moral code, p code {
+    font-family: var(--font-mono); font-size: 0.88em; color: var(--bronze-deep);
+    background: var(--bronze-soft); border-radius: 6px; padding: 2px 10px;
+}
+
+/* footer strip on every content slide */
+.foot {
+    position: absolute;
+    left: 130px; right: 130px; bottom: 56px;
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 19px;
+    color: var(--ink-2);
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+}
+
+.moral { margin-top: 44px; font-size: 28px; line-height: 1.5; color: var(--ink-2); max-width: 1560px; }
+.moral strong { color: var(--ink); }
+
+/* ===========================================
+   REVEAL ANIMATION
+   =========================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.65s var(--ease), transform 0.65s var(--ease);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.15s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.25s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.35s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.45s; }
+.d1 { transition-delay: 0.15s !important; }
+.d2 { transition-delay: 0.30s !important; }
+.d3 { transition-delay: 0.45s !important; }
+.d4 { transition-delay: 0.60s !important; }
+
+/* ===========================================
+   TITLE SLIDE
+   =========================================== */
+.title-slide .pad { justify-content: center; }
+.ingot-mark { display: flex; flex-direction: column; gap: 10px; margin-bottom: 60px; }
+.bar {
+    height: 26px; border-radius: 5px;
+    background: linear-gradient(100deg, var(--bronze-deep), var(--bronze) 45%, #C98A4B 70%, var(--bronze));
+    box-shadow: 0 3px 10px rgba(122, 71, 22, 0.30);
+}
+.bar.b1 { width: 190px; }
+.bar.b2 { width: 150px; margin-left: 20px; }
+.bar.b3 { width: 110px; margin-left: 40px; }
+.title-sub { margin-top: 44px; font-size: 34px; color: var(--ink-2); max-width: 1100px; line-height: 1.5; }
+
+/* ===========================================
+   MENTAL MODEL — big equation + implications
+   =========================================== */
+.equation {
+    font-family: var(--font-mono); font-weight: 600;
+    font-size: 72px; color: var(--bronze-deep);
+    background: var(--card); border: 2px solid var(--bronze); border-radius: 14px;
+    padding: 44px 60px; margin-top: 48px; align-self: flex-start;
+}
+.implications { display: flex; gap: 36px; margin-top: 54px; }
+.implication {
+    flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 32px 38px;
+}
+.implication h3 { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-bottom: 10px; }
+.implication p { font-size: 24px; line-height: 1.45; color: var(--ink-2); }
+.implication p code { font-size: 0.9em; }
+
+/* ===========================================
+   PIPELINE — vertical stages with file names
+   =========================================== */
+.stages { display: flex; flex-direction: column; gap: 0; margin-top: 46px; max-width: 1620px; }
+.stage { display: grid; grid-template-columns: 560px 1fr; gap: 40px; align-items: center; padding: 22px 0; }
+.stage + .stage { border-top: 1px dashed var(--line); }
+.stage-file {
+    font-family: var(--font-mono); font-size: 25px; font-weight: 600; color: var(--bronze-deep);
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 20px 28px;
+}
+.stage-file small { display: block; font-weight: 400; font-size: 18px; color: var(--ink-2); margin-top: 6px; }
+.stage-what { font-size: 26px; line-height: 1.4; color: var(--ink-2); }
+.stage-what strong { color: var(--ink); }
+
+/* ===========================================
+   GLOSSARY GRID (reuses lane-card look)
+   =========================================== */
+.lanes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px 32px; margin-top: 46px; max-width: 1680px; }
+.lane-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 26px 32px;
+}
+.lane-card .lane-tag {
+    font-family: var(--font-mono); font-size: 24px; font-weight: 600;
+    color: var(--bronze-deep); margin-bottom: 10px;
+}
+.lane-card p { font-size: 22px; line-height: 1.42; color: var(--ink-2); }
+.lane-card p b { color: var(--ink); }
+
+/* ===========================================
+   REPO MAP — tree + notes
+   =========================================== */
+.repo { display: grid; grid-template-columns: 760px 1fr; gap: 56px; margin-top: 44px; align-items: start; }
+.tree {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 34px 42px; font-family: var(--font-mono); font-size: 24px; line-height: 1.85;
+}
+.tree .dir { color: var(--bronze-deep); font-weight: 600; }
+.tree .note { color: var(--ink-2); font-size: 20px; }
+.repo-notes { display: flex; flex-direction: column; gap: 26px; }
+.repo-note h3 { font-family: var(--font-display); font-size: 32px; font-weight: 600; margin-bottom: 6px; }
+.repo-note p { font-size: 24px; line-height: 1.45; color: var(--ink-2); }
+
+/* ===========================================
+   TWIN ENGINES (reuses ledger-compare)
+   =========================================== */
+.ledger-compare { display: flex; gap: 44px; margin-top: 50px; align-items: stretch; }
+.ledger-col {
+    flex: 1; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 40px 46px;
+}
+.ledger-col.winner { border: 2px solid var(--bronze); background: linear-gradient(180deg, #FFFDF9, #FBF4EA); }
+.ledger-col .tag {
+    font-family: var(--font-mono); font-size: 20px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 24px; color: var(--bronze);
+}
+.twin-lines { display: flex; flex-direction: column; gap: 18px; }
+.twin-lines p { font-size: 24px; line-height: 1.45; color: var(--ink-2); }
+.twin-lines strong { color: var(--ink); font-weight: 600; }
+.change-flow {
+    display: flex; align-items: center; gap: 22px; margin-top: 48px;
+    font-family: var(--font-mono); font-size: 25px; font-weight: 600; color: var(--ink);
+}
+.change-step {
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+    padding: 16px 32px;
+}
+.change-step.hot { border: 2px solid var(--bronze); color: var(--bronze-deep); }
+.change-arrow { color: var(--bronze); font-size: 32px; }
+
+/* ===========================================
+   RULES OF THE ROAD (reuses sins grid, ✓ marks)
+   =========================================== */
+.sins { display: flex; flex-direction: column; gap: 30px; margin-top: 50px; max-width: 1560px; }
+.sin { display: grid; grid-template-columns: 84px 1fr; gap: 32px; align-items: start; }
+.sin-mark {
+    width: 84px; height: 84px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 40px; font-weight: 700; color: var(--good);
+}
+.sin-mark.warn { color: var(--bad); }
+.sin h3 { font-family: var(--font-display); font-size: 37px; font-weight: 600; margin-bottom: 6px; }
+.sin p { font-size: 25px; line-height: 1.45; color: var(--ink-2); max-width: 1380px; }
+.sin p code { font-size: 0.9em; }
+
+/* ===========================================
+   FIXTURES (reuses claim chips)
+   =========================================== */
+.fixtures { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 36px; margin-top: 48px; max-width: 1660px; }
+.fixture {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 28px 36px;
+}
+.fixture .fx-id { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--bronze-deep); margin-bottom: 8px; }
+.fixture p { font-size: 23px; line-height: 1.42; color: var(--ink-2); }
+.fixture p b { color: var(--ink); }
+
+/* ===========================================
+   COMMANDS + PROOF
+   =========================================== */
+.cmds {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 36px 46px; margin-top: 44px; max-width: 1660px;
+    font-family: var(--font-mono); font-size: 26px; line-height: 2.05;
+}
+.cmds .c { color: var(--bronze-deep); font-weight: 600; }
+.cmds .r { color: var(--ink-2); }
+.proof-band { display: flex; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 44px; max-width: 1660px; }
+.proof { flex: 1; background: var(--card); padding: 28px 36px; }
+.proof .pnum { font-family: var(--font-mono); font-size: 48px; font-weight: 600; color: var(--good); font-variant-numeric: tabular-nums; }
+.proof .pnum.bronze { color: var(--bronze); }
+.proof .plbl { font-size: 21px; color: var(--ink-2); margin-top: 8px; line-height: 1.4; }
+
+/* ===========================================
+   FIRST WEEK (reuses unlocks)
+   =========================================== */
+.unlocks { display: grid; grid-template-columns: 1fr 1fr; gap: 34px 48px; margin-top: 56px; max-width: 1620px; }
+.unlock { display: grid; grid-template-columns: 56px 1fr; gap: 24px; align-items: start; }
+.unlock .u-mark { font-family: var(--font-display); font-size: 40px; color: var(--bronze); font-weight: 700; line-height: 1.1; }
+.unlock h3 { font-family: var(--font-display); font-size: 33px; font-weight: 600; margin-bottom: 6px; }
+.unlock p { font-size: 24px; line-height: 1.42; color: var(--ink-2); }
+.unlock p code { font-size: 0.9em; }
+
+/* ===========================================
+   DECK CHROME — nav + progress
+   =========================================== */
+.deck-controls { display: flex; align-items: center; gap: 18px; }
+.nav-btn {
+    background: rgba(247, 245, 241, 0.12); color: #F7F5F1;
+    border: 1px solid rgba(247, 245, 241, 0.28); border-radius: 8px;
+    font-family: var(--font-mono); font-size: 15px; padding: 7px 15px; cursor: pointer;
+    transition: background 0.2s ease;
+}
+.nav-btn:hover, .nav-btn:focus-visible { background: rgba(247, 245, 241, 0.26); outline: none; }
+.page-count { font-family: var(--font-mono); font-size: 14px; color: rgba(247, 245, 241, 0.75); }
+
+/* ===========================================
+   INLINE EDITING — press E or hover top-left
+   =========================================== */
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px; z-index: 10001;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    background: #F7F5F1; border: 1px solid #C9C2B6; border-radius: 8px;
+    font-size: 18px; padding: 8px 12px; cursor: pointer;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--bronze); color: #fff; }
+body.editing [contenteditable="true"] { outline: 2px dashed var(--bronze); outline-offset: 4px; }
+</style>
+</head>
+<body>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+    <!-- ============ SLIDE 1 · TITLE ============ -->
+    <section class="slide title-slide active" aria-label="Title">
+        <div class="pad">
+            <div class="ingot-mark reveal">
+                <div class="bar b1"></div>
+                <div class="bar b2"></div>
+                <div class="bar b3"></div>
+            </div>
+            <p class="eyebrow reveal">INGOT · FOR DEVELOPERS</p>
+            <h1 class="reveal">One event log.<br>Everything is a fold.</h1>
+            <p class="title-sub reveal">The mental model, the pipeline, the twin engines, and how to make your first change — everything you need to be productive in this codebase.</p>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 2 · MENTAL MODEL ============ -->
+    <section class="slide" aria-label="Mental model">
+        <div class="pad">
+            <p class="eyebrow reveal">THE MENTAL MODEL</p>
+            <h2 class="reveal">There is exactly one idea in this system.</h2>
+            <div class="equation reveal d1">state&nbsp;=&nbsp;fold(events)</div>
+            <div class="implications">
+                <div class="implication reveal d1">
+                    <h3>The log is the system of record.</h3>
+                    <p>Supplier statements are appended, never updated in place. Anything you see published — a name, a barcode, a merge — is <b>derived</b>, never stored as truth.</p>
+                </div>
+                <div class="implication reveal d2">
+                    <h3>Pure functions, no processes.</h3>
+                    <p>No GenServers, no runtime state, no database in the core. Every module is <code>data in → data out</code>. If you can run <code>mix test</code>, you can run the whole engine.</p>
+                </div>
+                <div class="implication reveal d3">
+                    <h3>Bugs become recomputations.</h3>
+                    <p>A wrong answer is never patched — the rule is fixed and the projection is <b>re-folded from the log</b>. That's why explainability and undo come for free.</p>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>mental model</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 3 · THE PIPELINE ============ -->
+    <section class="slide" aria-label="The ingest pipeline">
+        <div class="pad">
+            <p class="eyebrow reveal">THE PIPELINE</p>
+            <h2 class="reveal">Supplier history in, golden records out — four stages.</h2>
+            <div class="stages">
+                <div class="stage reveal d1">
+                    <div class="stage-file">lib/ingest/envelope_loader.ex<small>spec: docs/HISTORY_ENVELOPE.md</small></div>
+                    <div class="stage-what"><strong>Parse &amp; validate the HistoryEnvelope</strong> — a supplier's full delta history in the contract-C shape. Garbage stops here.</div>
+                </div>
+                <div class="stage reveal d1">
+                    <div class="stage-file">lib/ingest/claim_mapping.ex<small>spec: docs/CLAIM_MAPPING_SPEC.md</small></div>
+                    <div class="stage-what"><strong>Fold listings into engine claims</strong> — canonicalize codes, partition into periods. This is where "supplier says" becomes structured evidence.</div>
+                </div>
+                <div class="stage reveal d2">
+                    <div class="stage-file">rederive.ex · temporal.ex · finer_claims.ex</div>
+                    <div class="stage-what"><strong>Cluster &amp; reconcile</strong> — claims sharing authoritative codes collapse into one identity, as dated identity events. Merges and splits fall out of the data.</div>
+                </div>
+                <div class="stage reveal d2">
+                    <div class="stage-file">lib/ingest/golden_records.ex</div>
+                    <div class="stage-what"><strong>Project the golden record</strong> — the whole-product view we publish, with survivorship decided by an injected policy (<strong>medipim_policy.ex</strong>).</div>
+                </div>
+            </div>
+            <p class="moral reveal d3">Each stage is a pure function with its own spec and its own test file. <strong>You can understand — and change — one stage without holding the rest in your head.</strong></p>
+            <div class="foot"><span>ingot</span><span>the pipeline</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 4 · VOCABULARY ============ -->
+    <section class="slide" aria-label="Vocabulary">
+        <div class="pad">
+            <p class="eyebrow reveal">VOCABULARY</p>
+            <h2 class="reveal">Six words carry the whole domain.</h2>
+            <div class="lanes reveal d1">
+                <div class="lane-card">
+                    <div class="lane-tag">claim</div>
+                    <p>One supplier asserting <b>"this entity carries this code, over this period."</b> The atomic unit of evidence — never edited, only superseded.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">code · code set</div>
+                    <p>A typed identifier (national code, GTIN, ISBN…) after <b>canonicalization</b>. Authoritative codes prove identity; weak ones (bare barcodes) only suggest it.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">cluster</div>
+                    <p>Entities <b>provably the same product</b> because their claims share authoritative codes. Computed, never hand-assigned — merges and splits are just the cluster changing.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">golden record</div>
+                    <p>The published projection of one cluster: <b>best value per field, with provenance</b>. Recomputable from the log at any date.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">lane</div>
+                    <p>A per-kind content stream — photos, descriptions, documents, ingredients. <b>Same ledger, same rules</b>, applied beyond scalar fields.</p>
+                </div>
+                <div class="lane-card">
+                    <div class="lane-tag">steward verdict</div>
+                    <p>A <b>human decision recorded as an event</b>, for cases the engine refuses to guess (a shared barcode, a suspicious merge). First-class evidence, not a DB override.</p>
+                </div>
+            </div>
+            <p class="moral reveal d2">These names are used <strong>identically in the specs, the Elixir code, the PHP code, and the tests.</strong> When you talk about the system, use them.</p>
+            <div class="foot"><span>ingot</span><span>vocabulary</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 5 · REPO MAP ============ -->
+    <section class="slide" aria-label="Repo map">
+        <div class="pad">
+            <p class="eyebrow reveal">THE REPO</p>
+            <h2 class="reveal">Three projects, one truth.</h2>
+            <div class="repo">
+                <div class="tree reveal d1">
+                    <div><span class="dir">lib/golden_record_core.ex</span> <span class="note">— the engine</span></div>
+                    <div class="note">&nbsp;&nbsp;15 flat modules, ~2,000 lines, one file</div>
+                    <div class="note">&nbsp;&nbsp;Codes · Cluster · IdentityLedger · Catalog · History…</div>
+                    <div><span class="dir">lib/ingest/</span> <span class="note">— the medipim pipeline</span></div>
+                    <div><span class="dir">test/</span> <span class="note">— 363 ExUnit tests, real fixtures</span></div>
+                    <div><span class="dir">docs/</span> <span class="note">— the specs (they lead, code follows)</span></div>
+                    <div><span class="dir">php/</span> <span class="note">— the parity port (own composer project)</span></div>
+                    <div><span class="dir">api/</span> <span class="note">— HTTP + Postgres (own mix project)</span></div>
+                </div>
+                <div class="repo-notes">
+                    <div class="repo-note reveal d2">
+                        <h3>Zero dependencies, on purpose.</h3>
+                        <p>The root project is stdlib-only — the built-in <code>JSON</code> module, no Jason, no Ecto. Clone, <code>mix test</code>, done. Adding a Hex dep is a decision, not a default.</p>
+                    </div>
+                    <div class="repo-note reveal d3">
+                        <h3>The engine knows nothing about medipim.</h3>
+                        <p>Supplier-specific scoring lives in <code>medipim_policy.ex</code> and is <em>injected</em> as a rank function. New market or supplier = new policy + config, engine untouched.</p>
+                    </div>
+                    <div class="repo-note reveal d4">
+                        <h3>Specs are the contract.</h3>
+                        <p><code>HISTORY_ENVELOPE.md</code> and <code>CLAIM_MAPPING_SPEC.md</code> define behavior; spec tests pin the code to them. A behavior change starts as a spec edit.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>the repo</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 6 · TWIN ENGINES ============ -->
+    <section class="slide" aria-label="Twin engines">
+        <div class="pad">
+            <p class="eyebrow reveal">TWIN ENGINES</p>
+            <h2 class="reveal">Every change is made twice — and proven identical.</h2>
+            <div class="ledger-compare">
+                <div class="ledger-col winner reveal d1">
+                    <div class="tag">Elixir — the reference</div>
+                    <div class="twin-lines">
+                        <p><strong>Where design happens.</strong> The whole engine in one readable file; the full suite runs in half a second, so you iterate at thinking speed.</p>
+                        <p><strong>Change here first,</strong> with a test that pins the new behavior.</p>
+                    </div>
+                </div>
+                <div class="ledger-col reveal d2">
+                    <div class="tag">PHP — the production twin</div>
+                    <div class="twin-lines">
+                        <p><strong>Where it ships.</strong> A faithful port that runs inside today's platform — same modules, same names, same answers.</p>
+                        <p><strong>Port the change second,</strong> mirroring the Elixir diff class-for-class.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="change-flow reveal d3">
+                <div class="change-step">spec</div><span class="change-arrow">→</span>
+                <div class="change-step">Elixir + test</div><span class="change-arrow">→</span>
+                <div class="change-step">PHP port</div><span class="change-arrow">→</span>
+                <div class="change-step hot">parity proves byte-identical</div>
+            </div>
+            <p class="moral reveal d4"><code>parity.ex</code> and shared snapshot fixtures compare the two engines' output on real product histories. <strong>If your port drifts by one byte, CI tells you — not a customer.</strong></p>
+            <div class="foot"><span>ingot</span><span>twin engines</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 7 · RULES OF THE ROAD ============ -->
+    <section class="slide" aria-label="Rules of the road">
+        <div class="pad">
+            <p class="eyebrow reveal">RULES OF THE ROAD</p>
+            <h2 class="reveal">Four invariants. Everything else is negotiable.</h2>
+            <div class="sins">
+                <div class="sin reveal d1">
+                    <div class="sin-mark">1</div>
+                    <div>
+                        <h3>Never erase an event.</h3>
+                        <p>Corrections are new events (retractions, verdicts) — the log only grows. If your diff deletes or mutates history, it's wrong by construction.</p>
+                    </div>
+                </div>
+                <div class="sin reveal d1">
+                    <div class="sin-mark">2</div>
+                    <div>
+                        <h3>Keep the core generic.</h3>
+                        <p>Supplier and market knowledge lives in injected policies and config, never in the engine. If you're writing <code>if medipim</code> in the core, stop.</p>
+                    </div>
+                </div>
+                <div class="sin reveal d2">
+                    <div class="sin-mark">3</div>
+                    <div>
+                        <h3>Both engines or neither.</h3>
+                        <p>An Elixir change without its PHP twin doesn't merge. Parity snapshots are the referee — keep them passing, never "adjust" them to make a diff go green.</p>
+                    </div>
+                </div>
+                <div class="sin reveal d2">
+                    <div class="sin-mark warn">!</div>
+                    <div>
+                        <h3>ClaimMapping changes ripple into three suites.</h3>
+                        <p>Claim-count pins live in the spec tests, the parity snapshots, <em>and</em> <code>api/test/e2e_migration_test.exs</code>. Run the api suite locally before pushing such a change.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>rules of the road</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 8 · REAL DATA AS FIXTURES ============ -->
+    <section class="slide" aria-label="Fixtures">
+        <div class="pad">
+            <p class="eyebrow reveal">TEST DATA</p>
+            <h2 class="reveal">We test against real product histories, not toys.</h2>
+            <div class="fixtures">
+                <div class="fixture reveal d1">
+                    <div class="fx-id">entity 422156 · Belgium</div>
+                    <p>The <b>full delta history</b> of one real medipim product, checked in as a fixture. <b>gen_422156.exs</b> regenerates the decoded envelope from the raw dump — the fixture is reproducible, not sacred.</p>
+                </div>
+                <div class="fixture reveal d1">
+                    <div class="fx-id">entity 347025 · France</div>
+                    <p>Pins the pipeline <b>cross-language</b>: a second market's coding scheme, exercised end to end in both engines.</p>
+                </div>
+                <div class="fixture reveal d2">
+                    <div class="fx-id">books · ISBN</div>
+                    <p>A whole different domain through the same engine — proof that the core is <b>generic</b>, not pharma-shaped. See <b>books_adapter.ex</b>.</p>
+                </div>
+                <div class="fixture reveal d2">
+                    <div class="fx-id">Australia · 127,000 entities</div>
+                    <p>A full national export ingested with <b>configuration only</b> — new code schemes, GTIN migrations, shared barcodes. The stress test for "a market is a config table."</p>
+                </div>
+            </div>
+            <p class="moral reveal d3">When you change behavior, these fixtures are what catches you. <strong>If a pinned claim count moves, you must be able to say why — the diff is the review.</strong></p>
+            <div class="foot"><span>ingot</span><span>test data</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 9 · RUN IT ============ -->
+    <section class="slide" aria-label="Run it">
+        <div class="pad">
+            <p class="eyebrow reveal">RUN IT</p>
+            <h2 class="reveal">Everything runs locally, fast.</h2>
+            <div class="cmds reveal d1">
+                <div><span class="c">mix test</span> <span class="r">— engine + ingest suites</span></div>
+                <div><span class="c">mix run golden_record_ddd.exs</span> <span class="r">— guided tour: claims → cluster → golden record</span></div>
+                <div><span class="c">cd php &amp;&amp; vendor/bin/phpunit</span> <span class="r">— the production twin</span></div>
+                <div><span class="c">cd api &amp;&amp; mix test</span> <span class="r">— HTTP + Postgres (needs the gr-api-test-pg container, port 55432)</span></div>
+            </div>
+            <div class="proof-band reveal d2">
+                <div class="proof"><div class="pnum">363</div><div class="plbl">Elixir tests, 0.5 s — fast enough to run on every save</div></div>
+                <div class="proof"><div class="pnum">134</div><div class="plbl">PHP tests, 805 assertions, 0.2 s</div></div>
+                <div class="proof"><div class="pnum bronze">3×</div><div class="plbl">CI matrix: Elixir 1.18–1.20 · PHP 8.3–8.5 · Postgres service</div></div>
+            </div>
+            <p class="moral reveal d3">No containers, no seeds, no mocks for the core — pure functions need none. <strong>The feedback loop is the feature: if a check takes minutes, we've built it wrong.</strong></p>
+            <div class="foot"><span>ingot</span><span>run it</span></div>
+        </div>
+    </section>
+
+    <!-- ============ SLIDE 10 · FIRST WEEK ============ -->
+    <section class="slide" aria-label="Your first week">
+        <div class="pad">
+            <p class="eyebrow reveal">GETTING STARTED</p>
+            <h2 class="reveal">Your first week, in four moves.</h2>
+            <div class="unlocks">
+                <div class="unlock reveal d1">
+                    <div class="u-mark">1</div>
+                    <div><h3>Watch it work.</h3><p>Run <code>mix run golden_record_ddd.exs</code> and read what it prints — the whole story from supplier claims to a golden record, on real data.</p></div>
+                </div>
+                <div class="unlock reveal d1">
+                    <div class="u-mark">2</div>
+                    <div><h3>Read the story as tests.</h3><p><code>test/walkthrough_test.exs</code> and <code>test/ingest/ingest_walkthrough_test.exs</code> narrate the system as executable assertions.</p></div>
+                </div>
+                <div class="unlock reveal d2">
+                    <div class="u-mark">3</div>
+                    <div><h3>Read the two specs.</h3><p><code>HISTORY_ENVELOPE.md</code>, then <code>CLAIM_MAPPING_SPEC.md</code>. They're short, and they are the contract everything else obeys.</p></div>
+                </div>
+                <div class="unlock reveal d2">
+                    <div class="u-mark">4</div>
+                    <div><h3>Make one change, twice.</h3><p>Pick a small issue. Elixir first with a test, then the PHP twin — and let the parity suite prove you got it byte-identical.</p></div>
+                </div>
+            </div>
+            <div class="foot"><span>ingot</span><span>questions → Ward</span></div>
+        </div>
+    </section>
+
+</main>
+</div>
+
+<!-- deck chrome: navigation outside the slide stage -->
+<nav class="deck-controls" aria-label="Slide navigation">
+    <button class="nav-btn" id="prevBtn" aria-label="Previous slide">←</button>
+    <span class="page-count" id="pageCount">1 / 10</span>
+    <button class="nav-btn" id="nextBtn" aria-label="Next slide">→</button>
+</nav>
+
+<!-- inline editing affordance -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Edit mode (E)">✏️</button>
+
+<script>
+/* ===========================================
+   SLIDE CONTROLLER — keys, wheel, touch, buttons
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.current = 0;
+        this.stage = document.getElementById('deckStage');
+        this.setupStageScale();
+        this.setupNav();
+        this.show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+    }
+
+    /* scale the fixed 1920×1080 stage uniformly into the window */
+    setupStageScale() {
+        const scale = () => {
+            const f = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * f) / 2;
+            const y = (window.innerHeight - 1080 * f) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${f})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+            if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+            if (e.key === 'Home') this.show(0);
+            if (e.key === 'End') this.show(this.slides.length - 1);
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => this.show(this.current - 1));
+        document.getElementById('nextBtn').addEventListener('click', () => this.show(this.current + 1));
+
+        /* wheel: debounced so trackpads don't skip slides */
+        let wheelLock = false;
+        window.addEventListener('wheel', (e) => {
+            if (document.body.classList.contains('editing')) return;
+            if (wheelLock) return;
+            if (Math.abs(e.deltaY) < 25) return;
+            wheelLock = true;
+            this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+            setTimeout(() => { wheelLock = false; }, 550);
+        }, { passive: true });
+
+        /* touch swipe */
+        let x0 = null;
+        window.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+            if (x0 === null) return;
+            const dx = e.changedTouches[0].clientX - x0;
+            if (Math.abs(dx) > 55) this.show(this.current + (dx < 0 ? 1 : -1));
+            x0 = null;
+        }, { passive: true });
+    }
+
+    show(i) {
+        this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+        this.slides.forEach((s, k) => {
+            s.classList.toggle('active', k === this.current);
+            s.classList.toggle('visible', k === this.current);
+        });
+        document.getElementById('pageCount').textContent = `${this.current + 1} / ${this.slides.length}`;
+    }
+}
+const deck = new SlidePresentation();
+
+/* ===========================================
+   INLINE TEXT EDITING — E key or top-left hover.
+   Edits persist to localStorage; Ctrl/Cmd+S downloads the file.
+   =========================================== */
+const editor = {
+    isActive: false,
+    key: 'ingot-developer-slides-edits',
+    editable: 'h1, h2, h3, p, .stage-what, .stage-file, .lane-tag, .fx-id, .tree div, .cmds div, .plbl, .pnum, .change-step, .equation, .tag',
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('editing', this.isActive);
+        document.getElementById('editToggle').classList.toggle('active', this.isActive);
+        document.querySelectorAll(this.editable).forEach((el) => {
+            if (this.isActive) el.setAttribute('contenteditable', 'true');
+            else el.removeAttribute('contenteditable');
+        });
+        if (!this.isActive) this.persist();
+    },
+    persist() {
+        const texts = [...document.querySelectorAll(this.editable)].map((el) => el.innerHTML);
+        localStorage.setItem(this.key, JSON.stringify(texts));
+    },
+    restore() {
+        const saved = localStorage.getItem(this.key);
+        if (!saved) return;
+        const texts = JSON.parse(saved);
+        const els = [...document.querySelectorAll(this.editable)];
+        if (texts.length === els.length) els.forEach((el, i) => { el.innerHTML = texts[i]; });
+    }
+};
+editor.restore();
+
+const hotzone = document.getElementById('editHotzone');
+const editToggle = document.getElementById('editToggle');
+let hideTimeout = null;
+const showBtn = () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); };
+const hideBtnSoon = () => {
+    hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400);
+};
+hotzone.addEventListener('mouseenter', showBtn);
+hotzone.addEventListener('mouseleave', hideBtnSoon);
+editToggle.addEventListener('mouseenter', showBtn);
+editToggle.addEventListener('mouseleave', hideBtnSoon);
+editToggle.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && !(e.target.getAttribute && e.target.getAttribute('contenteditable'))) {
+        editor.toggleEditMode();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && editor.isActive) {
+        e.preventDefault();
+        editor.persist();
+        const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'ingot-developer-slides.html';
+        a.click();
+    }
+});
+</script>
+</body>
+</html>
