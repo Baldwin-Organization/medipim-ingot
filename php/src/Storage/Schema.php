@@ -22,6 +22,11 @@ final class Schema
      */
     public static function statements(string $prefix = 'claim_'): array
     {
+        // The prefix is interpolated into identifier quoting below — a backtick in it would
+        // escape into arbitrary DDL, so only allow word characters.
+        if (!preg_match('/^\w*$/', $prefix)) {
+            throw new \InvalidArgumentException("table prefix must match [A-Za-z0-9_]*, got: {$prefix}");
+        }
         $p = $prefix;
 
         return [
@@ -58,6 +63,10 @@ final class Schema
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             SQL,
             // code -> key resolution index (the ledger, as queryable rows). lane is the key prefix.
+            // `code` is Codes::key output: scheme (registry-bounded, ≤22 chars) + "\x1f" + value.
+            // VARCHAR(191) as PK is only safe because EnvelopeLoader caps code values at 160 chars —
+            // without that, a non-strict MySQL would silently truncate two distinct >191-char codes
+            // onto the same primary key, cross-linking unrelated identities.
             <<<SQL
             CREATE TABLE IF NOT EXISTS `{$p}members` (
               `code` VARCHAR(191) NOT NULL,
