@@ -167,57 +167,10 @@ defmodule CodeRegistry do
     for {field, {_scheme, :identity}} <- @registry, into: MapSet.new(), do: field
   end
 
-  # ── bridge grade — an ORTHOGONAL axis over the engine SCHEME ATOM (gr-ose) ─────
-  #
-  # A SECOND, independent classification used ONLY by the over-merge guard: when a merge clusters
-  # two legacy entities, is the shared bridge a NATIONAL identity code (trusted — the re-derivation
-  # working as intended) or merely a reusable/reassignable BARCODE/GS1 code (suspect — medipim flags
-  # such ambiguous matches as ProductCodeIdentityMatch / MED-11207)? This axis is keyed on the engine
-  # scheme atom, NOT the medipim field, and is DELIBERATELY distinct from `classification/1`: acl13
-  # and cip13 stay `:identity` there (they DO bridge in clustering) yet are barcode-grade here.
-  @national_schemes MapSet.new([
-                      :cnk,
-                      :cip_acl7,
-                      :cefip,
-                      :pzn,
-                      :pzn_austria,
-                      :sukl,
-                      :national_code,
-                      :cn,
-                      :pdk,
-                      :ndc,
-                      :hri,
-                      :pin,
-                      :lppr,
-                      :fred,
-                      :zcode,
-                      # ISBNs are registration-agency-assigned once per title/format (ISO 2108),
-                      # never reissued the way GS1 barcodes are — a trusted bridge (gr-vgb).
-                      :isbn13,
-                      :isbn10
-                    ])
-
-  @barcode_schemes MapSet.new([:gtin, :acl13, :cip13])
-
-  @doc """
-  Bridge grade of an ENGINE SCHEME ATOM — the over-merge guard's axis (gr-ose):
-
-    * `:national` — a national identity code (cnk, cip_acl7, …); a merge sharing one is TRUSTED.
-    * `:barcode`  — a reusable/reassignable GS1/barcode code (gtin, acl13, cip13); a merge bridged
-                    SOLELY by one of these is SUSPECT.
-    * `:none`     — anything else (external_ref / attribute / unknown) — not a bridge.
-  """
-  def bridge_grade(scheme) do
-    cond do
-      MapSet.member?(@national_schemes, scheme) -> :national
-      MapSet.member?(@barcode_schemes, scheme) -> :barcode
-      true -> :none
-    end
-  end
-
-  @doc "Is this engine scheme atom a national identity code (trusted bridge)?"
-  def national_grade?(scheme), do: bridge_grade(scheme) == :national
-
-  @doc "Is this engine scheme atom a GS1/barcode code (suspect bridge)?"
-  def barcode_grade?(scheme), do: bridge_grade(scheme) == :barcode
+  # ── bridge grade — moved into the engine (Codes, GH #56): what a grade MEANS is engine
+  # vocabulary; this registry owns only the medipim-field→scheme mapping. Delegates kept so
+  # ingest callers read naturally.
+  defdelegate bridge_grade(scheme), to: Codes
+  defdelegate national_grade?(scheme), to: Codes
+  defdelegate barcode_grade?(scheme), to: Codes
 end

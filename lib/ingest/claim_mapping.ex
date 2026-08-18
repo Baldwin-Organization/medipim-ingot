@@ -54,11 +54,6 @@ defmodule ClaimMapping do
   # (CNK-first) is unchanged and French listings anchor on cip_acl7, not a recycled barcode.
   @national_primary [:cnk, :cip_acl7, :cefip, :pzn, :sukl, :pzn_austria, :national_code, :cn]
 
-  # schemes that identify a *supplier's* reference, not a globally-unique product — never bridge.
-  # :artg_id (gr-sx7.1): one AU ARTG registration covers many pack sizes (3,807 live ARTG numbers
-  # sit on >1 entity), so it is an identity code carried like a restricted GTIN — shared, no fuse.
-  @non_bridging_schemes MapSet.new([:mpn, :supplier_ref, :artg_id])
-
   # medipim edge collections that reference FIRST-CLASS entities, not collection membership
   # (gr-kek): each referenced id becomes an identity claim in its own lane plus a typed edge
   # back to the listing's anchor code. collection => {code scheme, lane, relation}. Everything
@@ -542,9 +537,9 @@ defmodule ClaimMapping do
   end
 
   @doc false
-  # Shared with FinerClaims — both folds must agree on what may never bridge.
-  def shared?({scheme, _} = code),
-    do: Codes.restricted?(code) or MapSet.member?(@non_bridging_schemes, scheme)
+  # Shared with FinerClaims — both folds must agree on what may never bridge. The predicate
+  # itself is engine-owned (Codes.shared?, GH #56).
+  defdelegate shared?(code), to: Codes
 
   # chronological order: later recorded_at ⇒ higher order. Stable on the original emission index.
   defp stamp(claims) do

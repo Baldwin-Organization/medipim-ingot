@@ -284,31 +284,8 @@ defmodule FinerClaims do
   defp to_date(epoch), do: Bitemporal.effective_date(epoch)
 
   @doc false
-  def ledgers_from(%IdentityLedger{} = ledger) do
-    members_by_lane = Lanes.partition_members(ledger.members)
-
-    Map.new(Lanes.lanes(), fn lane ->
-      members = Map.fetch!(members_by_lane, lane)
-      prefix = Lanes.prefix(lane)
-      next = Map.get(Map.get(ledger, :next_by_prefix, %{}), prefix, next_key(members))
-
-      {lane,
-       %IdentityLedger{
-         members: members,
-         next: next,
-         prefix: prefix,
-         next_by_prefix: Map.get(ledger, :next_by_prefix, %{})
-       }}
-    end)
-  end
-
-  defp next_key(members) do
-    members
-    |> Map.keys()
-    |> Enum.map(fn key -> key |> String.split("_") |> List.last() |> String.to_integer() end)
-    |> Enum.max(fn -> 0 end)
-    |> Kernel.+(1)
-  end
+  # Engine-owned since GH #56 — the per-lane split lives next to the ledger it splits.
+  defdelegate ledgers_from(ledger), to: IdentityLedger, as: :per_lane
 
   # Chronological order stamp (later date ⇒ higher order), stable on emission index — the Date
   # analogue of ClaimMapping.stamp/1.
