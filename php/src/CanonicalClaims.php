@@ -178,10 +178,7 @@ final class CanonicalClaims
     /** @param array<string,mixed> $m */
     private static function validFrom(array $m, mixed $at): mixed
     {
-        if (array_key_exists('valid_from', $m) && is_string($m['valid_from'])) {
-            // ISO date string (live wire) — not used on the backfill path, but kept for fidelity.
-            return $m['valid_from'];
-        }
+        // Passes ISO date strings (live wire) and ints alike — only null/absent falls through.
         if (array_key_exists('valid_from', $m) && $m['valid_from'] !== null) {
             return $m['valid_from'];
         }
