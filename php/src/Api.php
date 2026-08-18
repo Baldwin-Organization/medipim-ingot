@@ -31,12 +31,11 @@ final class Api
     }
 
     /**
-     * Identity status of a key: ['status' => 'active'|'merged'|'split', ...].
+     * Identity status of a key: active, merged (forwarding), or split.
      *
      * @param list<DomainEvent> $log
-     * @return array<string,mixed>
      */
-    public static function identityStatus(array $log, string $key): array
+    public static function identityStatus(array $log, string $key): IdentityStatus
     {
         $supersededBy = null;
         foreach ($log as $e) {
@@ -60,13 +59,13 @@ final class Api
         }
 
         if ($supersededBy !== null) {
-            return ['status' => 'merged', 'superseded_by' => $supersededBy];
+            return IdentityStatus::merged($supersededBy);
         }
         if ($splitInto !== null) {
-            return ['status' => 'split', 'split_into' => $splitInto];
+            return IdentityStatus::split($splitInto);
         }
 
-        return ['status' => 'active'];
+        return IdentityStatus::active();
     }
 
     /**

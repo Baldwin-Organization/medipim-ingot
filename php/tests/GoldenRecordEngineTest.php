@@ -43,12 +43,12 @@ final class GoldenRecordEngineTest extends TestCase
         $result = (new GoldenRecordEngine())->ingestFile(self::FIXTURE, 1);
 
         self::assertCount(1, $result->records());
-        self::assertSame(422156, $result->records()[0]['product']);
+        self::assertSame(422156, $result->records()[0]->product);
 
         // identity-aware code lookup: the CNK resolves to the owning surrogate key.
         $key = $result->resolve(['cnk', '3612173']);
         self::assertNotNull($key);
-        self::assertSame(['status' => 'active'], $result->identityStatus($key));
+        self::assertSame(['status' => 'active'], $result->identityStatus($key)->toArray());
 
         // the change feed sees the minting identity events.
         self::assertNotEmpty($result->changesSince(0));

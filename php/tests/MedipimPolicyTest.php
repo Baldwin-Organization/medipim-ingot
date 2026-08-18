@@ -25,7 +25,7 @@ final class MedipimPolicyTest extends TestCase
         return $entries;
     }
 
-    private static function decide(array $entries, array $context, string $field = 'name'): array
+    private static function decide(array $entries, array $context, string $field = 'name'): \Ingot\Decision
     {
         return Survivorship::decide($field, $entries, MedipimPolicy::rankFn($context));
     }
@@ -37,9 +37,9 @@ final class MedipimPolicyTest extends TestCase
             ['product_orgs' => ['orgA', 'orgB'], 'field_scores' => ['name' => ['orgA' => 10, 'orgB' => 5]]]
         );
 
-        self::assertSame('Foo', $decision['value']);
-        self::assertSame('orgA', $decision['winner']);
-        self::assertSame('resolved', $decision['status']);
+        self::assertSame('Foo', $decision->value);
+        self::assertSame('orgA', $decision->winner);
+        self::assertSame('resolved', $decision->status);
     }
 
     public function testSysIdResolvesBeforeOrgId(): void
@@ -53,7 +53,7 @@ final class MedipimPolicyTest extends TestCase
             ]
         );
 
-        self::assertSame('orgA', $decision['winner']);
+        self::assertSame('orgA', $decision->winner);
     }
 
     public function testOffProductNonSystemSourceIsDevaluedToMinusOne(): void
@@ -64,8 +64,8 @@ final class MedipimPolicyTest extends TestCase
             ['product_orgs' => ['orgB'], 'field_scores' => ['name' => ['orgOff' => 10]]]
         );
 
-        self::assertSame('orgB', $decision['winner']);
-        self::assertSame('resolved', $decision['status']);
+        self::assertSame('orgB', $decision->winner);
+        self::assertSame('resolved', $decision->status);
     }
 
     public function testSystemSourceIsNeverPenalized(): void
@@ -79,7 +79,7 @@ final class MedipimPolicyTest extends TestCase
             ]
         );
 
-        self::assertSame('sys1', $decision['winner']);
+        self::assertSame('sys1', $decision->winner);
     }
 
     public function testLaboOrgsJoinTheScoringSetForRegionBeOnly(): void
@@ -87,10 +87,10 @@ final class MedipimPolicyTest extends TestCase
         $entries = self::entries([['labo1', 'Foo'], ['orgB', 'Bar']]);
         $base = ['product_orgs' => [], 'labo_orgs' => ['labo1'], 'source_order' => ['labo1', 'orgB']];
 
-        self::assertSame('labo1', self::decide($entries, $base + ['region' => 'be'])['winner']);
+        self::assertSame('labo1', self::decide($entries, $base + ['region' => 'be'])->winner);
 
         $fr = ['region' => 'fr', 'product_orgs' => ['orgB']] + $base;
-        self::assertSame('orgB', self::decide($entries, $fr)['winner']);
+        self::assertSame('orgB', self::decide($entries, $fr)->winner);
     }
 
     public function testDeltaOrgsStillRank(): void
@@ -104,7 +104,7 @@ final class MedipimPolicyTest extends TestCase
             ]
         );
 
-        self::assertSame('orgNew', $decision['winner']);
+        self::assertSame('orgNew', $decision->winner);
     }
 
     public function testEqualScoresResolveByArrayOrderNeverNeedsReview(): void
@@ -114,9 +114,9 @@ final class MedipimPolicyTest extends TestCase
             ['product_orgs' => ['orgA', 'orgB'], 'source_order' => ['orgB', 'orgA']]
         );
 
-        self::assertSame('Bar', $decision['value']);
-        self::assertSame('orgB', $decision['winner']);
-        self::assertSame('resolved', $decision['status']);
+        self::assertSame('Bar', $decision->value);
+        self::assertSame('orgB', $decision->winner);
+        self::assertSame('resolved', $decision->status);
     }
 
     public function testUnlistedEqualScoreSourcesStayNeedsReview(): void
@@ -126,7 +126,7 @@ final class MedipimPolicyTest extends TestCase
             ['product_orgs' => ['orgA', 'orgB']]
         );
 
-        self::assertSame('needs_review', $decision['status']);
+        self::assertSame('needs_review', $decision->status);
     }
 
     public function testPenaltyToggleFlipsTheWinner(): void
@@ -138,7 +138,7 @@ final class MedipimPolicyTest extends TestCase
             'source_order' => ['orgA', 'orgOff'],
         ];
 
-        self::assertSame('orgA', self::decide($entries, $context)['winner']);
-        self::assertSame('orgOff', self::decide($entries, ['penalty' => false] + $context)['winner']);
+        self::assertSame('orgA', self::decide($entries, $context)->winner);
+        self::assertSame('orgOff', self::decide($entries, ['penalty' => false] + $context)->winner);
     }
 }

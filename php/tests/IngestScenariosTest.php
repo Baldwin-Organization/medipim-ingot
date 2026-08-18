@@ -91,7 +91,7 @@ final class IngestScenariosTest extends TestCase
     {
         $env = EnvelopeLoader::loadBang(self::FIXTURE);
         $xref = LegacyXref::fromEnvelopes([$env], 1);
-        self::assertSame(['primary' => 'SK_1', 'all' => ['SK_1'], 'relation' => 'stable'], $xref['legacy_to_key']['i:422156']);
+        self::assertSame(['primary' => 'SK_1', 'all' => ['SK_1'], 'relation' => 'stable'], $xref['legacy_to_key']['i:422156']->toArray());
     }
 
     public function test_422156_diff_is_confirmed_stable(): void

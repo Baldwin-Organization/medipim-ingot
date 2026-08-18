@@ -51,9 +51,9 @@ final class EndToEnd422156Test extends TestCase
         $gr = GoldenRecords::fromEnvelopes([$env], 1);
 
         self::assertCount(1, $gr['records']);
-        self::assertSame(422156, $gr['records'][0]['product']);
-        self::assertCount(1, $gr['records'][0]['variants']);
-        self::assertSame('SK_1', $gr['records'][0]['variants'][0]['key']);
+        self::assertSame(422156, $gr['records'][0]->product);
+        self::assertCount(1, $gr['records'][0]->variants);
+        self::assertSame('SK_1', $gr['records'][0]->variants[0]->key);
     }
 
     public function test_rederivation_converges_to_one_key(): void

@@ -22,7 +22,7 @@ final class Survivorship
      *
      * @param array<string, array{0: string, 1: string}> $codes a code-set
      * @param list<Claim> $attrs attribute claims
-     * @return list<array{0: string, 1: array<string,mixed>}> sorted [field, decision] pairs is the caller's job
+     * @return list<array{0: string, 1: Decision}> sorting the [field, decision] pairs is the caller's job
      */
     public static function fieldDecisions(array $codes, array $attrs, Priority|callable $policy): array
     {
@@ -53,9 +53,8 @@ final class Survivorship
      * Decide one dimension from its entries ([{source, value, order}, ...]).
      *
      * @param list<array{source: string, value: mixed, order: int}> $entries
-     * @return array{value: mixed, winner: ?string, status: string, candidates: list<array{0: ?string, 1: mixed}>}
      */
-    public static function decide(string $dimension, array $entries, Priority|callable $policy): array
+    public static function decide(string $dimension, array $entries, Priority|callable $policy): Decision
     {
         // Latest entry per source (highest order). A null source keys as "" (PHP arrays cannot key
         // on null); the stored entry keeps its real null `source` for fidelity.
@@ -113,15 +112,15 @@ final class Survivorship
         $distinctUnique = self::uniqueValues($distinct);
         $unresolved = count($distinctUnique) > 1;
 
-        return [
-            'value' => $unresolved ? null : $winner['value'],
-            'winner' => $unresolved ? null : $winner['source'],
-            'status' => $unresolved ? 'needs_review' : 'resolved',
-            'candidates' => array_map(
+        return new Decision(
+            $unresolved ? null : $winner['value'],
+            $unresolved ? null : $winner['source'],
+            $unresolved ? 'needs_review' : 'resolved',
+            array_map(
                 static fn (array $e): array => [$e['source'], $e['value']],
                 $ranked
             ),
-        ];
+        );
     }
 
     /**

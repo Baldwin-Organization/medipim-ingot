@@ -20,7 +20,7 @@ final class Catalog
      * @param array<string, array<string, array{0: string, 1: string}>> $members key => code-set (all lanes)
      * @param list<Claim> $liveClaims current claim view
      * @param array{attr: array<string, mixed>, product: array<string, mixed>} $overrides
-     * @return list<array<string,mixed>> products, each {product, variants}
+     * @return list<GoldenRecord>
      */
     public static function project(array $members, array $liveClaims, Priority|callable $priority, array $overrides): array
     {
@@ -32,29 +32,29 @@ final class Catalog
 
         $variants = [];
         foreach ($lanes['product'] as $key => $codes) {
-            $variants[] = [
-                'key' => $key,
-                'codes' => Sets::valuesSorted($codes),
-                'attributes' => self::resolveAttributes($key, $codes, $attrs, $priority, $overrides['attr']),
-                'product' => self::resolveProduct($key, $codes, $groups, $priority, $overrides['product']),
-                'media' => array_merge(
+            $variants[] = new Variant(
+                $key,
+                Sets::valuesSorted($codes),
+                self::resolveAttributes($key, $codes, $attrs, $priority, $overrides['attr']),
+                self::resolveProduct($key, $codes, $groups, $priority, $overrides['product']),
+                array_merge(
                     self::resolveMedia($codes, $media, $priority),
                     self::resolveDepicted($codes, $edges, $lanes['media'], $attrs, $priority)
                 ),
-                'categories' => self::resolveCategories($codes, $edges),
-                'substances' => self::resolveSubstances($codes, $edges, $lanes['substance']),
-                'descriptions' => self::resolveDescriptions($codes, $edges, $lanes, $attrs, $priority),
-            ];
+                self::resolveCategories($codes, $edges),
+                self::resolveSubstances($codes, $edges, $lanes['substance']),
+                self::resolveDescriptions($codes, $edges, $lanes, $attrs, $priority),
+            );
         }
 
         // Group variants by their product label, sort products by label, variants by key.
-        /** @var array<string, array{product: mixed, variants: list<array<string,mixed>>}> $byProduct */
+        /** @var array<string, array{product: mixed, variants: list<Variant>}> $byProduct */
         $byProduct = [];
         $order = [];
         foreach ($variants as $v) {
-            $pk = self::scalarKey($v['product']['value']);
+            $pk = self::scalarKey($v->product->value);
             if (!isset($byProduct[$pk])) {
-                $byProduct[$pk] = ['product' => $v['product']['value'], 'variants' => []];
+                $byProduct[$pk] = ['product' => $v->product->value, 'variants' => []];
                 $order[] = $pk;
             }
             $byProduct[$pk]['variants'][] = $v;
@@ -66,19 +66,21 @@ final class Catalog
         }
         usort($products, static fn (array $a, array $b): int => self::compareProductValues($a['product'], $b['product']));
 
-        foreach ($products as &$p) {
-            usort($p['variants'], static fn (array $a, array $b): int => strcmp((string) $a['key'], (string) $b['key']));
+        $records = [];
+        foreach ($products as $p) {
+            $ordered = $p['variants'];
+            usort($ordered, static fn (Variant $a, Variant $b): int => strcmp($a->key, $b->key));
+            $records[] = new GoldenRecord($p['product'], $ordered);
         }
-        unset($p);
 
-        return $products;
+        return $records;
     }
 
     /**
      * @param array<string, array{0: string, 1: string}> $codes
      * @param list<Claim> $attrs
      * @param array<string, mixed> $attrOverrides
-     * @return list<array{0: string, 1: array<string,mixed>}>
+     * @return list<array{0: string, 1: Decision}>
      */
     private static function resolveAttributes(string $key, array $codes, array $attrs, Priority|callable $priority, array $attrOverrides): array
     {
@@ -97,12 +99,11 @@ final class Catalog
      * @param array<string, array{0: string, 1: string}> $codes
      * @param list<Claim> $groups
      * @param array<string, mixed> $productOverrides
-     * @return array<string,mixed>
      */
-    private static function resolveProduct(string $key, array $codes, array $groups, Priority|callable $priority, array $productOverrides): array
+    private static function resolveProduct(string $key, array $codes, array $groups, Priority|callable $priority, array $productOverrides): Decision
     {
         if (array_key_exists($key, $productOverrides)) {
-            return ['value' => $productOverrides[$key], 'winner' => 'steward', 'status' => 'resolved_by_steward', 'candidates' => []];
+            return new Decision($productOverrides[$key], 'steward', 'resolved_by_steward', []);
         }
 
         return self::resolveProductFromClaims($codes, $groups, $priority);
@@ -111,9 +112,8 @@ final class Catalog
     /**
      * @param array<string, array{0: string, 1: string}> $codes
      * @param list<Claim> $groups
-     * @return array<string,mixed>
      */
-    private static function resolveProductFromClaims(array $codes, array $groups, Priority|callable $priority): array
+    private static function resolveProductFromClaims(array $codes, array $groups, Priority|callable $priority): Decision
     {
         $entries = [];
         foreach ($groups as $g) {
@@ -123,7 +123,7 @@ final class Catalog
         }
 
         if ($entries === []) {
-            return ['value' => ['none', '—'], 'winner' => null, 'status' => 'resolved', 'candidates' => []];
+            return new Decision(['none', '—'], null, 'resolved', []);
         }
 
         $base = Survivorship::decide('product', $entries, $priority);
@@ -132,9 +132,7 @@ final class Catalog
             $distinct[self::scalarKey($e['value'])] = true;
         }
         if (count($distinct) > 1) {
-            $base['value'] = null;
-            $base['winner'] = null;
-            $base['status'] = 'needs_review';
+            return new Decision(null, null, 'needs_review', $base->candidates);
         }
 
         return $base;
@@ -474,7 +472,7 @@ final class Catalog
     /**
      * @param array<string, array{0: string, 1: string}> $codes
      * @param list<Claim> $attrs
-     * @return list<array{0: string, 1: array<string,mixed>}>
+     * @return list<array{0: string, 1: Decision}>
      */
     private static function laneAttributes(array $codes, array $attrs, Priority|callable $priority): array
     {
@@ -485,13 +483,13 @@ final class Catalog
     }
 
     /**
-     * @param list<array{0: string, 1: array<string,mixed>}> $attributes
+     * @param list<array{0: string, 1: Decision}> $attributes
      */
     private static function attrValue(array $attributes, string $field, mixed $default): mixed
     {
         foreach ($attributes as [$f, $decision]) {
             if ($f === $field) {
-                return $decision['value'];
+                return $decision->value;
             }
         }
 

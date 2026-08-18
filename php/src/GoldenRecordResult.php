@@ -19,8 +19,8 @@ namespace Ingot;
 final class GoldenRecordResult
 {
     /**
-     * @param array{records: list<array<string,mixed>>, log: list<array<string,mixed>>} $gr
-     * @param array<string, array<string,mixed>> $xref
+     * @param array{records: list<GoldenRecord>, log: list<DomainEvent>} $gr
+     * @param array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, Placement>} $xref
      * @param array{findings: list<array<string,mixed>>, counts: array<string,int>, needs_review: list<array<string,mixed>>} $diff
      */
     public function __construct(
@@ -30,13 +30,21 @@ final class GoldenRecordResult
     ) {
     }
 
-    /** Golden records: one per product, each with its variants (+ canonical CNK). */
+    /**
+     * Golden records: one per product, each with its variants (+ canonical CNK).
+     *
+     * @return list<GoldenRecord>
+     */
     public function records(): array
     {
         return $this->gr['records'];
     }
 
-    /** The re-derived event log — the system of record the read-side queries fold over. */
+    /**
+     * The re-derived event log — the system of record the read-side queries fold over.
+     *
+     * @return list<DomainEvent>
+     */
     public function log(): array
     {
         return $this->gr['log'];
@@ -82,12 +90,8 @@ final class GoldenRecordResult
         return Api::resolveKey($this->log(), $code);
     }
 
-    /**
-     * Identity status of a key: ['status' => 'active'|'merged'|'split', ...].
-     *
-     * @return array<string,mixed>
-     */
-    public function identityStatus(string $key): array
+    /** Identity status of a key: active, merged (forwarding), or split. */
+    public function identityStatus(string $key): IdentityStatus
     {
         return Api::identityStatus($this->log(), $key);
     }
@@ -95,7 +99,7 @@ final class GoldenRecordResult
     /**
      * Change feed: identity events with order > cursor, so consumers can repair local copies.
      *
-     * @return list<array<string,mixed>>
+     * @return list<DomainEvent>
      */
     public function changesSince(int $cursor): array
     {

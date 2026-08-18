@@ -26,9 +26,9 @@ final class SurvivorshipPolicyTest extends TestCase
         $priority = Priority::new(['name' => [['orgA'], ['orgB']]], []);
         $d = Survivorship::decide('name', [self::e('orgA', 'Foo', 1), self::e('orgB', 'Bar', 2)], $priority);
 
-        self::assertSame('orgA', $d['winner']);
-        self::assertSame('Foo', $d['value']);
-        self::assertSame('resolved', $d['status']);
+        self::assertSame('orgA', $d->winner);
+        self::assertSame('Foo', $d->value);
+        self::assertSame('resolved', $d->status);
     }
 
     public function test_injected_rank_fn_expresses_off_product_penalty(): void
@@ -48,10 +48,10 @@ final class SurvivorshipPolicyTest extends TestCase
         $entries = [self::e('B', 'keep', 1), self::e('X', 'drop', 2)];
 
         // P1: X off-product -> penalised below B -> B wins.
-        self::assertSame('B', Survivorship::decide('name', $entries, $rank(['A', 'B']))['winner']);
+        self::assertSame('B', Survivorship::decide('name', $entries, $rank(['A', 'B']))->winner);
 
         // P2: X on-product -> B penalised -> X wins. Same claims, different context, different winner.
-        self::assertSame('X', Survivorship::decide('name', $entries, $rank(['X']))['winner']);
+        self::assertSame('X', Survivorship::decide('name', $entries, $rank(['X']))->winner);
     }
 
     public function test_equal_rank_disagreement_has_no_made_up_winner_and_is_order_independent(): void
@@ -74,8 +74,8 @@ final class SurvivorshipPolicyTest extends TestCase
             ],
         ];
 
-        self::assertSame($expected, Survivorship::decide('name', $entries, $policy));
-        self::assertSame($expected, Survivorship::decide('name', array_reverse($entries), $policy));
+        self::assertSame($expected, Survivorship::decide('name', $entries, $policy)->toArray());
+        self::assertSame($expected, Survivorship::decide('name', array_reverse($entries), $policy)->toArray());
     }
 
     public function test_equal_rank_sources_that_agree_still_resolve(): void
@@ -86,8 +86,8 @@ final class SurvivorshipPolicyTest extends TestCase
             Priority::new([], [])
         );
 
-        self::assertSame('Same', $decision['value']);
-        self::assertSame('source-a', $decision['winner']);
-        self::assertSame('resolved', $decision['status']);
+        self::assertSame('Same', $decision->value);
+        self::assertSame('source-a', $decision->winner);
+        self::assertSame('resolved', $decision->status);
     }
 }

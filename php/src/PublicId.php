@@ -58,18 +58,18 @@ final class PublicId
         }
 
         $decision = Survivorship::decide($scheme, $entries, $priority);
-        if ($decision['status'] === 'needs_review') {
+        if ($decision->needsReview()) {
             return [
                 'canonical' => null,
                 'aliases' => $codes,
                 'status' => 'needs_review',
-                'candidates' => $decision['candidates'],
+                'candidates' => $decision->candidates,
             ];
         }
 
         return [
-            'canonical' => $decision['value'],
-            'aliases' => array_values(array_filter($codes, static fn (array $code): bool => $code !== $decision['value'])),
+            'canonical' => $decision->value,
+            'aliases' => array_values(array_filter($codes, static fn (array $code): bool => $code !== $decision->value)),
         ];
     }
 
