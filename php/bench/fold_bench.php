@@ -30,7 +30,7 @@ $cold = isset($argvOpts['cold']);
 $iterations = isset($argvOpts['iterations']) ? max(1, (int) $argvOpts['iterations']) : 2000;
 
 /** One full fold: parse the already-read envelope + project to the golden record. */
-$fold = static function (array $env): array {
+$fold = static function (\Ingot\Envelope $env): array {
     return GoldenRecords::fromEnvelopes([$env], 1);
 };
 
