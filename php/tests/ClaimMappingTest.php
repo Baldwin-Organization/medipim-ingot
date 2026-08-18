@@ -172,6 +172,22 @@ final class ClaimMappingTest extends TestCase
         self::assertSame(['7:A', '7:B'], $refs);
     }
 
+    public function test_listings_order_by_entity_value_not_encoded_string(): void
+    {
+        // gr-h07: Elixir sorts {entity, source} tuples — entity 9 before 10. String order on the
+        // encoded key emitted "i:10…" first, flipping stamp()'s tie-break for equal recorded_at.
+        $e9 = $this->envelope(9, [$this->id('A', 'set', 'cnk', '111', 10)]);
+        $e10 = $this->envelope(10, [$this->id('A', 'set', 'cnk', '222', 10)]);
+
+        $refs = [];
+        foreach (ClaimMapping::canonicalClaims([$e10, $e9]) as $c) {
+            if ($c['kind'] === 'identity') {
+                $refs[] = $c['ref'];
+            }
+        }
+        self::assertSame(['9:A', '10:A'], $refs);
+    }
+
     public function test_unsourced_identity_event_folds_instead_of_crashing(): void
     {
         // gr-c37: Elixir keys listings on {entity, nil}; a non-nullable Listing::$source made the

@@ -99,8 +99,10 @@ final class ClaimMapping
         // listing's periods. Mirrors ClaimMapping.codes_at/4 in lib/ingest/claim_mapping.ex.
         $periods = $this->periods;
 
+        // Ordered like Elixir's Enum.sort_by over {entity, source} tuples — string order on the
+        // encoded key put "i:10…" before "i:9…" and flipped stamp()'s tie-break index (gr-h07).
         $orderedKeys = array_keys($periods);
-        sort($orderedKeys, SORT_STRING);
+        usort($orderedKeys, self::compareListingKeys(...));
 
         $identity = [];
         $grouping = [];
@@ -201,8 +203,9 @@ final class ClaimMapping
     {
         $refs = self::laneRefs($this->envelopes);
 
+        // {entity, source, collection} tuple order, like the periods sort (gr-h07).
         $keys = array_keys($refs);
-        sort($keys, SORT_STRING);
+        usort($keys, self::compareLaneRefKeys(...));
 
         $out = [];
         foreach ($keys as $key) {
@@ -539,6 +542,58 @@ final class ClaimMapping
         }
 
         return $this->codesAtMemo[$key] = $union->sorted();
+    }
+
+    /**
+     * Elixir term order over the decoded {entity, source} tuple: integers before strings and
+     * numerically among themselves; a nil source before any string (nil is an atom, atoms sort
+     * before binaries). String order on the ENCODED key gets both wrong (gr-h07).
+     */
+    private static function compareListingKeys(string $a, string $b): int
+    {
+        $la = Listing::fromKey($a);
+        $lb = Listing::fromKey($b);
+
+        return self::compareEntities($la->entity, $lb->entity)
+            ?: self::compareSources($la->source, $lb->source);
+    }
+
+    /** Lane-ref keys are listingKey."\x1f".collection — {entity, source, collection} order. */
+    private static function compareLaneRefKeys(string $a, string $b): int
+    {
+        [$listingA, $collectionA] = self::splitLaneRefKey($a);
+        [$listingB, $collectionB] = self::splitLaneRefKey($b);
+
+        return self::compareListingKeys($listingA, $listingB) ?: strcmp($collectionA, $collectionB);
+    }
+
+    /** @return array{0: string, 1: string} */
+    private static function splitLaneRefKey(string $key): array
+    {
+        $pos = strrpos($key, "\x1f");
+
+        return [substr($key, 0, $pos), substr($key, $pos + 1)];
+    }
+
+    private static function compareEntities(mixed $a, mixed $b): int
+    {
+        if (is_int($a) && is_int($b)) {
+            return $a <=> $b;
+        }
+        if (is_int($a) !== is_int($b)) {
+            return is_int($a) ? -1 : 1;
+        }
+
+        return strcmp((string) $a, (string) $b);
+    }
+
+    private static function compareSources(?string $a, ?string $b): int
+    {
+        if ($a === null || $b === null) {
+            return ($a === null ? 0 : 1) <=> ($b === null ? 0 : 1);
+        }
+
+        return strcmp($a, $b);
     }
 
     /**
