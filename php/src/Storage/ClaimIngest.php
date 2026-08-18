@@ -466,7 +466,7 @@ final class ClaimIngest
 
     private static function slotKey(Claim $claim): string
     {
-        return json_encode(Substrate::slot($claim), JSON_THROW_ON_ERROR);
+        return Substrate::slotKey(Substrate::slot($claim));
     }
 
     /** The deterministic claim identity (idempotent resubmission): {source, kind, data, valid_from}. */
