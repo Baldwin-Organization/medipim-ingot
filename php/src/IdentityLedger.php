@@ -160,7 +160,7 @@ final class IdentityLedger
             $ordered = $multiple;
             usort(
                 $ordered,
-                static fn (array $a, array $b): int => self::codeSignature($a[0]) <=> self::codeSignature($b[0])
+                static fn (array $a, array $b): int => strcmp(self::codeSignature($a[0]), self::codeSignature($b[0]))
             );
 
             $keepCluster = $ordered[0][0];
@@ -288,7 +288,14 @@ final class IdentityLedger
         }
 
         foreach ($outcome['conflicts'] as [$code, $carriers]) {
-            $candidates = array_map(static fn (array $carrier): array => array_values($carrier), $carriers);
+            // Elixir sorts each carrier (Enum.map(carriers, &Enum.sort/1)); a union-built set
+            // is in insertion order otherwise (gr-51z).
+            $candidates = array_map(static function (array $carrier): array {
+                $codes = array_values($carrier);
+                usort($codes, Sets::compareCodes(...));
+
+                return $codes;
+            }, $carriers);
             $events[] = Events::conflictFlagged(['identity_conflict', $code], $candidates, $at);
         }
 
@@ -462,16 +469,19 @@ final class IdentityLedger
      * The cluster's codes as a sorted list — Elixir's `Enum.sort(cluster)` on a MapSet of
      * {scheme, value} tuples, used only as a total tie-break.
      *
-     * @param array<string, array{0: string, 1: string}> $cluster
+     * A byte-comparable stand-in for Elixir's Enum.sort(cluster) compared as a list of tuples:
+     * codes sort byte-wise and the joined string compares element-first (a strict prefix sorts
+     * first, matching shorter-list-first) — array <=> got both wrong (numeric values, count
+     * before content; gr-51z).
      *
-     * @return list<array{0: string, 1: string}>
+     * @param array<string, array{0: string, 1: string}> $cluster
      */
-    private static function codeSignature(array $cluster): array
+    private static function codeSignature(array $cluster): string
     {
-        $codes = array_values($cluster);
-        sort($codes);
+        $keys = array_keys($cluster);
+        sort($keys, SORT_STRING);
 
-        return $codes;
+        return implode("\x1e", $keys);
     }
 
     /** @param array<string, array{0: string, 1: string}> $codes */
@@ -507,10 +517,12 @@ final class IdentityLedger
             if (Sets::size($lost) === 0) {
                 continue;
             }
+            // Byte-wise tuple order like Elixir's Enum.sort — PHP's default sort compares
+            // numeric strings numerically ('1035' before '44' flips, gr-51z).
             $now = array_values($live[$key]);
             $lostCodes = array_values($lost);
-            sort($lostCodes);
-            sort($now);
+            usort($lostCodes, Sets::compareCodes(...));
+            usort($now, Sets::compareCodes(...));
             $swaps[] = [$key, $lostCodes, $now];
         }
         usort($swaps, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
