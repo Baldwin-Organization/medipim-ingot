@@ -20,6 +20,11 @@ final class InMemoryClaimStore implements ClaimStore
     /** @var array<string, array{key: string, lane: string}> code => placement */
     private array $members = [];
 
+    /** @var array<string, array<string, true>> reverse index: key => its member code keys */
+    private array $keyCodes = [];
+
+    private int $maxSeq = 0;
+
     /** @var array<string, array{new_key: string, at: mixed}> */
     private array $redirects = [];
 
@@ -36,18 +41,14 @@ final class InMemoryClaimStore implements ClaimStore
 
     public function maxSeq(): int
     {
-        $max = 0;
-        foreach ($this->events as $e) {
-            $max = max($max, (int) $e['order']);
-        }
-
-        return $max;
+        return $this->maxSeq;
     }
 
     public function appendEvents(array $events): void
     {
         foreach ($events as $e) {
             $this->events[] = $e;
+            $this->maxSeq = max($this->maxSeq, (int) $e['order']);
         }
     }
 
@@ -107,25 +108,30 @@ final class InMemoryClaimStore implements ClaimStore
             'last_seq' => $lastSeq,
         ];
 
-        // Rewrite this key's `members` rows to exactly its current code-set.
-        foreach ($this->members as $code => $placement) {
-            if ($placement['key'] === $surrogateKey) {
+        // Rewrite this key's `members` rows to exactly its current code-set (via the reverse
+        // index — a full members scan per write is quadratic across a multi-batch backfill).
+        // A row another key claimed since stays that key's: only rows still pointing here go.
+        foreach ($this->keyCodes[$surrogateKey] ?? [] as $code => $_) {
+            if (($this->members[$code]['key'] ?? null) === $surrogateKey) {
                 unset($this->members[$code]);
             }
         }
+        $this->keyCodes[$surrogateKey] = [];
         foreach ($codes as $codeKey => $_pair) {
             $this->members[$codeKey] = ['key' => $surrogateKey, 'lane' => $lane];
+            $this->keyCodes[$surrogateKey][$codeKey] = true;
         }
     }
 
     public function removeKey(string $surrogateKey): void
     {
         unset($this->snapshots[$surrogateKey]);
-        foreach ($this->members as $code => $placement) {
-            if ($placement['key'] === $surrogateKey) {
+        foreach ($this->keyCodes[$surrogateKey] ?? [] as $code => $_) {
+            if (($this->members[$code]['key'] ?? null) === $surrogateKey) {
                 unset($this->members[$code]);
             }
         }
+        unset($this->keyCodes[$surrogateKey]);
     }
 
     public function addRedirect(string $oldKey, string $newKey, mixed $at): void
