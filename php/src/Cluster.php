@@ -165,7 +165,7 @@ final class Cluster
     /**
      * @param list<array<string, array{0: string, 1: string}>> $sets
      * @param array<string, array{0: string, 1: string}> $shared
-     * @return list<array{0: string, 1: int, 2: int}>
+     * @return list<array{0: int, 1: string, 2: int, 3: int, 4: bool}> [rank, codeKey, leftIndex, rightIndex, isSamePair]
      */
     private static function candidateEdges(
         array $sets,
@@ -240,7 +240,6 @@ final class Cluster
         return $allowed;
     }
 
-    /** @param array<string, array{0: string, 1: string}> $codes */
     /**
      * A GS1 barcode is reassignable — NHSBSA publishes a log of GTINs that moved between packs —
      * so it must not be the ONE thing that fuses two components which each already carry an
