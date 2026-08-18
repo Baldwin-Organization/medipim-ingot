@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ingot\Tests;
 
+use Ingot\Claim;
 use Ingot\Cluster;
 use Ingot\Sets;
 use Ingot\Substrate;
@@ -15,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class ClusterTest extends TestCase
 {
-    private function idClaim(string $ref, array $codes): array
+    private function idClaim(string $ref, array $codes): Claim
     {
         return Substrate::claim('s', 'identity', ['ref' => $ref, 'codes' => $codes], 1, 1);
     }

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Ingot\Tests;
 
+use Ingot\Claim;
 use Ingot\Cluster;
+use Ingot\ConflictFlagged;
 use Ingot\Events;
 use Ingot\IdentityLedger;
 use Ingot\LedgerState;
@@ -101,23 +103,22 @@ final class BarcodeTransferTest extends TestCase
     // ── helpers ──────────────────────────────────────────────────────────────
 
     /** @param list<array{0: string, 1: string}> $codes */
-    private function listing(string $ref, array $codes): array
+    private function listing(string $ref, array $codes): Claim
     {
         return Substrate::claim('nhsbsa', 'identity', ['ref' => $ref, 'codes' => $codes], 'd1', 'd1');
     }
 
     /**
-     * @param list<array<string,mixed>> $claims
+     * @param list<Claim> $claims
      *
-     * @return list<array<string,mixed>>
+     * @return list<\Ingot\DomainEvent>
      */
     private function decide(LedgerState $ledger, array $claims): array
     {
         $stamped = [];
         $i = 1;
         foreach ($claims as $claim) {
-            $claim['order'] = $i++;
-            $stamped[] = $claim;
+            $stamped[] = $claim->withOrder($i++);
         }
 
         return IdentityLedger::decide(
@@ -157,14 +158,11 @@ final class BarcodeTransferTest extends TestCase
         return $out;
     }
 
-    /** @param list<array<string,mixed>> $events */
+    /** @param list<\Ingot\DomainEvent> $events */
     private function hasSwapFlag(array $events): bool
     {
         foreach ($events as $event) {
-            if (
-                ($event['type'] ?? null) === Events::TYPE_CONFLICT_FLAGGED
-                && ($event['subject'][0] ?? null) === 'identity_swap'
-            ) {
+            if ($event instanceof ConflictFlagged && ($event->subject[0] ?? null) === 'identity_swap') {
                 return true;
             }
         }

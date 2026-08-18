@@ -21,7 +21,7 @@ final class Survivorship
      * Resolve every attribute field whose anchor code this record's code-set contains.
      *
      * @param array<string, array{0: string, 1: string}> $codes a code-set
-     * @param list<array<string,mixed>> $attrs attribute ClaimAsserted arrays
+     * @param list<Claim> $attrs attribute claims
      * @return list<array{0: string, 1: array<string,mixed>}> sorted [field, decision] pairs is the caller's job
      */
     public static function fieldDecisions(array $codes, array $attrs, Priority|callable $policy): array
@@ -30,14 +30,14 @@ final class Survivorship
         /** @var array<string, list<array<string,mixed>>> $byField */
         $byField = [];
         foreach ($attrs as $a) {
-            if (!Sets::member($codes, $a['data']['code'])) {
+            if (!Sets::member($codes, $a->data['code'])) {
                 continue;
             }
-            $field = $a['data']['field'];
+            $field = $a->data['field'];
             $byField[$field][] = [
-                'source' => $a['source'],
-                'value' => $a['data']['value'],
-                'order' => $a['order'],
+                'source' => $a->source,
+                'value' => $a->data['value'],
+                'order' => $a->order,
             ];
         }
 

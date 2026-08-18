@@ -33,10 +33,13 @@ final class LanesTest extends TestCase
 
     public function test_of_claim_unique_lane_explicit_entity_and_mixed(): void
     {
-        $idClaim = fn (array $codes, array $extra = []) => [
-            'kind' => 'identity',
-            'data' => ['codes' => $codes] + $extra,
-        ];
+        $idClaim = fn (array $codes, array $extra = []) => new \Ingot\Claim(
+            null,
+            'identity',
+            ['codes' => $codes] + $extra,
+            1,
+            1,
+        );
 
         self::assertSame(['ok', 'product'], Lanes::ofClaim($idClaim([['cnk', '111']])));
         self::assertSame(['ok', 'substance'], Lanes::ofClaim($idClaim([['cas', '50-00-0']])));

@@ -39,10 +39,10 @@ final class CanonicalClaimsTest extends TestCase
         $claims = CanonicalClaims::toEngineBang($batch);
         self::assertCount(1, $claims);
         $claim = $claims[0];
-        self::assertSame('edge', $claim['kind']);
-        self::assertSame(['from' => ['cnk', '3612173'], 'relation' => 'member_of', 'to' => ['brands', '211']], $claim['data']);
-        self::assertSame(1535726805, $claim['valid_from']);
-        self::assertSame(1535726805, $claim['recorded_at']);
+        self::assertSame('edge', $claim->kind);
+        self::assertSame(['from' => ['cnk', '3612173'], 'relation' => 'member_of', 'to' => ['brands', '211']], $claim->data);
+        self::assertSame(1535726805, $claim->validFrom);
+        self::assertSame(1535726805, $claim->recordedAt);
     }
 
     public function test_identity_codes_canonicalize(): void
@@ -53,6 +53,6 @@ final class CanonicalClaimsTest extends TestCase
             'recorded_at' => 100,
         ]];
         $claim = CanonicalClaims::toEngineBang($batch)[0];
-        self::assertSame(['ref' => 'P-1', 'codes' => [['cnk', '1000001'], ['gtin', '05012345678900']]], $claim['data']);
+        self::assertSame(['ref' => 'P-1', 'codes' => [['cnk', '1000001'], ['gtin', '05012345678900']]], $claim->data);
     }
 }

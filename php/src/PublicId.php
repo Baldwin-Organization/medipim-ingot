@@ -17,7 +17,7 @@ final class PublicId
     /**
      * Canonical public id of `scheme` for `key` (by source priority), plus its aliases, or null.
      *
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      * @return array<string,mixed>|null
      */
     public static function canonical(string $scheme, string $key, array $log, Priority|callable $priority): ?array
@@ -76,7 +76,7 @@ final class PublicId
     /**
      * Identity-grade invariant check: a code of `scheme` must never own >1 key. Returns violations.
      *
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      * @return list<array{code: array{0: string, 1: string}, keys: list<string>}>
      */
     public static function collisions(string $scheme, array $log): array
@@ -114,16 +114,16 @@ final class PublicId
 
     /**
      * @param array{0: string, 1: string} $code
-     * @param list<array<string,mixed>> $idclaims
+     * @param list<Claim> $idclaims
      * @return list<string>
      */
     private static function sourcesOf(array $code, array $idclaims): array
     {
         $out = [];
         foreach ($idclaims as $c) {
-            foreach ($c['data']['codes'] as $cc) {
+            foreach ($c->data['codes'] as $cc) {
                 if ($cc === $code) {
-                    $out[] = $c['source'];
+                    $out[] = $c->source;
                     break;
                 }
             }
@@ -133,14 +133,14 @@ final class PublicId
     }
 
     /**
-     * @param list<array<string,mixed>> $log
-     * @return list<array<string,mixed>>
+     * @param list<DomainEvent> $log
+     * @return list<Claim>
      */
     private static function identityClaims(array $log): array
     {
         $claims = [];
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED && $e['kind'] === 'identity') {
+            if ($e instanceof Claim && $e->kind === 'identity') {
                 $claims[] = $e;
             }
         }
@@ -149,7 +149,7 @@ final class PublicId
     }
 
     /**
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      */
     private static function ledger(array $log): LedgerState
     {

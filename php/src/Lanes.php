@@ -74,13 +74,12 @@ final class Lanes
      * falling back to an explicit `entity` in the claim data, else 'product'. Two lanes in one
      * claim is a contract violation — returns ['error', ['mixed_lanes', sortedLanes]].
      *
-     * @param array<string,mixed> $claim a ClaimAsserted assoc array with kind 'identity'
      * @return array{0: string, 1: mixed}
      */
-    public static function ofClaim(array $claim): array
+    public static function ofClaim(Claim $claim): array
     {
         $lanes = [];
-        foreach ($claim['data']['codes'] as $code) {
+        foreach ($claim->data['codes'] as $code) {
             $lane = self::laneOfScheme($code[0]);
             if ($lane !== null) {
                 $lanes[$lane] = true;
@@ -89,7 +88,7 @@ final class Lanes
         $lanes = array_keys($lanes);
 
         if ($lanes === []) {
-            return ['ok', $claim['data']['entity'] ?? 'product'];
+            return ['ok', $claim->data['entity'] ?? 'product'];
         }
         if (count($lanes) === 1) {
             return ['ok', $lanes[0]];
@@ -102,14 +101,14 @@ final class Lanes
     /**
      * The identity claims of one lane (mixed-lane claims belong to no lane).
      *
-     * @param list<array<string,mixed>> $claims
-     * @return list<array<string,mixed>>
+     * @param list<Claim> $claims
+     * @return list<Claim>
      */
     public static function identityClaims(array $claims, string $lane): array
     {
         $out = [];
         foreach ($claims as $c) {
-            if ($c['kind'] === 'identity' && self::ofClaim($c) === ['ok', $lane]) {
+            if ($c->kind === 'identity' && self::ofClaim($c) === ['ok', $lane]) {
                 $out[] = $c;
             }
         }
@@ -152,10 +151,10 @@ final class Lanes
      * Cluster + reconcile each lane's identity claims against that lane's own ledger. Returns
      * [identityEvents, ledgers]; events come out in lane order (product first).
      *
-     * @param list<array<string,mixed>> $liveClaims
+     * @param list<Claim> $liveClaims
      * @param array<string, array{0: string, 1: string}> $shared a code-set
      * @param array<string, LedgerState> $ledgers
-     * @return array{0: list<array<string,mixed>>, 1: array<string, LedgerState>}
+     * @return array{0: list<DomainEvent>, 1: array<string, LedgerState>}
      */
     public static function reconcile(array $liveClaims, array $shared, array $ledgers, mixed $at): array
     {
@@ -167,9 +166,9 @@ final class Lanes
             }
             $evidence = array_values(array_filter(
                 $liveClaims,
-                static fn (array $claim): bool => ($claim['kind'] ?? null) === 'identity_evidence'
-                    && self::laneOfScheme($claim['data']['left'][0]) === $lane
-                    && self::laneOfScheme($claim['data']['right'][0]) === $lane,
+                static fn (Claim $claim): bool => $claim->kind === 'identity_evidence'
+                    && self::laneOfScheme($claim->data['left'][0]) === $lane
+                    && self::laneOfScheme($claim->data['right'][0]) === $lane,
             ));
             $clusters = Cluster::variants(array_merge($claims, $evidence), $shared);
             $laneEvents = IdentityLedger::decide($ledgers[$lane], ['reconcile', $clusters, $shared, $at]);

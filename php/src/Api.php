@@ -15,7 +15,7 @@ final class Api
     /**
      * Resolve any code (canonical or alias) to the surrogate key that currently owns it, or null.
      *
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      * @param array{0: string, 1: string} $code
      */
     public static function resolveKey(array $log, array $code): ?string
@@ -33,26 +33,26 @@ final class Api
     /**
      * Identity status of a key: ['status' => 'active'|'merged'|'split', ...].
      *
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      * @return array<string,mixed>
      */
     public static function identityStatus(array $log, string $key): array
     {
         $supersededBy = null;
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_IDENTITIES_MERGED
-                && in_array($key, $e['from'], true) && $key !== $e['into']
+            if ($e instanceof IdentitiesMerged
+                && in_array($key, $e->from, true) && $key !== $e->into
             ) {
-                $supersededBy = $e['into'];
+                $supersededBy = $e->into;
                 break;
             }
         }
 
         $splitInto = null;
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_IDENTITY_SPLIT && $e['key'] === $key) {
+            if ($e instanceof IdentitySplit && $e->key === $key) {
                 $splitInto = [$key];
-                foreach ($e['into'] as [$nk, $_codes]) {
+                foreach ($e->into as [$nk, $_codes]) {
                     $splitInto[] = $nk;
                 }
                 break;
@@ -72,14 +72,14 @@ final class Api
     /**
      * Change feed: identity events with order > cursor, so customers can repair local copies.
      *
-     * @param list<array<string,mixed>> $log
-     * @return list<array<string,mixed>>
+     * @param list<DomainEvent> $log
+     * @return list<DomainEvent>
      */
     public static function changesSince(array $log, int $cursor): array
     {
         $out = [];
         foreach ($log as $e) {
-            if (self::isIdentityEvent($e) && ($e['order'] ?? 0) > $cursor) {
+            if (self::isIdentityEvent($e) && ($e->order() ?? 0) > $cursor) {
                 $out[] = $e;
             }
         }
@@ -87,19 +87,16 @@ final class Api
         return $out;
     }
 
-    /** @param array<string,mixed> $e */
-    private static function isIdentityEvent(array $e): bool
+    private static function isIdentityEvent(DomainEvent $e): bool
     {
-        return in_array($e['type'] ?? null, [
-            Events::TYPE_IDENTITY_MINTED,
-            Events::TYPE_IDENTITY_MEMBERS_CHANGED,
-            Events::TYPE_IDENTITIES_MERGED,
-            Events::TYPE_IDENTITY_SPLIT,
-        ], true);
+        return $e instanceof IdentityMinted
+            || $e instanceof IdentityMembersChanged
+            || $e instanceof IdentitiesMerged
+            || $e instanceof IdentitySplit;
     }
 
     /**
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      */
     private static function ledger(array $log): LedgerState
     {

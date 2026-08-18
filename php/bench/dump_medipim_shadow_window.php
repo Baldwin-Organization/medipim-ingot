@@ -69,16 +69,15 @@ function fixedWireClaims(array $envelopes): array
 
 /**
  * @param list<array<string,mixed>> $wireClaims
- * @return list<array<string,mixed>>
+ * @return list<\Ingot\Claim>
  */
 function engineClaims(array $wireClaims, string $recordedAt): array
 {
     $claims = CanonicalClaims::toEngineBang($wireClaims, $recordedAt);
 
-    foreach ($claims as $order => &$claim) {
-        $claim['order'] = $order;
+    foreach ($claims as $order => $claim) {
+        $claims[$order] = $claim->withOrder($order);
     }
-    unset($claim);
 
     return $claims;
 }
@@ -218,8 +217,7 @@ if ($lateWire === null) {
 }
 $lateWire['value'] = LATE_CORRECTION;
 $lateWire['valid_from'] = '2024-01-01';
-$lateClaim = CanonicalClaims::toEngineBang([$lateWire], LATE_RECORDED_AT)[0];
-$lateClaim['order'] = count($refreshClaims);
+$lateClaim = CanonicalClaims::toEngineBang([$lateWire], LATE_RECORDED_AT)[0]->withOrder(count($refreshClaims));
 $lateClaims = [...$refreshClaims, $lateClaim];
 
 $document = [

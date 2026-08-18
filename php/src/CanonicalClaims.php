@@ -19,7 +19,7 @@ final class CanonicalClaims
      * claim's own recorded_at when supplied (the live path's server clock).
      *
      * @param list<array<string,mixed>> $claims wire-shaped claim maps
-     * @return list<array<string,mixed>> engine ClaimAsserted arrays
+     * @return list<Claim> engine claims
      */
     public static function toEngineBang(array $claims, mixed $recordedAt = null): array
     {
@@ -33,9 +33,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function build(array $m, mixed $at): array
+    private static function build(array $m, mixed $at): Claim
     {
         return match ($m['kind']) {
             'identity' => self::buildIdentity($m, $at),
@@ -50,9 +49,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildIdentity(array $m, mixed $at): array
+    private static function buildIdentity(array $m, mixed $at): Claim
     {
         $codes = array_map(self::codeBang(...), $m['codes']);
         $data = ['ref' => $m['ref'], 'codes' => $codes];
@@ -69,9 +67,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildEdge(array $m, mixed $at): array
+    private static function buildEdge(array $m, mixed $at): Claim
     {
         $relation = Relations::parse($m['relation']);
         if ($relation === null) {
@@ -84,9 +81,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildAttribute(array $m, mixed $at): array
+    private static function buildAttribute(array $m, mixed $at): Claim
     {
         $data = ['code' => self::codeBang($m['code']), 'field' => $m['field'], 'value' => $m['value']];
 
@@ -95,9 +91,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildMedia(array $m, mixed $at): array
+    private static function buildMedia(array $m, mixed $at): Claim
     {
         $role = ($m['role'] ?? null) === 'primary' ? 'primary' : 'secondary';
         $data = ['asset' => ['dam', $m['asset']], 'target' => self::codeBang($m['target']), 'role' => $role, 'uri' => $m['uri']];
@@ -107,9 +102,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildGrouping(array $m, mixed $at): array
+    private static function buildGrouping(array $m, mixed $at): Claim
     {
         $data = ['code' => self::codeBang($m['code']), 'product' => $m['product']];
 
@@ -118,9 +112,8 @@ final class CanonicalClaims
 
     /**
      * @param array<string,mixed> $m
-     * @return array<string,mixed>
      */
-    private static function buildMemberOf(array $m, mixed $at): array
+    private static function buildMemberOf(array $m, mixed $at): Claim
     {
         $data = ['member_code' => self::codeBang($m['code']), 'collection' => [$m['collection'], $m['member']]];
 

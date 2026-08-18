@@ -15,7 +15,7 @@ final class Rederivation
 {
     /**
      * @param list<array<string,mixed>> $envelopes
-     * @return array{log: list<array<string,mixed>>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
+     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
      */
     public static function run(array $envelopes, mixed $at): array
     {
@@ -23,8 +23,8 @@ final class Rederivation
     }
 
     /**
-     * @param array{claims: list<array<string,mixed>>, shared: array<string, array{0: string, 1: string}>} $built
-     * @return array{log: list<array<string,mixed>>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
+     * @param array{claims: list<Claim>, shared: array<string, array{0: string, 1: string}>} $built
+     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
      */
     public static function fromClaims(array $built, mixed $at): array
     {
@@ -55,22 +55,21 @@ final class Rederivation
     /**
      * Continue the identity events' order after the highest claim order.
      *
-     * @param list<array<string,mixed>> $events
-     * @param list<array<string,mixed>> $claims
-     * @return list<array<string,mixed>>
+     * @param list<DomainEvent> $events
+     * @param list<Claim> $claims
+     * @return list<DomainEvent>
      */
     private static function stamp(array $events, array $claims): array
     {
         $base = -1;
         foreach ($claims as $c) {
-            $base = max($base, $c['order']);
+            $base = max($base, $c->order);
         }
 
         $out = [];
         $order = $base + 1;
         foreach ($events as $event) {
-            $event['order'] = $order;
-            $out[] = $event;
+            $out[] = $event->withOrder($order);
             ++$order;
         }
 

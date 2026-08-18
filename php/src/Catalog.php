@@ -18,7 +18,7 @@ final class Catalog
 {
     /**
      * @param array<string, array<string, array{0: string, 1: string}>> $members key => code-set (all lanes)
-     * @param list<array<string,mixed>> $liveClaims current ClaimAsserted view
+     * @param list<Claim> $liveClaims current claim view
      * @param array{attr: array<string, mixed>, product: array<string, mixed>} $overrides
      * @return list<array<string,mixed>> products, each {product, variants}
      */
@@ -76,7 +76,7 @@ final class Catalog
 
     /**
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $attrs
+     * @param list<Claim> $attrs
      * @param array<string, mixed> $attrOverrides
      * @return list<array{0: string, 1: array<string,mixed>}>
      */
@@ -95,7 +95,7 @@ final class Catalog
 
     /**
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $groups
+     * @param list<Claim> $groups
      * @param array<string, mixed> $productOverrides
      * @return array<string,mixed>
      */
@@ -110,15 +110,15 @@ final class Catalog
 
     /**
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $groups
+     * @param list<Claim> $groups
      * @return array<string,mixed>
      */
     private static function resolveProductFromClaims(array $codes, array $groups, Priority|callable $priority): array
     {
         $entries = [];
         foreach ($groups as $g) {
-            if (Sets::member($codes, $g['data']['code'])) {
-                $entries[] = ['source' => $g['source'], 'value' => $g['data']['product'], 'order' => $g['order']];
+            if (Sets::member($codes, $g->data['code'])) {
+                $entries[] = ['source' => $g->source, 'value' => $g->data['product'], 'order' => $g->order];
             }
         }
 
@@ -144,16 +144,16 @@ final class Catalog
      * Legacy media-claim resolution (dedup by asset, highest-priority source wins).
      *
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $media
+     * @param list<Claim> $media
      * @return list<array<string,mixed>>
      */
     private static function resolveMedia(array $codes, array $media, Priority|callable $priority): array
     {
-        /** @var array<string, list<array<string,mixed>>> $byAsset */
+        /** @var array<string, list<Claim>> $byAsset */
         $byAsset = [];
         foreach ($media as $m) {
-            if (Sets::member($codes, $m['data']['target'])) {
-                $byAsset[self::scalarKey($m['data']['asset'])][] = $m;
+            if (Sets::member($codes, $m->data['target'])) {
+                $byAsset[self::scalarKey($m->data['asset'])][] = $m;
             }
         }
 
@@ -162,19 +162,19 @@ final class Catalog
         $out = [];
         foreach ($byAsset as $claims) {
             $best = $claims[0];
-            $bestRank = $rank('media', $best['source']);
+            $bestRank = $rank('media', $best->source);
             foreach ($claims as $m) {
-                $r = $rank('media', $m['source']);
+                $r = $rank('media', $m->source);
                 if (self::infLt($r, $bestRank)) {
                     $bestRank = $r;
                     $best = $m;
                 }
             }
             $out[] = [
-                'asset' => $best['data']['asset'],
-                'role' => $best['data']['role'],
-                'source' => $best['source'],
-                'uri' => $best['data']['uri'],
+                'asset' => $best->data['asset'],
+                'role' => $best->data['role'],
+                'source' => $best->source,
+                'uri' => $best->data['uri'],
             ];
         }
 
@@ -191,7 +191,7 @@ final class Catalog
      * codes point at, unique + sorted.
      *
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $edges
+     * @param list<Claim> $edges
      * @return list<array{0: string, 1: string}>
      */
     private static function resolveCategories(array $codes, array $edges): array
@@ -199,8 +199,8 @@ final class Catalog
         $seen = [];
         $out = [];
         foreach ($edges as $e) {
-            if ($e['data']['relation'] === 'member_of' && Sets::member($codes, $e['data']['from'])) {
-                $to = $e['data']['to'];
+            if ($e->data['relation'] === 'member_of' && Sets::member($codes, $e->data['from'])) {
+                $to = $e->data['to'];
                 $k = self::pairKey($to);
                 if (!isset($seen[$k])) {
                     $seen[$k] = true;
@@ -217,18 +217,18 @@ final class Catalog
      * Substances via `contains` edges, grouped by the substance key that currently owns the `to`.
      *
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $edges
+     * @param list<Claim> $edges
      * @param array<string, array<string, array{0: string, 1: string}>> $subMembers
      * @return list<array<string,mixed>>
      */
     private static function resolveSubstances(array $codes, array $edges, array $subMembers): array
     {
-        /** @var array<string, list<array<string,mixed>>> $byKey */
+        /** @var array<string, list<Claim>> $byKey */
         $byKey = [];
         $keyOrder = [];
         foreach ($edges as $e) {
-            if ($e['data']['relation'] === 'contains' && Sets::member($codes, $e['data']['from'])) {
-                $owner = self::owner($subMembers, $e['data']['to']);
+            if ($e->data['relation'] === 'contains' && Sets::member($codes, $e->data['from'])) {
+                $owner = self::owner($subMembers, $e->data['to']);
                 $ok = is_array($owner) ? self::pairKey($owner) : (string) $owner;
                 if (!isset($byKey[$ok])) {
                     $byKey[$ok] = [];
@@ -245,14 +245,14 @@ final class Catalog
             $sources = [];
             $srcSeen = [];
             foreach ($es as $e) {
-                $ck = self::pairKey($e['data']['to']);
+                $ck = self::pairKey($e->data['to']);
                 if (!isset($codeSeen[$ck])) {
                     $codeSeen[$ck] = true;
-                    $codesList[] = $e['data']['to'];
+                    $codesList[] = $e->data['to'];
                 }
-                if (!isset($srcSeen[$e['source']])) {
-                    $srcSeen[$e['source']] = true;
-                    $sources[] = $e['source'];
+                if (!isset($srcSeen[$e->source])) {
+                    $srcSeen[$e->source] = true;
+                    $sources[] = $e->source;
                 }
             }
             usort($codesList, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
@@ -269,19 +269,19 @@ final class Catalog
      * Depicted media via `depicts` edges (the first-class media-lane path, MED_* records).
      *
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $edges
+     * @param list<Claim> $edges
      * @param array<string, array<string, array{0: string, 1: string}>> $mediaMembers
-     * @param list<array<string,mixed>> $attrs
+     * @param list<Claim> $attrs
      * @return list<array<string,mixed>>
      */
     private static function resolveDepicted(array $codes, array $edges, array $mediaMembers, array $attrs, Priority|callable $priority): array
     {
-        /** @var array<string, list<array<string,mixed>>> $byKey */
+        /** @var array<string, list<Claim>> $byKey */
         $byKey = [];
         $keyOrder = [];
         foreach ($edges as $e) {
-            if ($e['data']['relation'] === 'depicts' && Sets::member($codes, $e['data']['to'])) {
-                $owner = self::owner($mediaMembers, $e['data']['from']);
+            if ($e->data['relation'] === 'depicts' && Sets::member($codes, $e->data['to'])) {
+                $owner = self::owner($mediaMembers, $e->data['from']);
                 $ok = is_array($owner) ? self::pairKey($owner) : (string) $owner;
                 if (!isset($byKey[$ok])) {
                     $byKey[$ok] = [];
@@ -302,9 +302,9 @@ final class Catalog
             $sources = [];
             $srcSeen = [];
             foreach ($es as $e) {
-                if (!isset($srcSeen[$e['source']])) {
-                    $srcSeen[$e['source']] = true;
-                    $sources[] = $e['source'];
+                if (!isset($srcSeen[$e->source])) {
+                    $srcSeen[$e->source] = true;
+                    $sources[] = $e->source;
                 }
             }
             sort($sources, SORT_STRING);
@@ -327,16 +327,16 @@ final class Catalog
      * descriptions tagged to any substance it contains, minus steward-suppressed pairings.
      *
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $edges
+     * @param list<Claim> $edges
      * @param array<string, array<string, array{0: string, 1: string}>> $lanes lane => members
-     * @param list<array<string,mixed>> $attrs
+     * @param list<Claim> $attrs
      * @return list<array<string,mixed>>
      */
     private static function resolveDescriptions(array $codes, array $edges, array $lanes, array $attrs, Priority|callable $priority): array
     {
         $describes = [];
         foreach ($edges as $e) {
-            if ($e['data']['relation'] === 'describes') {
+            if ($e->data['relation'] === 'describes') {
                 $describes[] = $e;
             }
         }
@@ -350,12 +350,12 @@ final class Catalog
         // direct: described codes the variant carries; via: described codes a contained substance owns.
         $entries = []; // list of [edge, route]
         foreach ($describes as $e) {
-            if (Sets::member($codes, $e['data']['to'])) {
+            if (Sets::member($codes, $e->data['to'])) {
                 $entries[] = [$e, 'direct'];
             }
         }
         foreach ($describes as $e) {
-            $owner = self::owner($lanes['substance'], $e['data']['to']);
+            $owner = self::owner($lanes['substance'], $e->data['to']);
             $ok = self::ownerKey($owner);
             if (isset($contained[$ok])) {
                 $entries[] = [$e, ['substance', $owner]];
@@ -371,11 +371,11 @@ final class Catalog
         }
 
         // Group by [owner-desc-key, route].
-        /** @var array<string, array{key: mixed, route: mixed, entries: list<array{0: array<string,mixed>, 1: mixed}>}> $groups */
+        /** @var array<string, array{key: mixed, route: mixed, entries: list<array{0: Claim, 1: mixed}>}> $groups */
         $groups = [];
         foreach ($kept as $entry) {
             [$e, $route] = $entry;
-            $descOwner = self::owner($lanes['description'], $e['data']['from']);
+            $descOwner = self::owner($lanes['description'], $e->data['from']);
             $gk = self::ownerKey($descOwner)."\x1e".self::routeKey($route);
             if (!isset($groups[$gk])) {
                 $groups[$gk] = ['key' => $descOwner, 'route' => $route, 'entries' => []];
@@ -393,9 +393,9 @@ final class Catalog
             $assertedBy = [];
             $seen = [];
             foreach ($g['entries'] as [$e, $_route]) {
-                if (!isset($seen[$e['source']])) {
-                    $seen[$e['source']] = true;
-                    $assertedBy[] = $e['source'];
+                if (!isset($seen[$e->source])) {
+                    $seen[$e->source] = true;
+                    $assertedBy[] = $e->source;
                 }
             }
             sort($assertedBy, SORT_STRING);
@@ -430,20 +430,20 @@ final class Catalog
      * A steward `suppress` edge (description code → product code) hides ONE pairing: it must
      * resolve to the same description record AND target a code this variant carries.
      *
-     * @param array{0: array<string,mixed>, 1: mixed} $entry
+     * @param array{0: Claim, 1: mixed} $entry
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $edges
+     * @param list<Claim> $edges
      * @param array<string, array<string, array{0: string, 1: string}>> $descMembers
      */
     private static function suppressed(array $entry, array $codes, array $edges, array $descMembers): bool
     {
         [$e, $_route] = $entry;
-        $descKey = self::ownerKey(self::owner($descMembers, $e['data']['from']));
+        $descKey = self::ownerKey(self::owner($descMembers, $e->data['from']));
 
         foreach ($edges as $s) {
-            if ($s['data']['relation'] === 'suppress'
-                && Sets::member($codes, $s['data']['to'])
-                && self::ownerKey(self::owner($descMembers, $s['data']['from'])) === $descKey
+            if ($s->data['relation'] === 'suppress'
+                && Sets::member($codes, $s->data['to'])
+                && self::ownerKey(self::owner($descMembers, $s->data['from'])) === $descKey
             ) {
                 return true;
             }
@@ -473,7 +473,7 @@ final class Catalog
 
     /**
      * @param array<string, array{0: string, 1: string}> $codes
-     * @param list<array<string,mixed>> $attrs
+     * @param list<Claim> $attrs
      * @return list<array{0: string, 1: array<string,mixed>}>
      */
     private static function laneAttributes(array $codes, array $attrs, Priority|callable $priority): array
@@ -501,14 +501,14 @@ final class Catalog
     // ── helpers ─────────────────────────────────────────────────────────────────
 
     /**
-     * @param list<array<string,mixed>> $claims
-     * @return list<array<string,mixed>>
+     * @param list<Claim> $claims
+     * @return list<Claim>
      */
     private static function filterKind(array $claims, string $kind): array
     {
         $out = [];
         foreach ($claims as $c) {
-            if ($c['kind'] === $kind) {
+            if ($c->kind === $kind) {
                 $out[] = $c;
             }
         }

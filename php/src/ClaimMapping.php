@@ -31,10 +31,10 @@ final class ClaimMapping
     ];
 
     /**
-     * Map envelopes to ['claims' => [ClaimAsserted...], 'shared' => code-set].
+     * Map envelopes to ['claims' => [Claim...], 'shared' => code-set].
      *
      * @param list<array<string,mixed>> $envelopes
-     * @return array{claims: list<array<string,mixed>>, shared: array<string, array{0: string, 1: string}>, rejected: list<array<string,mixed>>}
+     * @return array{claims: list<Claim>, shared: array<string, array{0: string, 1: string}>, rejected: list<array<string,mixed>>}
      */
     public static function build(array $envelopes): array
     {
@@ -654,14 +654,14 @@ final class ClaimMapping
     /**
      * Chronological order stamp: later recorded_at ⇒ higher order; stable on emission index.
      *
-     * @param list<array<string,mixed>> $claims
-     * @return list<array<string,mixed>>
+     * @param list<Claim> $claims
+     * @return list<Claim>
      */
     private static function stamp(array $claims): array
     {
         $indexed = [];
         foreach ($claims as $i => $c) {
-            $indexed[] = [$c['recorded_at'], $i, $c];
+            $indexed[] = [$c->recordedAt, $i, $c];
         }
         usort($indexed, static function (array $a, array $b): int {
             return [self::numeric($a[0]), $a[1]] <=> [self::numeric($b[0]), $b[1]];
@@ -669,8 +669,7 @@ final class ClaimMapping
 
         $out = [];
         foreach ($indexed as $order => [$_at, $_i, $c]) {
-            $c['order'] = $order;
-            $out[] = $c;
+            $out[] = $c->withOrder($order);
         }
 
         return $out;

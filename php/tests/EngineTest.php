@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Ingot\Tests;
 
 use Ingot\Catalog;
+use Ingot\Claim;
 use Ingot\Cluster;
+use Ingot\ConflictFlagged;
+use Ingot\DomainEvent;
 use Ingot\Events;
+use Ingot\IdentitySplit;
 use Ingot\IdentityLedger;
 use Ingot\LedgerState;
 use Ingot\Priority;
@@ -41,16 +45,15 @@ final class EngineTest extends TestCase
     }
 
     /**
-     * @param list<array<string,mixed>> $events
-     * @return array{0: list<array<string,mixed>>, 1: int}
+     * @param list<DomainEvent> $events
+     * @return array{0: list<DomainEvent>, 1: int}
      */
     private function stamp(array $events, int $start): array
     {
         $out = [];
         $i = $start;
         foreach ($events as $e) {
-            $e['order'] = $i;
-            $out[] = $e;
+            $out[] = $e->withOrder($i);
             ++$i;
         }
 
@@ -58,7 +61,7 @@ final class EngineTest extends TestCase
     }
 
     /**
-     * @param list<array<string,mixed>> $events
+     * @param list<DomainEvent> $events
      */
     private function fold(array $events, LedgerState $state): LedgerState
     {
@@ -103,15 +106,14 @@ final class EngineTest extends TestCase
     {
         $keys = array_keys($ledger->members);
         sort($keys, SORT_STRING);
-        $orders = array_column($log, 'order');
+        $orders = array_map(static fn (DomainEvent $e): ?int => $e->order(), $log);
         $start = ($orders === [] ? 0 : max($orders)) + 1;
         [$events] = $this->stamp(Stewardship::approveMerge($ledger->members, $keys, 'steward', 'd2'), $start);
 
         return [array_merge($log, $events), $this->fold($events, $ledger)];
     }
 
-    /** @return array<string,mixed> a claim assoc array */
-    private function claim(string $source, string $kind, array $data, string $vf = 'd1', string $at = 'd1'): array
+    private function claim(string $source, string $kind, array $data, string $vf = 'd1', string $at = 'd1'): Claim
     {
         return Substrate::claim($source, $kind, $data, $vf, $at);
     }
@@ -139,7 +141,7 @@ final class EngineTest extends TestCase
      */
     private function project(array $log): array
     {
-        $claims = array_values(array_filter($log, static fn (array $e): bool => ($e['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED));
+        $claims = array_values(array_filter($log, static fn (DomainEvent $e): bool => $e instanceof Claim));
         $members = $this->fold($log, IdentityLedger::new())->members;
 
         return Catalog::project($members, Substrate::current($claims), $this->priority, ['attr' => [], 'product' => []]);
@@ -238,10 +240,7 @@ final class EngineTest extends TestCase
 
             $flagged = false;
             foreach ($log as $event) {
-                if (
-                    ($event['type'] ?? null) === Events::TYPE_CONFLICT_FLAGGED
-                    && ($event['subject'][0] ?? null) === 'identity_conflict'
-                ) {
+                if ($event instanceof ConflictFlagged && ($event->subject[0] ?? null) === 'identity_conflict') {
                     $flagged = true;
                 }
             }
@@ -263,7 +262,9 @@ final class EngineTest extends TestCase
 
         self::assertCount(1, $ledger->members);
         foreach ($log as $event) {
-            self::assertNotSame('identity_conflict', $event['subject'][0] ?? null);
+            if ($event instanceof ConflictFlagged) {
+                self::assertNotSame('identity_conflict', $event->subject[0] ?? null);
+            }
         }
     }
 
@@ -282,7 +283,8 @@ final class EngineTest extends TestCase
         self::assertCount(2, $ledger->members);
         self::assertNotEmpty(array_filter(
             $log,
-            static fn (array $event): bool => ($event['subject'][0] ?? null) === 'identity_conflict',
+            static fn (DomainEvent $event): bool => $event instanceof ConflictFlagged
+                && ($event->subject[0] ?? null) === 'identity_conflict',
         ));
     }
 
@@ -323,7 +325,7 @@ final class EngineTest extends TestCase
 
         $hasMergeFlag = false;
         foreach ($res2 as $e) {
-            if ($e['type'] === Events::TYPE_CONFLICT_FLAGGED && ($e['subject'][0] ?? null) === 'merge') {
+            if ($e instanceof ConflictFlagged && ($e->subject[0] ?? null) === 'merge') {
                 $hasMergeFlag = true;
             }
         }
@@ -369,10 +371,10 @@ final class EngineTest extends TestCase
 
         $claims = array_values(array_filter(
             $log,
-            static fn (array $event): bool => ($event['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED
+            static fn (DomainEvent $event): bool => $event instanceof Claim
         ));
         $replay = IdentityLedger::decide($ledger, ['reconcile', Cluster::variants(Substrate::current($claims)), 'd2']);
-        self::assertNotContains(Events::TYPE_IDENTITY_SPLIT, array_column($replay, 'type'));
+        self::assertSame([], array_filter($replay, static fn (DomainEvent $e): bool => $e instanceof IdentitySplit));
         self::assertCount(1, $this->fold($replay, $ledger)->members);
 
         // resolve the key owning gtin:5001

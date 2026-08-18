@@ -20,8 +20,8 @@ final class GoldenRecords
      * off-product-penalty scoring lives there). The toggle is thus reachable from the fold entry,
      * not just {@see Survivorship::decide()}.
      *
-     * @param array{log: list<array<string,mixed>>, ledger: LedgerState} $rederivation
-     * @return array{records: list<array<string,mixed>>, log: list<array<string,mixed>>}
+     * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
+     * @return array{records: list<array<string,mixed>>, log: list<DomainEvent>}
      */
     public static function project(array $rederivation, Priority|callable|null $priority = null): array
     {
@@ -62,7 +62,7 @@ final class GoldenRecords
 
     /**
      * @param array<string,mixed> $variant
-     * @param list<array<string,mixed>> $log
+     * @param list<DomainEvent> $log
      * @return array<string,mixed>
      */
     private static function enrich(array $variant, array $log, Priority|callable $priority): array
@@ -73,14 +73,14 @@ final class GoldenRecords
     }
 
     /**
-     * @param list<array<string,mixed>> $log
-     * @return list<array<string,mixed>>
+     * @param list<DomainEvent> $log
+     * @return list<Claim>
      */
     private static function liveClaims(array $log): array
     {
         $claims = [];
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED) {
+            if ($e instanceof Claim) {
                 $claims[] = $e;
             }
         }
