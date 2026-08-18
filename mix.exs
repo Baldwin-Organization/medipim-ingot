@@ -2,9 +2,8 @@ defmodule GoldenRecord.MixProject do
   use Mix.Project
 
   # A deliberately dependency-free prototype: pure functions, stdlib only (the built-in JSON
-  # module in Elixir 1.18+ is why no Jason dependency is needed). Modules are flat for now
-  # (Codes, Substrate, Cluster, HistoryEnvelope, ClaimMapping, …); namespacing under
-  # GoldenRecord.* is a future follow-up.
+  # module in Elixir 1.18+ is why no Jason dependency is needed). Engine modules live under
+  # GoldenRecord.* (one per file in lib/golden_record/); ingest/contract modules stay flat.
   def project do
     [
       app: :golden_record,
