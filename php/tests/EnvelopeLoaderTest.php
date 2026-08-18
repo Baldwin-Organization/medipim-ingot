@@ -71,6 +71,30 @@ final class EnvelopeLoaderTest extends TestCase
         self::assertSame(['error', ['event', 0, ['missing_keys', ['scheme']]]], EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'identity', 'code' => '1'])));
     }
 
+    public function test_bad_value_types_are_rejected_not_crashed(): void
+    {
+        $envWith = static fn (array $event): array => ['schema_version' => '1', 'events' => [$event]];
+        $identity = static fn (array $extra): array => $envWith(['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '1', ...$extra]);
+
+        // payload keys used as array offsets downstream must be strings
+        self::assertSame(['error', ['event', 0, ['bad_type', 'scheme', ['x' => 1]]]], EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'identity', 'scheme' => ['x' => 1]])));
+        self::assertSame(['error', ['event', 0, ['bad_type', 'code', 42]]], EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => 42])));
+        self::assertSame(['error', ['event', 0, ['bad_type', 'field', 7]]], EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'attribute', 'field' => 7])));
+        self::assertSame(['error', ['event', 0, ['bad_type', 'collection', null]]], EnvelopeLoader::fromMap($envWith(['op' => 'add', 'kind' => 'edge', 'collection' => null])));
+
+        // event-level scalars
+        self::assertSame(['error', ['event', 0, ['bad_type', 'source', ['a']]]], EnvelopeLoader::fromMap($identity(['source' => ['a']])));
+        self::assertSame(['error', ['event', 0, ['bad_type', 'recorded_at', '123']]], EnvelopeLoader::fromMap($identity(['recorded_at' => '123'])));
+        self::assertSame(['error', ['event', 0, ['bad_type', 'tag', 5]]], EnvelopeLoader::fromMap($identity(['tag' => 5])));
+
+        // envelope-level scalars
+        self::assertSame(['error', ['bad_type', 'legacy_entity', ['x']]], EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => ['x'], 'events' => []]));
+        self::assertSame(['error', ['bad_type', 'source_system', 1]], EnvelopeLoader::fromMap(['schema_version' => '1', 'source_system' => 1, 'events' => []]));
+
+        // in-contract values still load
+        self::assertSame('ok', EnvelopeLoader::fromMap($identity(['source' => null, 'by' => 2, 'tag' => 'import_871']))[0]);
+    }
+
     public function test_valid_from_defaults_to_recorded_at(): void
     {
         [$ok, $env] = EnvelopeLoader::fromMap(['schema_version' => '1', 'events' => [['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '1', 'recorded_at' => 123]]]);

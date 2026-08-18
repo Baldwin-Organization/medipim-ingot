@@ -20,6 +20,21 @@ final class EnvelopeLoader
     private const KINDS = ['identity' => 'identity', 'attribute' => 'attribute', 'edge' => 'edge', 'media' => 'media'];
 
     /**
+     * Scalar type rules per docs/HISTORY_ENVELOPE.md. The Elixir loader documents these types but
+     * only checks key presence — safe there (any term can be a map key), not here: a non-string
+     * `scheme` reaching ClaimMapping is an illegal array offset, so an out-of-contract envelope
+     * must fail as ['error', reason] at this boundary instead of a TypeError mid-ingest.
+     */
+    private const ENVELOPE_TYPES = ['source_system' => 'string?', 'legacy_entity' => 'scalar?', 'last_touched_at' => 'scalar?', 'dropped_meta_count' => 'int?'];
+    private const EVENT_TYPES = ['recorded_at' => 'int?', 'valid_from' => 'int?', 'by' => 'scalar?', 'tag' => 'string?', 'source' => 'string?'];
+    private const PAYLOAD_TYPES = [
+        'identity' => ['scheme' => 'string', 'code' => 'string?'],
+        'attribute' => ['field' => 'string', 'locale' => 'string?'],
+        'edge' => ['collection' => 'string'],
+        'media' => ['collection' => 'string'],
+    ];
+
+    /**
      * Load + validate one envelope file. ['ok', envelope] | ['error', reason].
      *
      * @return array{0: string, 1: mixed}
@@ -78,6 +93,11 @@ final class EnvelopeLoader
         $version = self::validateSchemaVersion($m['schema_version'] ?? null);
         if ($version[0] !== 'ok') {
             return $version;
+        }
+
+        $types = self::checkTypes($m, self::ENVELOPE_TYPES);
+        if ($types[0] !== 'ok') {
+            return $types;
         }
 
         $events = self::buildEvents($m['events'] ?? null);
@@ -155,6 +175,10 @@ final class EnvelopeLoader
         if ($kind[0] !== 'ok') {
             return $kind;
         }
+        $types = self::checkTypes($m, self::EVENT_TYPES);
+        if ($types[0] !== 'ok') {
+            return $types;
+        }
         $data = self::payload($kind[1], $m);
         if ($data[0] !== 'ok') {
             return $data;
@@ -193,10 +217,10 @@ final class EnvelopeLoader
     private static function payload(string $kind, array $m): array
     {
         return match ($kind) {
-            'identity' => self::requireKeys($m, ['scheme'], static fn (): DecodedPayload => new IdentityDelta($m['scheme'], $m['code'] ?? null)),
-            'attribute' => self::requireKeys($m, ['field'], static fn (): DecodedPayload => new AttributeDelta($m['field'], $m['locale'] ?? null, $m['value'] ?? null)),
-            'edge' => self::requireKeys($m, ['collection'], static fn (): DecodedPayload => new EdgeDelta($m['collection'], $m['value'] ?? null)),
-            'media' => self::requireKeys($m, ['collection', 'asset'], static fn (): DecodedPayload => new MediaDelta($m['collection'], $m['asset'])),
+            'identity' => self::requireKeys($m, ['scheme'], $kind, static fn (): DecodedPayload => new IdentityDelta($m['scheme'], $m['code'] ?? null)),
+            'attribute' => self::requireKeys($m, ['field'], $kind, static fn (): DecodedPayload => new AttributeDelta($m['field'], $m['locale'] ?? null, $m['value'] ?? null)),
+            'edge' => self::requireKeys($m, ['collection'], $kind, static fn (): DecodedPayload => new EdgeDelta($m['collection'], $m['value'] ?? null)),
+            'media' => self::requireKeys($m, ['collection', 'asset'], $kind, static fn (): DecodedPayload => new MediaDelta($m['collection'], $m['asset'])),
             default => ['error', ['unknown_kind', $kind]],
         };
     }
@@ -207,7 +231,7 @@ final class EnvelopeLoader
      * @param callable(): DecodedPayload $build
      * @return array{0: string, 1: mixed}
      */
-    private static function requireKeys(array $m, array $keys, callable $build): array
+    private static function requireKeys(array $m, array $keys, string $kind, callable $build): array
     {
         $missing = [];
         foreach ($keys as $k) {
@@ -215,7 +239,35 @@ final class EnvelopeLoader
                 $missing[] = $k;
             }
         }
+        if ($missing !== []) {
+            return ['error', ['missing_keys', $missing]];
+        }
 
-        return $missing === [] ? ['ok', $build()] : ['error', ['missing_keys', $missing]];
+        $types = self::checkTypes($m, self::PAYLOAD_TYPES[$kind]);
+
+        return $types[0] === 'ok' ? ['ok', $build()] : $types;
+    }
+
+    /**
+     * @param array<string,mixed> $m
+     * @param array<string,string> $rules
+     * @return array{0: string, 1: mixed}
+     */
+    private static function checkTypes(array $m, array $rules): array
+    {
+        foreach ($rules as $k => $rule) {
+            $v = $m[$k] ?? null;
+            $ok = match ($rule) {
+                'string' => is_string($v),
+                'string?' => $v === null || is_string($v),
+                'int?' => $v === null || is_int($v),
+                'scalar?' => $v === null || is_scalar($v),
+            };
+            if (!$ok) {
+                return ['error', ['bad_type', $k, $v]];
+            }
+        }
+
+        return ['ok', null];
     }
 }
