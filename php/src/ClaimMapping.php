@@ -77,7 +77,7 @@ final class ClaimMapping
     /**
      * @param list<Envelope> $envelopes
      * @param array<string, list<Period>>|null $periods
-     * @param array<string, list<Code>> $cache
+     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
     private static function canonical(array $envelopes, ?array $periods = null, array &$cache = []): array
@@ -185,7 +185,7 @@ final class ClaimMapping
      *
      * @param list<Envelope> $envelopes
      * @param array<string, list<Period>> $periods
-     * @param array<string, list<Code>> $cache
+     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
     private static function laneEntities(array $envelopes, array $periods, array &$cache = []): array
@@ -449,7 +449,7 @@ final class ClaimMapping
      *
      * @param list<Envelope> $envelopes
      * @param array<string, list<Period>>|null $periods
-     * @param array<string, list<Code>> $cache
+     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
     public static function rejected(array $envelopes, ?array $periods = null, array &$cache = []): array
@@ -502,17 +502,50 @@ final class ClaimMapping
 
     /**
      * codesAt with a per-build memo — canonical and rejected ask the same (entity, source, at)
-     * questions; codesAt is pure over $periods, so the first answer serves both.
+     * questions; codesAt is pure over $periods, so the first answer serves both. Unsourced
+     * lookups additionally go through a lazily built entity → listing-keys index: the public
+     * codesAt scans every listing in $periods per call, which is O(batch²) across a multi-entity
+     * backfill batch (most media events are unsourced).
      *
      * @param array<string, list<Period>> $periods
-     * @param array<string, list<Code>> $cache
+     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<Code>
      */
     private static function codesAtCached(array $periods, mixed $entity, ?string $source, int $at, array &$cache): array
     {
         $key = (is_int($entity) ? 'i:' : 's:').$entity."\x1f".($source ?? "\x00")."\x1f".$at;
+        if (isset($cache['at'][$key])) {
+            return $cache['at'][$key];
+        }
 
-        return $cache[$key] ??= self::codesAt($periods, $entity, $source, $at);
+        if ($source !== null) {
+            return $cache['at'][$key] = self::codesAt($periods, $entity, $source, $at);
+        }
+
+        $cache['listings'] ??= self::entityListings($periods);
+        $union = CodeSet::none();
+        foreach ($cache['listings'][(string) $entity] ?? [] as $listingKey) {
+            $union = $union->union(self::codesCovering($periods[$listingKey], $at));
+        }
+
+        return $cache['at'][$key] = $union->sorted();
+    }
+
+    /**
+     * Listing keys grouped per entity, in $periods order. Keyed by the same string cast
+     * {@see Listing::isFor} compares with, so the indexed union matches codesAt exactly.
+     *
+     * @param array<string, list<Period>> $periods
+     * @return array<string, list<string>>
+     */
+    private static function entityListings(array $periods): array
+    {
+        $out = [];
+        foreach (array_keys($periods) as $key) {
+            $out[(string) Listing::fromKey($key)->entity][] = $key;
+        }
+
+        return $out;
     }
 
     /**

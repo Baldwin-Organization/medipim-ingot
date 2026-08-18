@@ -172,6 +172,25 @@ final class ClaimMappingTest extends TestCase
         self::assertSame(['7:A', '7:B'], $refs);
     }
 
+    public function test_unsourced_event_anchors_only_to_its_own_entity_in_a_multi_entity_batch(): void
+    {
+        // gr-e1i: the unsourced path resolves listings through a per-entity index — an unsourced
+        // attribute must anchor to every code ITS entity held then, and none of another entity's.
+        $e1 = $this->envelope(1, [
+            $this->id('A', 'set', 'cnk', '111', 10),
+            ['recorded_at' => 20, 'source' => null, 'op' => 'set', 'kind' => 'attribute', 'field' => 'name', 'value' => 'one'],
+        ]);
+        $e2 = $this->envelope(2, [$this->id('A', 'set', 'cnk', '222', 10)]);
+
+        $anchors = [];
+        foreach (ClaimMapping::canonicalClaims([$e1, $e2]) as $c) {
+            if ($c['kind'] === 'attribute') {
+                $anchors[] = $c['code'];
+            }
+        }
+        self::assertSame(['cnk:111'], $anchors);
+    }
+
     public function test_attribute_anchored_to_primary_cnk(): void
     {
         $env = $this->envelope(1, [
