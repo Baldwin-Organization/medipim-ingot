@@ -9,6 +9,7 @@ use Ingot\ClaimMapping;
 use Ingot\Codes;
 use Ingot\ConflictFlagged;
 use Ingot\DomainEvent;
+use Ingot\Envelope;
 use Ingot\EnvelopeLoader;
 use Ingot\Events;
 use Ingot\IdentitiesMerged;
@@ -52,7 +53,7 @@ final class ClaimIngest
             $fresh = [];
             foreach ($envelopes as $env) {
                 $fp = self::fingerprint($env);
-                $entity = (string) ($env['legacy_entity'] ?? '');
+                $entity = (string) ($env->legacyEntity ?? '');
                 if ($store->backfillSeen($entity, $fp)) {
                     continue;
                 }
@@ -63,7 +64,7 @@ final class ClaimIngest
                 return self::summary(0, count($envelopes), 0, []);
             }
 
-            $built = ClaimMapping::build(array_map(static fn (array $f): array => $f[0], $fresh));
+            $built = ClaimMapping::build(array_map(static fn (array $f): Envelope => $f[0], $fresh));
             $result = self::pipeline($store, $built['claims'], $built['shared'], $at, false);
 
             foreach ($fresh as [$_env, $fp, $entity]) {
@@ -476,15 +477,14 @@ final class ClaimIngest
 
     /**
      * @param list<array<string,mixed>> $envelopeMaps
-     * @return array{0: bool, 1: list<array<string,mixed>>, 2: list<array<string,mixed>>}
+     * @return array{0: bool, 1: list<Envelope>, 2: list<array<string,mixed>>}
      */
     private static function decodeEnvelopes(array $envelopeMaps): array
     {
         $envelopes = [];
         $errors = [];
         foreach ($envelopeMaps as $i => $map) {
-            // Already-built envelopes (with an 'events' list of decoded events) pass straight through;
-            // raw maps are validated by the loader.
+            // Raw contract-C maps are validated by the loader into Envelope objects.
             [$ok, $env] = EnvelopeLoader::fromMap($map);
             if ($ok === 'ok') {
                 $envelopes[] = $env;
@@ -497,9 +497,9 @@ final class ClaimIngest
     }
 
     /** Content fingerprint for replay-is-a-no-op (stable for identical content). */
-    private static function fingerprint(array $env): string
+    private static function fingerprint(Envelope $env): string
     {
-        return hash('sha256', json_encode($env, JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode($env->toArray(), JSON_THROW_ON_ERROR));
     }
 
     /**

@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
 final class GoldenRecordsPolicyTest extends TestCase
 {
     /** @param list<array<string,mixed>> $events */
-    private function envelope(int $entity, array $events): array
+    private function envelope(int $entity, array $events): \Ingot\Envelope
     {
         [$ok, $env] = EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => $entity, 'events' => $events]);
         self::assertSame('ok', $ok);

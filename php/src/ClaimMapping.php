@@ -33,7 +33,7 @@ final class ClaimMapping
     /**
      * Map envelopes to ['claims' => [Claim...], 'shared' => code-set].
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array{claims: list<Claim>, shared: array<string, array{0: string, 1: string}>, rejected: list<array<string,mixed>>}
      */
     public static function build(array $envelopes): array
@@ -48,7 +48,7 @@ final class ClaimMapping
     /**
      * Stage (a): the canonical claims (wire-shaped maps) in emission order.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return list<array<string,mixed>>
      */
     public static function canonicalClaims(array $envelopes): array
@@ -60,7 +60,7 @@ final class ClaimMapping
      * Just the folded, canonicalized code-set per listing — keyed "entity\x1fsource", in the
      * engine's `Sets` shape.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array<string, array<string, array{0: string, 1: string}>>
      */
     public static function listings(array $envelopes): array
@@ -69,7 +69,7 @@ final class ClaimMapping
     }
 
     /**
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return list<array<string,mixed>>
      */
     private static function canonical(array $envelopes): array
@@ -120,19 +120,19 @@ final class ClaimMapping
 
         $attribute = [];
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'attribute') {
+            foreach ($env->events as $ev) {
+                if ($ev->kind !== 'attribute') {
                     continue;
                 }
-                foreach (self::codesAt($periods, $env['legacy_entity'], $ev['source'], $ev['recorded_at']) as $code) {
+                foreach (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
                     $attribute[] = [
                         'kind' => 'attribute',
-                        'source' => $ev['source'],
+                        'source' => $ev->source,
                         'code' => (string) $code,
                         'field' => self::fieldDim($ev),
-                        'value' => self::attributeValue($ev['data']['field'], $ev['data']['value']),
-                        'valid_from' => $ev['valid_from'],
-                        'recorded_at' => $ev['recorded_at'],
+                        'value' => self::attributeValue($ev->data->field, $ev->data->value),
+                        'valid_from' => $ev->validFrom,
+                        'recorded_at' => $ev->recordedAt,
                     ];
                 }
             }
@@ -140,28 +140,28 @@ final class ClaimMapping
 
         $memberOf = [];
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'edge') {
+            foreach ($env->events as $ev) {
+                if ($ev->kind !== 'edge') {
                     continue;
                 }
-                if (!in_array($ev['op'], ['set', 'add'], true)) {
+                if (!in_array($ev->op, ['set', 'add'], true)) {
                     continue;
                 }
-                if (($ev['data']['value'] ?? null) === null) {
+                if ($ev->data->value === null) {
                     continue;
                 }
-                if (isset(self::LANE_COLLECTIONS[$ev['data']['collection']])) {
+                if (isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
                     continue;
                 }
-                foreach (self::codesAt($periods, $env['legacy_entity'], $ev['source'], $ev['recorded_at']) as $code) {
+                foreach (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
                     $memberOf[] = [
                         'kind' => 'member_of',
-                        'source' => $ev['source'],
+                        'source' => $ev->source,
                         'code' => (string) $code,
-                        'collection' => $ev['data']['collection'],
-                        'member' => self::toStringValue($ev['data']['value']),
-                        'valid_from' => $ev['valid_from'],
-                        'recorded_at' => $ev['recorded_at'],
+                        'collection' => $ev->data->collection,
+                        'member' => self::toStringValue($ev->data->value),
+                        'valid_from' => $ev->validFrom,
+                        'recorded_at' => $ev->recordedAt,
                     ];
                 }
             }
@@ -175,7 +175,7 @@ final class ClaimMapping
      * emit an identity claim in the entity's lane + a typed edge back to every code the entity
      * held at that instant.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @param array<string, list<Period>> $periods
      * @return list<array<string,mixed>>
      */
@@ -232,23 +232,23 @@ final class ClaimMapping
      * Fold media events per (listing-or-source_system, collection): add/remove churn on the asset
      * id, so only surviving references remain.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array<string, array{ids: array<string,true>, last: array<string, array{0: mixed, 1: mixed}>, entity: mixed, source: string, collection: string}>
      */
     private static function laneRefs(array $envelopes): array
     {
         $acc = [];
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'media') {
+            foreach ($env->events as $ev) {
+                if ($ev->kind !== 'media') {
                     continue;
                 }
-                if (!isset(self::LANE_COLLECTIONS[$ev['data']['collection']])) {
+                if (!isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
                     continue;
                 }
-                $listing = new Listing($env['legacy_entity'], $ev['source'] ?? $env['source_system']);
-                $key = $listing->key()."\x1f".$ev['data']['collection'];
-                $id = self::toStringValue($ev['data']['asset']);
+                $listing = new Listing($env->legacyEntity, $ev->source ?? $env->sourceSystem);
+                $key = $listing->key()."\x1f".$ev->data->collection;
+                $id = self::toStringValue($ev->data->asset);
 
                 if (!isset($acc[$key])) {
                     $acc[$key] = [
@@ -256,15 +256,15 @@ final class ClaimMapping
                         'last' => [],
                         'entity' => $listing->entity,
                         'source' => $listing->source,
-                        'collection' => $ev['data']['collection'],
+                        'collection' => $ev->data->collection,
                     ];
                 }
-                if ($ev['op'] === 'remove') {
+                if ($ev->op === 'remove') {
                     unset($acc[$key]['ids'][$id]);
                 } else {
                     $acc[$key]['ids'][$id] = true;
                 }
-                $acc[$key]['last'][$id] = [$ev['valid_from'], $ev['recorded_at']];
+                $acc[$key]['last'][$id] = [$ev->validFrom, $ev->recordedAt];
             }
         }
 
@@ -281,7 +281,7 @@ final class ClaimMapping
      * no trace it was ever here. This replays the same events but snapshots the code set after
      * each one, coalescing runs where the set did not change.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array<string, list<Period>>
      */
     public static function listingPeriods(array $envelopes): array
@@ -290,17 +290,17 @@ final class ClaimMapping
         $periods = [];
 
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'identity') {
+            foreach ($env->events as $ev) {
+                if ($ev->kind !== 'identity') {
                     continue;
                 }
 
-                $key = (new Listing($env['legacy_entity'], $ev['source']))->key();
+                $key = (new Listing($env->legacyEntity, $ev->source))->key();
                 $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
                 $periods[$key] = self::appendPeriod(
                     $periods[$key] ?? [],
                     self::engineCodes($raw[$key]),
-                    $ev['recorded_at'],
+                    $ev->recordedAt,
                 );
             }
         }
@@ -438,7 +438,7 @@ final class ClaimMapping
      * A claim is about one or more identifiers. An event whose source held no code when it spoke
      * has nothing to be about, so it is refused rather than dropped quietly.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return list<array<string,mixed>>
      */
     public static function rejected(array $envelopes): array
@@ -447,20 +447,20 @@ final class ClaimMapping
 
         $out = [];
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if (!in_array($ev['kind'], ['attribute', 'edge'], true)) {
+            foreach ($env->events as $ev) {
+                if (!in_array($ev->kind, ['attribute', 'edge'], true)) {
                     continue;
                 }
-                if (self::codesAt($periods, $env['legacy_entity'], $ev['source'], $ev['recorded_at']) !== []) {
+                if (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) !== []) {
                     continue;
                 }
                 $out[] = [
-                    'entity' => $env['legacy_entity'],
-                    'source' => $ev['source'],
-                    'kind' => $ev['kind'],
-                    'detail' => $ev['kind'] === 'attribute' ? self::fieldDim($ev) : $ev['data']['collection'],
-                    'recorded_at' => $ev['recorded_at'],
-                    'reason' => $ev['source'] === null ? 'unsourced' : 'source_held_no_code',
+                    'entity' => $env->legacyEntity,
+                    'source' => $ev->source,
+                    'kind' => $ev->kind,
+                    'detail' => $ev->kind === 'attribute' ? self::fieldDim($ev) : $ev->data->collection,
+                    'recorded_at' => $ev->recordedAt,
+                    'reason' => $ev->source === null ? 'unsourced' : 'source_held_no_code',
                 ];
             }
         }
@@ -471,18 +471,18 @@ final class ClaimMapping
     /**
      * The final (current) code-set per listing, delisted (now-empty) listings dropped.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array<string, CodeSet>
      */
     private static function codesByListing(array $envelopes): array
     {
         $raw = [];
         foreach ($envelopes as $env) {
-            foreach ($env['events'] as $ev) {
-                if ($ev['kind'] !== 'identity') {
+            foreach ($env->events as $ev) {
+                if ($ev->kind !== 'identity') {
                     continue;
                 }
-                $key = (new Listing($env['legacy_entity'], $ev['source']))->key();
+                $key = (new Listing($env->legacyEntity, $ev->source))->key();
                 $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
             }
         }
@@ -504,15 +504,14 @@ final class ClaimMapping
      * `engineCodes` maps to engine schemes afterwards.
      *
      * @param array<string, array<string,true>> $raw
-     * @param array<string,mixed> $ev
      * @return array<string, array<string,true>>
      */
-    private static function applyIdentity(array $raw, array $ev): array
+    private static function applyIdentity(array $raw, DecodedEvent $ev): array
     {
-        $scheme = $ev['data']['scheme'];
-        $code = $ev['data']['code'] ?? null;
+        $scheme = $ev->data->scheme;
+        $code = $ev->data->code;
 
-        switch ($ev['op']) {
+        switch ($ev->op) {
             case 'set':
                 if ($code === null) {
                     unset($raw[$scheme]);
@@ -641,12 +640,11 @@ final class ClaimMapping
         return abs($scaled - $rounded) < 1.0e-9 ? $rounded : $scaled;
     }
 
-    /** @param array<string,mixed> $ev */
-    public static function fieldDim(array $ev): string
+    public static function fieldDim(DecodedEvent $ev): string
     {
-        $locale = $ev['data']['locale'] ?? null;
+        $locale = $ev->data->locale;
 
-        return $locale === null ? $ev['data']['field'] : $ev['data']['field'].':'.$locale;
+        return $locale === null ? $ev->data->field : $ev->data->field.':'.$locale;
     }
 
     // ── ordering + scalar plumbing ──────────────────────────────────────────────

@@ -14,7 +14,7 @@ namespace Ingot;
 final class Rederivation
 {
     /**
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
      */
     public static function run(array $envelopes, mixed $at): array

@@ -8,11 +8,10 @@ namespace Ingot;
  * HistoryEnvelope loader — ported from `HistoryEnvelope` (lib/ingest/envelope_loader.ex).
  *
  * Parses + validates one decoded legacy entity's history (contract C). Does NO resolution: events
- * stay flat and time-ordered, each given a stable 0..n-1 `order` index. An envelope is an assoc
- * array {schema_version, source_system, legacy_entity, last_touched_at, dropped_meta_count, events};
- * each event is {recorded_at, valid_from, by, tag, source, op, kind, data, order}.
+ * stay flat and time-ordered, each given a stable 0..n-1 `order` index. The result is an
+ * {@see Envelope} of {@see DecodedEvent}s with kind-specific {@see DecodedPayload}s.
  *
- * Loaders return either ['ok', envelope] or ['error', reason] — mirroring the Elixir result tuples.
+ * Loaders return either ['ok', Envelope] or ['error', reason] — mirroring the Elixir result tuples.
  */
 final class EnvelopeLoader
 {
@@ -38,12 +37,8 @@ final class EnvelopeLoader
         return self::fromJson($raw);
     }
 
-    /**
-     * Like load/1 but throws on error, returning the envelope directly.
-     *
-     * @return array<string,mixed>
-     */
-    public static function loadBang(string $path): array
+    /** Like load/1 but throws on error, returning the envelope directly. */
+    public static function loadBang(string $path): Envelope
     {
         $result = self::load($path);
         if ($result[0] !== 'ok') {
@@ -90,27 +85,26 @@ final class EnvelopeLoader
             return $events;
         }
 
-        return ['ok', [
-            'schema_version' => $version[1],
-            'source_system' => $m['source_system'] ?? null,
-            'legacy_entity' => $m['legacy_entity'] ?? null,
-            'last_touched_at' => $m['last_touched_at'] ?? null,
-            'dropped_meta_count' => $m['dropped_meta_count'] ?? null,
-            'events' => $events[1],
-        ]];
+        return ['ok', new Envelope(
+            $version[1],
+            $m['source_system'] ?? null,
+            $m['legacy_entity'] ?? null,
+            $m['last_touched_at'] ?? null,
+            $m['dropped_meta_count'] ?? null,
+            $events[1],
+        )];
     }
 
     /**
      * Count events by kind.
      *
-     * @param array<string,mixed> $env
      * @return array<string,int>
      */
-    public static function kindCounts(array $env): array
+    public static function kindCounts(Envelope $env): array
     {
         $counts = [];
-        foreach ($env['events'] as $e) {
-            $counts[$e['kind']] = ($counts[$e['kind']] ?? 0) + 1;
+        foreach ($env->events as $e) {
+            $counts[$e->kind] = ($counts[$e->kind] ?? 0) + 1;
         }
 
         return $counts;
@@ -166,17 +160,17 @@ final class EnvelopeLoader
             return $data;
         }
 
-        return ['ok', [
-            'recorded_at' => $m['recorded_at'] ?? null,
-            'valid_from' => $m['valid_from'] ?? ($m['recorded_at'] ?? null),
-            'by' => $m['by'] ?? null,
-            'tag' => $m['tag'] ?? null,
-            'source' => $m['source'] ?? null,
-            'op' => $op[1],
-            'kind' => $kind[1],
-            'data' => $data[1],
-            'order' => $order,
-        ]];
+        return ['ok', new DecodedEvent(
+            $m['recorded_at'] ?? null,
+            $m['valid_from'] ?? ($m['recorded_at'] ?? null),
+            $m['by'] ?? null,
+            $m['tag'] ?? null,
+            $m['source'] ?? null,
+            $op[1],
+            $kind[1],
+            $data[1],
+            $order,
+        )];
     }
 
     /**
@@ -199,10 +193,10 @@ final class EnvelopeLoader
     private static function payload(string $kind, array $m): array
     {
         return match ($kind) {
-            'identity' => self::requireKeys($m, ['scheme'], static fn (): array => ['scheme' => $m['scheme'], 'code' => $m['code'] ?? null]),
-            'attribute' => self::requireKeys($m, ['field'], static fn (): array => ['field' => $m['field'], 'locale' => $m['locale'] ?? null, 'value' => $m['value'] ?? null]),
-            'edge' => self::requireKeys($m, ['collection'], static fn (): array => ['collection' => $m['collection'], 'value' => $m['value'] ?? null]),
-            'media' => self::requireKeys($m, ['collection', 'asset'], static fn (): array => ['collection' => $m['collection'], 'asset' => $m['asset']]),
+            'identity' => self::requireKeys($m, ['scheme'], static fn (): DecodedPayload => new IdentityDelta($m['scheme'], $m['code'] ?? null)),
+            'attribute' => self::requireKeys($m, ['field'], static fn (): DecodedPayload => new AttributeDelta($m['field'], $m['locale'] ?? null, $m['value'] ?? null)),
+            'edge' => self::requireKeys($m, ['collection'], static fn (): DecodedPayload => new EdgeDelta($m['collection'], $m['value'] ?? null)),
+            'media' => self::requireKeys($m, ['collection', 'asset'], static fn (): DecodedPayload => new MediaDelta($m['collection'], $m['asset'])),
             default => ['error', ['unknown_kind', $kind]],
         };
     }
@@ -210,7 +204,7 @@ final class EnvelopeLoader
     /**
      * @param array<string,mixed> $m
      * @param list<string> $keys
-     * @param callable(): array<string,mixed> $build
+     * @param callable(): DecodedPayload $build
      * @return array{0: string, 1: mixed}
      */
     private static function requireKeys(array $m, array $keys, callable $build): array
