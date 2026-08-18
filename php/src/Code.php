@@ -39,11 +39,6 @@ final readonly class Code implements \Stringable
         return self::fromPair(Codes::canonicalize($this->pair()));
     }
 
-    public function is(string $scheme): bool
-    {
-        return $this->scheme === $scheme;
-    }
-
     /** An in-store / restricted-range GTIN — carried, never allowed to bridge two products. */
     public function isRestricted(): bool
     {

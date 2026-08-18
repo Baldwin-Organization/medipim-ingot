@@ -37,11 +37,6 @@ final readonly class Claim implements DomainEvent
         return new self($this->source, $this->kind, $this->data, $this->validFrom, $this->recordedAt, $order);
     }
 
-    public function is(string $kind): bool
-    {
-        return $this->kind === $kind;
-    }
-
     public function toArray(): array
     {
         return [
