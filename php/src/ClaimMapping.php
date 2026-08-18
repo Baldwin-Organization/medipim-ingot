@@ -179,7 +179,7 @@ final class ClaimMapping
                         'source' => $ev->source,
                         'code' => (string) $code,
                         'collection' => $ev->data->collection,
-                        'member' => self::toStringValue($ev->data->value),
+                        'member' => Stringify::value($ev->data->value),
                         'valid_from' => $ev->validFrom,
                         'recorded_at' => $ev->recordedAt,
                     ];
@@ -266,7 +266,7 @@ final class ClaimMapping
                 }
                 $listing = new Listing($env->legacyEntity, $ev->source ?? $env->sourceSystem);
                 $key = $listing->key()."\x1f".$ev->data->collection;
-                $id = self::toStringValue($ev->data->asset);
+                $id = Stringify::value($ev->data->asset);
 
                 if (!isset($acc[$key])) {
                     $acc[$key] = [
@@ -745,25 +745,4 @@ final class ClaimMapping
         return is_numeric($v) ? 0 + $v : 0;
     }
 
-    /**
-     * Mirror Elixir's `to_string/1` over the JSON-decoded values that appear as edge `value`s.
-     * A list is an iolist/charlist: integers are bytes (codepoints), strings/lists concatenate.
-     * Such a value is then canonicalized downstream (which trims it), e.g. `[9]` → "\t" → "".
-     */
-    private static function toStringValue(mixed $v): string
-    {
-        if (is_bool($v)) {
-            return $v ? 'true' : 'false';
-        }
-        if (is_array($v)) {
-            $out = '';
-            foreach ($v as $part) {
-                $out .= is_int($part) ? mb_chr($part, 'UTF-8') : self::toStringValue($part);
-            }
-
-            return $out;
-        }
-
-        return (string) $v;
-    }
 }

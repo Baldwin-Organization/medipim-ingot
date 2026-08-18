@@ -195,7 +195,7 @@ final class EnvelopeDecoder
                 if ($op === 'delete') {
                     return $out;
                 }
-                $out['code'] = $value === null ? null : self::stripFieldPrefix($field, self::stringify($value));
+                $out['code'] = $value === null ? null : self::stripFieldPrefix($field, Stringify::value($value));
 
                 return $out;
             case 'attribute':
@@ -282,33 +282,9 @@ final class EnvelopeDecoder
         return str_starts_with($code, $prefix) ? substr($code, strlen($prefix)) : $code;
     }
 
-    /** Mirror Elixir `to_string/1` over the JSON-decoded scalar (and charlist) values. */
-    private static function stringify(mixed $v): string
-    {
-        if (is_string($v)) {
-            return $v;
-        }
-        if (is_int($v)) {
-            return (string) $v;
-        }
-        if (is_bool($v)) {
-            return $v ? 'true' : 'false';
-        }
-        if (is_array($v)) {
-            $out = '';
-            foreach ($v as $part) {
-                $out .= is_int($part) ? mb_chr($part, 'UTF-8') : self::stringify($part);
-            }
-
-            return $out;
-        }
-
-        return (string) $v;
-    }
-
     private static function stringOrNull(mixed $v): ?string
     {
-        return $v === null ? null : self::stringify($v);
+        return $v === null ? null : Stringify::value($v);
     }
 
     /**
