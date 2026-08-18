@@ -297,6 +297,7 @@ final class ClaimMapping
     {
         $raw = [];
         $periods = [];
+        $canon = []; // memo: canonicalizing a code preg_matches — the same codes recur every event
 
         foreach ($envelopes as $env) {
             foreach ($env->events as $ev) {
@@ -308,7 +309,7 @@ final class ClaimMapping
                 $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
                 $periods[$key] = self::appendPeriod(
                     $periods[$key] ?? [],
-                    self::engineCodes($raw[$key]),
+                    self::engineCodes($raw[$key], $canon),
                     $ev->recordedAt,
                 );
             }
@@ -596,13 +597,14 @@ final class ClaimMapping
      * raw (medipim scheme → values) → the canonicalized engine `CodeSet`.
      *
      * @param array<string, array<string,true>> $raw
+     * @param array<string, Code> $canon canonical-code memo, scoped to one fold
      */
-    private static function engineCodes(array $raw): CodeSet
+    private static function engineCodes(array $raw, array &$canon = []): CodeSet
     {
         $codes = CodeSet::none();
         foreach ($raw as $scheme => $values) {
             foreach (array_keys($values) as $value) {
-                $codes = $codes->with((new Code(CodeRegistry::scheme($scheme), (string) $value))->canonical());
+                $codes = $codes->with($canon[$scheme."\x1f".$value] ??= (new Code(CodeRegistry::scheme($scheme), (string) $value))->canonical());
             }
         }
 

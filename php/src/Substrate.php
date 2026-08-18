@@ -137,7 +137,7 @@ final class Substrate
      *
      * @param list<mixed> $slot
      */
-    private static function slotKey(array $slot): string
+    public static function slotKey(array $slot): string
     {
         return implode("\x1e", array_map(static function (mixed $part): string {
             if (is_array($part)) {

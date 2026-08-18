@@ -75,11 +75,15 @@ final class Cluster
             $components = self::connectedComponents($sets, $shared);
         }
 
-        usort($components, static function (array $a, array $b): int {
-            return Sets::compareCodes(Sets::min($a), Sets::min($b));
-        });
+        // Precompute each component's min — Sets::min sorts the whole set per call, so a
+        // comparator computing it per comparison is O(k log k · set sort) instead of once each.
+        $paired = [];
+        foreach ($components as $c) {
+            $paired[] = [Sets::min($c), $c];
+        }
+        usort($paired, static fn (array $a, array $b): int => Sets::compareCodes($a[0], $b[0]));
 
-        return $components;
+        return array_column($paired, 1);
     }
 
     /**
@@ -179,17 +183,17 @@ final class Cluster
 
         $edges = [];
         ksort($byCode, SORT_STRING);
+        // Signatures sort the set's keys — memoize per set index instead of per comparison.
+        $sigs = [];
+        $sigOf = static function (int $i) use ($sets, $uniqueScheme, &$sigs): string {
+            return $sigs[$i] ??= self::uniqueSignature($sets[$i], $uniqueScheme)."\0".self::codeSignature($sets[$i]);
+        };
         foreach ($byCode as $key => $indexes) {
             if (isset($shared[$key])) {
                 continue;
             }
 
-            usort($indexes, static function (int $a, int $b) use ($sets, $uniqueScheme): int {
-                $left = self::uniqueSignature($sets[$a], $uniqueScheme)."\0".self::codeSignature($sets[$a]);
-                $right = self::uniqueSignature($sets[$b], $uniqueScheme)."\0".self::codeSignature($sets[$b]);
-
-                return strcmp($left, $right);
-            });
+            usort($indexes, static fn (int $a, int $b): int => strcmp($sigOf($a), $sigOf($b)));
 
             for ($i = 0, $n = count($indexes) - 1; $i < $n; ++$i) {
                 $edges[] = [0, $key, $indexes[$i], $indexes[$i + 1], false];
