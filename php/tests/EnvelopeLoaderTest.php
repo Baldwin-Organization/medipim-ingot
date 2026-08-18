@@ -91,6 +91,11 @@ final class EnvelopeLoaderTest extends TestCase
         self::assertSame(['error', ['bad_type', 'legacy_entity', ['x']]], EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => ['x'], 'events' => []]));
         self::assertSame(['error', ['bad_type', 'source_system', 1]], EnvelopeLoader::fromMap(['schema_version' => '1', 'source_system' => 1, 'events' => []]));
 
+        // code values are capped so Codes::key always fits the members VARCHAR(191) PK
+        $longCode = str_repeat('9', 161);
+        self::assertSame(['error', ['event', 0, ['bad_type', 'code', $longCode]]], EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => $longCode])));
+        self::assertSame('ok', EnvelopeLoader::fromMap($envWith(['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => str_repeat('9', 160)]))[0]);
+
         // in-contract values still load
         self::assertSame('ok', EnvelopeLoader::fromMap($identity(['source' => null, 'by' => 2, 'tag' => 'import_871']))[0]);
     }

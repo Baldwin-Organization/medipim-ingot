@@ -27,8 +27,15 @@ final class EnvelopeLoader
      */
     private const ENVELOPE_TYPES = ['source_system' => 'string?', 'legacy_entity' => 'scalar?', 'last_touched_at' => 'scalar?', 'dropped_meta_count' => 'int?'];
     private const EVENT_TYPES = ['recorded_at' => 'int?', 'valid_from' => 'int?', 'by' => 'scalar?', 'tag' => 'string?', 'source' => 'string?'];
+    /**
+     * Cap on identity code values: the store's members PK is VARCHAR(191) holding
+     * scheme + "\x1f" + value (longest registry scheme is 22 chars), so 160 leaves margin.
+     * Real code values (barcodes, MD ids) are far shorter — beyond this is out of contract.
+     */
+    private const MAX_CODE_LENGTH = 160;
+
     private const PAYLOAD_TYPES = [
-        'identity' => ['scheme' => 'string', 'code' => 'string?'],
+        'identity' => ['scheme' => 'string', 'code' => 'code?'],
         'attribute' => ['field' => 'string', 'locale' => 'string?'],
         'edge' => ['collection' => 'string'],
         'media' => ['collection' => 'string'],
@@ -260,6 +267,7 @@ final class EnvelopeLoader
             $ok = match ($rule) {
                 'string' => is_string($v),
                 'string?' => $v === null || is_string($v),
+                'code?' => $v === null || (is_string($v) && strlen($v) <= self::MAX_CODE_LENGTH),
                 'int?' => $v === null || is_int($v),
                 'scalar?' => $v === null || is_scalar($v),
             };
