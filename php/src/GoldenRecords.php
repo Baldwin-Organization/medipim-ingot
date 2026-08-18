@@ -61,7 +61,7 @@ final class GoldenRecords
      */
     public static function fromEnvelopes(array $envelopes, mixed $at, Priority|callable|null $priority = null): array
     {
-        return self::project(Rederivation::run($envelopes, $at), $priority ?? self::defaultPriority());
+        return self::project(Rederivation::run($envelopes, $at), $priority);
     }
 
     /** The permissive default priority — every source unranked, so conflicts tie. */

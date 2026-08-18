@@ -52,7 +52,7 @@ final class Canonical422156
             'cnk' => self::cnk($v->cnk),
             'product' => self::productDecision($v->product),
             'attributes' => self::attributes($v->attributes),
-            'categories' => array_map(self::category(...), $v->categories),
+            'categories' => array_map(self::codeString(...), $v->categories),
             'media' => array_map(self::media(...), $v->media),
             'substances' => array_map(self::substance(...), $v->substances),
             'descriptions' => array_map(self::description(...), $v->descriptions),
@@ -131,12 +131,6 @@ final class Canonical422156
         }
 
         return $out;
-    }
-
-    /** @param array{0: string, 1: string} $category */
-    private static function category(array $category): string
-    {
-        return $category[0].':'.$category[1];
     }
 
     /**
