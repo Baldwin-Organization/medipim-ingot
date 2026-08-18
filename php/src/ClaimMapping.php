@@ -38,10 +38,16 @@ final class ClaimMapping
      */
     public static function build(array $envelopes): array
     {
+        // One identity fold serves all three outputs: canonical anchors on the periods, `shared`
+        // reads each listing's final (= last period's) codes, and `rejected` re-asks the same
+        // codesAt questions canonical just answered — so the answers are cached and shared.
+        $periods = self::listingPeriods($envelopes);
+        $cache = [];
+
         return [
-            'claims' => self::stamp(CanonicalClaims::toEngineBang(self::canonical($envelopes))),
-            'shared' => self::sharedCodes(self::codesByListing($envelopes))->toSets(),
-            'rejected' => self::rejected($envelopes),
+            'claims' => self::stamp(CanonicalClaims::toEngineBang(self::canonical($envelopes, $periods, $cache))),
+            'shared' => self::sharedCodes(self::finalCodes($periods))->toSets(),
+            'rejected' => self::rejected($envelopes, $periods, $cache),
         ];
     }
 
@@ -65,19 +71,21 @@ final class ClaimMapping
      */
     public static function listings(array $envelopes): array
     {
-        return array_map(static fn (CodeSet $codes): array => $codes->toSets(), self::codesByListing($envelopes));
+        return array_map(static fn (CodeSet $codes): array => $codes->toSets(), self::finalCodes(self::listingPeriods($envelopes)));
     }
 
     /**
      * @param list<Envelope> $envelopes
+     * @param array<string, list<Period>>|null $periods
+     * @param array<string, list<Code>> $cache
      * @return list<array<string,mixed>>
      */
-    private static function canonical(array $envelopes): array
+    private static function canonical(array $envelopes, ?array $periods = null, array &$cache = []): array
     {
         // A claim is ABOUT a code — cnk, ean, cn — and about ONE OR MORE of them. So the anchor is
         // every code the asserting source itself held AT THE TIME it spoke, read out of that
         // listing's periods. Mirrors ClaimMapping.codes_at/4 in lib/ingest/claim_mapping.ex.
-        $periods = self::listingPeriods($envelopes);
+        $periods ??= self::listingPeriods($envelopes);
 
         $orderedKeys = array_keys($periods);
         sort($orderedKeys, SORT_STRING);
@@ -124,7 +132,7 @@ final class ClaimMapping
                 if ($ev->kind !== 'attribute') {
                     continue;
                 }
-                foreach (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
+                foreach (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) as $code) {
                     $attribute[] = [
                         'kind' => 'attribute',
                         'source' => $ev->source,
@@ -153,7 +161,7 @@ final class ClaimMapping
                 if (isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
                     continue;
                 }
-                foreach (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
+                foreach (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) as $code) {
                     $memberOf[] = [
                         'kind' => 'member_of',
                         'source' => $ev->source,
@@ -167,7 +175,7 @@ final class ClaimMapping
             }
         }
 
-        return array_merge($identity, $grouping, $attribute, $memberOf, self::laneEntities($envelopes, $periods));
+        return array_merge($identity, $grouping, $attribute, $memberOf, self::laneEntities($envelopes, $periods, $cache));
     }
 
     /**
@@ -177,9 +185,10 @@ final class ClaimMapping
      *
      * @param list<Envelope> $envelopes
      * @param array<string, list<Period>> $periods
+     * @param array<string, list<Code>> $cache
      * @return list<array<string,mixed>>
      */
-    private static function laneEntities(array $envelopes, array $periods): array
+    private static function laneEntities(array $envelopes, array $periods, array &$cache = []): array
     {
         $refs = self::laneRefs($envelopes);
 
@@ -211,7 +220,7 @@ final class ClaimMapping
                 // Media events are entity-scoped (source: nil in real dumps), so one edge per
                 // product code the entity held then — the same image reaches every product it was
                 // listed against.
-                foreach (self::codesAt($periods, $ref['entity'], null, $at) as $code) {
+                foreach (self::codesAtCached($periods, $ref['entity'], null, $at, $cache) as $code) {
                     $out[] = [
                         'kind' => 'edge',
                         'source' => $ref['source'],
@@ -439,11 +448,13 @@ final class ClaimMapping
      * has nothing to be about, so it is refused rather than dropped quietly.
      *
      * @param list<Envelope> $envelopes
+     * @param array<string, list<Period>>|null $periods
+     * @param array<string, list<Code>> $cache
      * @return list<array<string,mixed>>
      */
-    public static function rejected(array $envelopes): array
+    public static function rejected(array $envelopes, ?array $periods = null, array &$cache = []): array
     {
-        $periods = self::listingPeriods($envelopes);
+        $periods ??= self::listingPeriods($envelopes);
 
         $out = [];
         foreach ($envelopes as $env) {
@@ -451,7 +462,7 @@ final class ClaimMapping
                 if (!in_array($ev->kind, ['attribute', 'edge'], true)) {
                     continue;
                 }
-                if (self::codesAt($periods, $env->legacyEntity, $ev->source, $ev->recordedAt) !== []) {
+                if (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) !== []) {
                     continue;
                 }
                 $out[] = [
@@ -469,33 +480,39 @@ final class ClaimMapping
     }
 
     /**
-     * The final (current) code-set per listing, delisted (now-empty) listings dropped.
+     * The final (current) code-set per listing, delisted (now-empty) listings dropped. The last
+     * period of each listing IS the final fold state — its codes were computed fresh at the last
+     * set-changing event, and only set-preserving ops can follow — so no extra replay is needed.
      *
-     * @param list<Envelope> $envelopes
+     * @param array<string, list<Period>> $periods
      * @return array<string, CodeSet>
      */
-    private static function codesByListing(array $envelopes): array
+    private static function finalCodes(array $periods): array
     {
-        $raw = [];
-        foreach ($envelopes as $env) {
-            foreach ($env->events as $ev) {
-                if ($ev->kind !== 'identity') {
-                    continue;
-                }
-                $key = (new Listing($env->legacyEntity, $ev->source))->key();
-                $raw[$key] = self::applyIdentity($raw[$key] ?? [], $ev);
-            }
-        }
-
         $out = [];
-        foreach ($raw as $key => $schemes) {
-            $codes = self::engineCodes($schemes);
+        foreach ($periods as $key => $list) {
+            $codes = $list[count($list) - 1]->codes;
             if (!$codes->isEmpty()) {
                 $out[$key] = $codes;
             }
         }
 
         return $out;
+    }
+
+    /**
+     * codesAt with a per-build memo — canonical and rejected ask the same (entity, source, at)
+     * questions; codesAt is pure over $periods, so the first answer serves both.
+     *
+     * @param array<string, list<Period>> $periods
+     * @param array<string, list<Code>> $cache
+     * @return list<Code>
+     */
+    private static function codesAtCached(array $periods, mixed $entity, ?string $source, int $at, array &$cache): array
+    {
+        $key = (is_int($entity) ? 'i:' : 's:').$entity."\x1f".($source ?? "\x00")."\x1f".$at;
+
+        return $cache[$key] ??= self::codesAt($periods, $entity, $source, $at);
     }
 
     /**
