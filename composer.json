@@ -1,5 +1,5 @@
 {
-    "name": "ingot/ingot",
+    "name": "medipim-ingot/medipim-ingot",
     "description": "PHP port of the golden-record engine — claim ingest, snapshots, and storage ports",
     "type": "library",
     "license": "proprietary",

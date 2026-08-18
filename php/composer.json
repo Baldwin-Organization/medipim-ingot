@@ -1,5 +1,5 @@
 {
-    "name": "ingot/ingot",
+    "name": "medipim-ingot/medipim-ingot",
     "description": "PHP port of the golden-record engine (422156 fold path) — TDD parity port + Elixir/PHP benchmark",
     "type": "project",
     "require": {
