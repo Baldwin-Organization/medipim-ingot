@@ -15,7 +15,7 @@ final class Rederivation
 {
     /**
      * @param list<Envelope> $envelopes
-     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
+     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>, live: list<Claim>}
      */
     public static function run(array $envelopes, mixed $at): array
     {
@@ -24,7 +24,7 @@ final class Rederivation
 
     /**
      * @param array{claims: list<Claim>, shared: array<string, array{0: string, 1: string}>} $built
-     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>}
+     * @return array{log: list<DomainEvent>, ledger: LedgerState, ledgers: array<string, LedgerState>, clusters: list<array<string, array{0: string, 1: string}>>, shared: array<string, array{0: string, 1: string}>, live: list<Claim>}
      */
     public static function fromClaims(array $built, mixed $at): array
     {
@@ -49,6 +49,9 @@ final class Rederivation
             'ledgers' => $ledgers,
             'clusters' => $clusters,
             'shared' => $shared,
+            // identity events aren't Claims, so this is exactly Substrate::current over the log's
+            // claims — carried so projection doesn't recompute it.
+            'live' => $live,
         ];
     }
 

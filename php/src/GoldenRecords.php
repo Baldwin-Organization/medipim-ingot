@@ -29,7 +29,7 @@ final class GoldenRecords
         $log = $rederivation['log'];
         $ledger = $rederivation['ledger'];
 
-        $projected = Catalog::project($ledger->members, self::liveClaims($log), $priority, self::NO_OVERRIDES);
+        $projected = Catalog::project($ledger->members, $rederivation['live'] ?? self::liveClaims($log), $priority, self::NO_OVERRIDES);
 
         $records = [];
         foreach ($projected as $p) {
