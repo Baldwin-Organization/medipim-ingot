@@ -90,15 +90,9 @@ final class Catalog
      */
     private static function resolveAttributes(string $key, array $codes, array $attrs, Priority|callable $priority, array $attrOverrides): array
     {
-        $decisions = Survivorship::fieldDecisions($codes, $attrs, $priority);
-
-        $out = [];
-        foreach ($decisions as [$field, $base]) {
-            $out[] = [$field, $base]; // no overrides on the 422156 path (empty maps)
-        }
-        usort($out, static fn (array $a, array $b): int => strcmp($a[0], $b[0]));
-
-        return $out;
+        // $key/$attrOverrides are unused pending steward-override support (Elixir's apply_override
+        // was deliberately dropped on the 422156 path) — kept for the Elixir-parity signature.
+        return self::laneAttributes($codes, $attrs, $priority);
     }
 
     /**
@@ -169,7 +163,7 @@ final class Catalog
             $bestRank = $rank('media', $best->source);
             foreach ($claims as $m) {
                 $r = $rank('media', $m->source);
-                if (self::infLt($r, $bestRank)) {
+                if ($r < $bestRank) {
                     $bestRank = $r;
                     $best = $m;
                 }
@@ -227,41 +221,21 @@ final class Catalog
      */
     private static function resolveSubstances(array $codes, array $edges, array $subIndex): array
     {
-        /** @var array<string, list<Claim>> $byKey */
-        $byKey = [];
-        $keyOrder = [];
-        foreach ($edges as $e) {
-            if ($e->data['relation'] === 'contains' && Sets::member($codes, $e->data['from'])) {
-                $owner = self::ownerOf($subIndex, $e->data['to']);
-                $ok = is_array($owner) ? self::pairKey($owner) : (string) $owner;
-                if (!isset($byKey[$ok])) {
-                    $byKey[$ok] = [];
-                    $keyOrder[$ok] = $owner;
-                }
-                $byKey[$ok][] = $e;
-            }
-        }
+        [$byKey, $keyOrder] = self::groupEdgesByOwner($edges, $codes, $subIndex, 'contains', 'from', 'to');
 
         $out = [];
         foreach ($byKey as $ok => $es) {
             $codesList = [];
             $codeSeen = [];
-            $sources = [];
-            $srcSeen = [];
             foreach ($es as $e) {
                 $ck = self::pairKey($e->data['to']);
                 if (!isset($codeSeen[$ck])) {
                     $codeSeen[$ck] = true;
                     $codesList[] = $e->data['to'];
                 }
-                if (!isset($srcSeen[$e->source])) {
-                    $srcSeen[$e->source] = true;
-                    $sources[] = $e->source;
-                }
             }
             usort($codesList, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
-            sort($sources, SORT_STRING);
-            $out[] = ['key' => $keyOrder[$ok], 'codes' => $codesList, 'sources' => $sources];
+            $out[] = ['key' => $keyOrder[$ok], 'codes' => $codesList, 'sources' => self::sortedUniqueSources($es)];
         }
 
         usort($out, static fn (array $a, array $b): int => self::compareOwner($a['key'], $b['key']));
@@ -281,20 +255,7 @@ final class Catalog
      */
     private static function resolveDepicted(array $codes, array $edges, array $mediaMembers, array $mediaIndex, array $attrs, Priority|callable $priority): array
     {
-        /** @var array<string, list<Claim>> $byKey */
-        $byKey = [];
-        $keyOrder = [];
-        foreach ($edges as $e) {
-            if ($e->data['relation'] === 'depicts' && Sets::member($codes, $e->data['to'])) {
-                $owner = self::ownerOf($mediaIndex, $e->data['from']);
-                $ok = is_array($owner) ? self::pairKey($owner) : (string) $owner;
-                if (!isset($byKey[$ok])) {
-                    $byKey[$ok] = [];
-                    $keyOrder[$ok] = $owner;
-                }
-                $byKey[$ok][] = $e;
-            }
-        }
+        [$byKey, $keyOrder] = self::groupEdgesByOwner($edges, $codes, $mediaIndex, 'depicts', 'to', 'from');
 
         $out = [];
         foreach ($byKey as $ok => $es) {
@@ -304,15 +265,7 @@ final class Catalog
                 : Sets::of([self::ownerAsCode($owner)]);
             $attributes = self::laneAttributes($assetCodes, $attrs, $priority);
 
-            $sources = [];
-            $srcSeen = [];
-            foreach ($es as $e) {
-                if (!isset($srcSeen[$e->source])) {
-                    $srcSeen[$e->source] = true;
-                    $sources[] = $e->source;
-                }
-            }
-            sort($sources, SORT_STRING);
+            $sources = self::sortedUniqueSources($es);
 
             $out[] = [
                 'asset' => $owner,
@@ -406,20 +359,10 @@ final class Catalog
                 ? $lanes['description'][$key]
                 : Sets::of([self::ownerAsCode($key)]);
 
-            $assertedBy = [];
-            $seen = [];
-            foreach ($g['entries'] as [$e, $_route]) {
-                if (!isset($seen[$e->source])) {
-                    $seen[$e->source] = true;
-                    $assertedBy[] = $e->source;
-                }
-            }
-            sort($assertedBy, SORT_STRING);
-
             $out[] = [
                 'key' => $key,
                 'via' => $g['route'],
-                'asserted_by' => $assertedBy,
+                'asserted_by' => self::sortedUniqueSources(array_column($g['entries'], 0)),
                 'attributes' => self::laneAttributes($descCodes, $attrs, $priority),
             ];
         }
@@ -609,8 +552,50 @@ final class Catalog
         return strcmp(self::scalarKey($a), self::scalarKey($b));
     }
 
-    private static function infLt(int|float $a, int|float $b): bool
+    /**
+     * Group edges of $relation whose $memberEnd code the variant carries, keyed by the resolved
+     * owner of their $ownerEnd — the shared shape of the substances and depicted resolvers.
+     *
+     * @param list<Claim> $edges
+     * @param array<string, array{0: string, 1: string}> $codes
+     * @param array<string, string> $index from {@see ownerIndex}
+     * @return array{0: array<string, list<Claim>>, 1: array<string, string|array{0: string, 1: string}>}
+     */
+    private static function groupEdgesByOwner(array $edges, array $codes, array $index, string $relation, string $memberEnd, string $ownerEnd): array
     {
-        return $a < $b;
+        $byKey = [];
+        $keyOrder = [];
+        foreach ($edges as $e) {
+            if ($e->data['relation'] === $relation && Sets::member($codes, $e->data[$memberEnd])) {
+                $owner = self::ownerOf($index, $e->data[$ownerEnd]);
+                $ok = is_array($owner) ? self::pairKey($owner) : (string) $owner;
+                if (!isset($byKey[$ok])) {
+                    $byKey[$ok] = [];
+                    $keyOrder[$ok] = $owner;
+                }
+                $byKey[$ok][] = $e;
+            }
+        }
+
+        return [$byKey, $keyOrder];
+    }
+
+    /**
+     * @param list<Claim> $claims
+     * @return list<string> distinct sources, sorted
+     */
+    private static function sortedUniqueSources(array $claims): array
+    {
+        $out = [];
+        $seen = [];
+        foreach ($claims as $c) {
+            if (!isset($seen[$c->source])) {
+                $seen[$c->source] = true;
+                $out[] = $c->source;
+            }
+        }
+        sort($out, SORT_STRING);
+
+        return $out;
     }
 }
