@@ -46,7 +46,7 @@ final class GoldenRecords
     /**
      * Convenience: re-derive envelopes at `at`, then project.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array{records: list<GoldenRecord>, log: list<DomainEvent>}
      */
     public static function fromEnvelopes(array $envelopes, mixed $at, Priority|callable|null $priority = null): array

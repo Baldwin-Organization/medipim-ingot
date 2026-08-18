@@ -19,9 +19,9 @@ namespace Ingot;
 final class GoldenRecordEngine
 {
     /**
-     * Fold already-decoded contract-C envelopes into a golden record at time `$at`.
+     * Fold already-validated envelopes into a golden record at time `$at`.
      *
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      */
     public function ingest(array $envelopes, mixed $at, ?Priority $priority = null): GoldenRecordResult
     {
@@ -38,9 +38,14 @@ final class GoldenRecordEngine
         return $this->ingest([EnvelopeLoader::loadBang($path)], $at, $priority);
     }
 
-    /** Convenience: decode one envelope from a JSON string, then {@see ingest}. */
+    /** Convenience: decode one envelope from a JSON string (throwing on error), then {@see ingest}. */
     public function ingestJson(string $json, mixed $at, ?Priority $priority = null): GoldenRecordResult
     {
-        return $this->ingest([EnvelopeLoader::fromJson($json)], $at, $priority);
+        [$ok, $env] = EnvelopeLoader::fromJson($json);
+        if ($ok !== 'ok') {
+            throw new \RuntimeException('invalid envelope JSON: '.json_encode($env));
+        }
+
+        return $this->ingest([$env], $at, $priority);
     }
 }

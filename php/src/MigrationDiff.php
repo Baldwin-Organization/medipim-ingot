@@ -24,7 +24,7 @@ final class MigrationDiff
     }
 
     /**
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array{findings: list<array<string,mixed>>, counts: array<string,int>, needs_review: list<array<string,mixed>>}
      */
     public static function fromEnvelopes(array $envelopes, mixed $at): array

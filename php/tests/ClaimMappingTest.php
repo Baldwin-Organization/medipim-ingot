@@ -20,7 +20,7 @@ final class ClaimMappingTest extends TestCase
 {
     private const FIXTURE = __DIR__.'/../../test/ingest/fixtures/medipim_be_422156.json';
 
-    private function envelope(int $entity, array $events): array
+    private function envelope(int $entity, array $events): \Ingot\Envelope
     {
         [$ok, $env] = EnvelopeLoader::fromMap(['schema_version' => '1', 'legacy_entity' => $entity, 'events' => $events]);
         self::assertSame('ok', $ok);

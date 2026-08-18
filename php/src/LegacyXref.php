@@ -68,7 +68,7 @@ final class LegacyXref
     }
 
     /**
-     * @param list<array<string,mixed>> $envelopes
+     * @param list<Envelope> $envelopes
      * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, Placement>}
      */
     public static function fromEnvelopes(array $envelopes, mixed $at): array

@@ -19,12 +19,12 @@ final class EnvelopeLoaderTest extends TestCase
     {
         [$ok, $env] = EnvelopeLoader::load(self::FIXTURE);
         self::assertSame('ok', $ok);
-        self::assertSame('1', $env['schema_version']);
-        self::assertSame('medipim-be', $env['source_system']);
-        self::assertSame(422156, $env['legacy_entity']);
-        self::assertSame(1778976623, $env['last_touched_at']);
-        self::assertSame(819, $env['dropped_meta_count']);
-        self::assertCount(930, $env['events']);
+        self::assertSame('1', $env->schemaVersion);
+        self::assertSame('medipim-be', $env->sourceSystem);
+        self::assertSame(422156, $env->legacyEntity);
+        self::assertSame(1778976623, $env->lastTouchedAt);
+        self::assertSame(819, $env->droppedMetaCount);
+        self::assertCount(930, $env->events);
     }
 
     public function test_kind_counts(): void
@@ -39,23 +39,23 @@ final class EnvelopeLoaderTest extends TestCase
     public function test_order_is_zero_to_n_minus_one(): void
     {
         $env = EnvelopeLoader::loadBang(self::FIXTURE);
-        self::assertSame(range(0, 929), array_column($env['events'], 'order'));
+        self::assertSame(range(0, 929), array_map(static fn (\Ingot\DecodedEvent $e): int => $e->order, $env->events));
     }
 
     public function test_first_identity_event(): void
     {
         $env = EnvelopeLoader::loadBang(self::FIXTURE);
         $first = null;
-        foreach ($env['events'] as $e) {
-            if ($e['kind'] === 'identity') {
+        foreach ($env->events as $e) {
+            if ($e->kind === 'identity') {
                 $first = $e;
                 break;
             }
         }
-        self::assertSame('set', $first['op']);
-        self::assertSame('1034', $first['source']);
-        self::assertSame(1535726805, $first['recorded_at']);
-        self::assertSame(['scheme' => 'cnk', 'code' => '3612173'], $first['data']);
+        self::assertSame('set', $first->op);
+        self::assertSame('1034', $first->source);
+        self::assertSame(1535726805, $first->recordedAt);
+        self::assertSame(['scheme' => 'cnk', 'code' => '3612173'], $first->data->toArray());
     }
 
     public function test_validation_failures(): void
@@ -75,7 +75,7 @@ final class EnvelopeLoaderTest extends TestCase
     {
         [$ok, $env] = EnvelopeLoader::fromMap(['schema_version' => '1', 'events' => [['op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '1', 'recorded_at' => 123]]]);
         self::assertSame('ok', $ok);
-        self::assertSame(123, $env['events'][0]['valid_from']);
+        self::assertSame(123, $env->events[0]->validFrom);
     }
 
     private static function sortByKey(array $a): array
