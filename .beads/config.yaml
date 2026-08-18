@@ -53,4 +53,4 @@
 # - github.org
 # - github.repo
 
-sync.remote: "git+ssh://git@github.com/WardVH/ingot.git"
+sync.remote: "git+ssh://git@github.com/Baldwin-Organization/medipim-ingot.git"
