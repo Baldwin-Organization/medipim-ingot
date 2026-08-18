@@ -413,3 +413,81 @@ defmodule Stress do
 end
 
 Stress.run()
+
+# ── ACT 3 — scale (GH #57): a generated log measures where the pure fold's ceiling falls, ──────
+# and demonstrates fold-once vs refold-per-call on the read path. The Postgres-backed api/
+# read models are the production answer; this keeps the ceiling measured instead of guessed.
+defmodule Scale do
+  import Substrate, only: [claim: 5]
+
+  @at ~D[2026-01-01]
+  # generous: this asserts "does not fall over", not a perf regression gate.
+  @budget_ms 60_000
+
+  def run(sizes \\ [1_000, 10_000]) do
+    IO.puts("\n== ACT 3 — scale: the pure fold, measured ==")
+    Enum.each(sizes, &measure/1)
+  end
+
+  defp measure(n) do
+    claims = generate(n)
+    priority = Priority.new(%{}, [])
+
+    {reconcile_us, events} =
+      :timer.tc(fn ->
+        clusters = Cluster.variants(Substrate.current(claims))
+        IdentityLedger.decide(IdentityLedger.new(), {:reconcile, clusters, @at})
+      end)
+
+    events = events |> Enum.with_index(length(claims)) |> Enum.map(fn {e, i} -> %{e | order: i} end)
+    log = claims ++ events
+
+    {projection_us, projection} = :timer.tc(fn -> History.now(log, priority) end)
+    {members_us, members} = :timer.tc(fn -> Api.members(log) end)
+
+    # The read-path ceiling: 50 lookups against the raw log (refolds per call) vs against the
+    # prebuilt members map (folds once).
+    codes = for i <- 1..50, do: {:cnk, cnk(i)}
+    {per_call_us, _} = :timer.tc(fn -> Enum.each(codes, &Api.resolve_key(log, &1)) end)
+    {fold_once_us, _} = :timer.tc(fn -> Enum.each(codes, &Api.resolve_key(members, &1)) end)
+
+    variants = projection |> Enum.flat_map(& &1.variants) |> length()
+    total_ms = div(reconcile_us + projection_us + members_us, 1000)
+
+    IO.puts(
+      "  #{n} listings -> #{variants} variants: reconcile #{ms(reconcile_us)}, projection #{ms(projection_us)}, " <>
+        "ledger #{ms(members_us)}, 50 lookups raw-log #{ms(per_call_us)} vs fold-once #{ms(fold_once_us)}"
+    )
+
+    if total_ms > @budget_ms do
+      raise "scale ceiling blown: #{n} listings took #{total_ms}ms (budget #{@budget_ms}ms)"
+    end
+
+    if variants != n do
+      raise "scale fold lost listings: expected #{n} variants, got #{variants}"
+    end
+  end
+
+  # One listing = identity + grouping + one attribute, on a unique national code (no bridges —
+  # this measures fold/projection cost, not cluster pathology).
+  defp generate(n) do
+    1..n
+    |> Enum.flat_map(fn i ->
+      code = {:cnk, cnk(i)}
+
+      [
+        claim(:supplier, :identity, %{ref: "S#{i}", codes: [code]}, @at, @at),
+        claim(:supplier, :grouping, %{code: code, product: {:mpn, "P#{i}"}}, @at, @at),
+        claim(:supplier, :attribute, %{code: code, field: :name, value: "Product #{i}"}, @at, @at)
+      ]
+    end)
+    |> Enum.with_index()
+    |> Enum.map(fn {c, i} -> %{c | order: i} end)
+  end
+
+  defp cnk(i), do: to_string(1_000_000 + i)
+
+  defp ms(us), do: "#{Float.round(us / 1000, 1)}ms"
+end
+
+Scale.run()
