@@ -424,13 +424,6 @@ final class IdentityLedger
     }
 
     /**
-     * The keep-heuristic score: [hasGtinSpine, intersectionSizeWithPrior].
-     *
-     * @param array<string, array{0: string, 1: string}> $cluster
-     * @param array<string, array{0: string, 1: string}> $prior
-     * @return array{0: bool, 1: int}
-     */
-    /**
      * Which cluster KEEPS the key on a split — mirrors IdentityLedger.keeper_rank/2.
      *
      * The old rule was "whichever side holds a GTIN". A barcode is explicitly reassignable
