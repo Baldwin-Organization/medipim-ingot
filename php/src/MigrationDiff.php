@@ -13,7 +13,7 @@ namespace Ingot;
 final class MigrationDiff
 {
     /**
-     * @param array{log: list<array<string,mixed>>} $rederivation
+     * @param array{log: list<DomainEvent>} $rederivation
      * @return array{findings: list<array<string,mixed>>, counts: array<string,int>, needs_review: list<array<string,mixed>>}
      */
     public static function build(array $rederivation): array

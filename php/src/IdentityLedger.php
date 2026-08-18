@@ -23,7 +23,7 @@ final class IdentityLedger
      * ['reconcile', clusters, shared, at] (a 3-tuple with no shared defaults to the empty set).
      *
      * @param array{0: string, 1: list<array<string, array{0: string, 1: string}>>, 2?: mixed, 3?: mixed} $request
-     * @return list<array<string,mixed>>
+     * @return list<DomainEvent>
      */
     public static function decide(LedgerState $state, array $request): array
     {
@@ -43,57 +43,55 @@ final class IdentityLedger
         return self::buildEvents($state->members, $outcome, $at);
     }
 
-    /**
-     * Fold one identity event into the ledger.
-     *
-     * @param array<string,mixed> $event
-     */
-    public static function evolve(LedgerState $s, array $event): LedgerState
+    /** Fold one identity event into the ledger. */
+    public static function evolve(LedgerState $s, DomainEvent $event): LedgerState
     {
-        switch ($event['type']) {
-            case Events::TYPE_IDENTITY_MINTED:
-                $members = $s->members;
-                $members[$event['key']] = $event['codes'];
+        if ($event instanceof IdentityMinted) {
+            $members = $s->members;
+            $members[$event->key] = $event->codes;
 
-                return $s->with($members, max($s->next, self::keyNum($event['key']) + 1));
-
-            case Events::TYPE_IDENTITY_MEMBERS_CHANGED:
-                $members = $s->members;
-                $members[$event['key']] = $event['codes'];
-
-                return $s->with($members);
-
-            case Events::TYPE_IDENTITIES_MERGED:
-                $members = $s->members;
-                foreach ($event['from'] as $k) {
-                    if ($k !== $event['into']) {
-                        unset($members[$k]);
-                    }
-                }
-
-                return $s->with($members);
-
-            case Events::TYPE_IDENTITY_SPLIT:
-                $members = $s->members;
-                $members[$event['key']] = $event['kept_codes'];
-                $next = $s->next;
-                foreach ($event['into'] as [$nk, $codes]) {
-                    $members[$nk] = $codes;
-                    $next = max($next, self::keyNum($nk) + 1);
-                }
-
-                return $s->with($members, $next);
-
-            case Events::TYPE_IDENTITY_RETRACTED:
-                $members = $s->members;
-                unset($members[$event['key']]);
-
-                return $s->with($members);
-
-            default:
-                // ConflictFlagged / MergeProposed / ConflictResolved / ClaimAsserted / LegacyIdAssigned
-                return $s;
+            return $s->with($members, max($s->next, self::keyNum($event->key) + 1));
         }
+
+        if ($event instanceof IdentityMembersChanged) {
+            $members = $s->members;
+            $members[$event->key] = $event->codes;
+
+            return $s->with($members);
+        }
+
+        if ($event instanceof IdentitiesMerged) {
+            $members = $s->members;
+            foreach ($event->from as $k) {
+                if ($k !== $event->into) {
+                    unset($members[$k]);
+                }
+            }
+
+            return $s->with($members);
+        }
+
+        if ($event instanceof IdentitySplit) {
+            $members = $s->members;
+            $members[$event->key] = $event->keptCodes;
+            $next = $s->next;
+            foreach ($event->into as [$nk, $codes]) {
+                $members[$nk] = $codes;
+                $next = max($next, self::keyNum($nk) + 1);
+            }
+
+            return $s->with($members, $next);
+        }
+
+        if ($event instanceof IdentityRetracted) {
+            $members = $s->members;
+            unset($members[$event->key]);
+
+            return $s->with($members);
+        }
+
+        // ConflictFlagged / MergeProposed / ConflictResolved / Claim
+        return $s;
     }
 
     /**
@@ -267,7 +265,7 @@ final class IdentityLedger
      *
      * @param array<string, array<string, array{0: string, 1: string}>> $oldMembers
      * @param array{minted: list<string>, split: list<array{0: string, 1: list<array{0: string, 1: array<string, array{0: string, 1: string}>}>}>, proposals: list<array{0: list<string>, 1: array<string, array{0: string, 1: string}>}>, retracted: list<string>, members: array<string, array<string, array{0: string, 1: string}>>} $outcome
-     * @return list<array<string,mixed>>
+     * @return list<DomainEvent>
      */
     private static function buildEvents(array $oldMembers, array $outcome, mixed $at): array
     {
@@ -315,7 +313,7 @@ final class IdentityLedger
      *
      * @param array<string, array<string, array{0: string, 1: string}>> $oldMembers
      * @param array{split: list<array{0: string, 1: list<array{0: string, 1: array<string, array{0: string, 1: string}>}>}>, members: array<string, array<string, array{0: string, 1: string}>>} $outcome
-     * @return list<array<string,mixed>>
+     * @return list<IdentityMembersChanged>
      */
     private static function keepsChanged(array $oldMembers, array $outcome, mixed $at): array
     {

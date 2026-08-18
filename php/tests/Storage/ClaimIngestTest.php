@@ -10,6 +10,7 @@ use Ingot\Catalog;
 use Ingot\Codes;
 use Ingot\IdentityLedger;
 use Ingot\EnvelopeLoader;
+use Ingot\Events;
 use Ingot\Priority;
 use Ingot\Substrate;
 use Ingot\Storage\ClaimIngest;
@@ -59,7 +60,7 @@ final class ClaimIngestTest extends TestCase
         ClaimIngest::backfill($store, [self::rawEnvelope()]);
 
         // Folding the appended log from zero via the read-side Api resolves the product to SK_1.
-        self::assertSame('SK_1', Api::resolveKey($store->log(), ['cnk', '3612173']));
+        self::assertSame('SK_1', Api::resolveKey(Events::fromArrays($store->log()), ['cnk', '3612173']));
     }
 
     public function test_backfill_is_idempotent_per_envelope(): void
@@ -113,7 +114,7 @@ final class ClaimIngestTest extends TestCase
         $env = EnvelopeLoader::loadBang(self::FIXTURE);
         $reintroduced = [];
         foreach (Substrate::current(ClaimMapping::build([$env])['claims']) as $c) {
-            if (($c['data']['code'] ?? null) === $departed) {
+            if (($c->data['code'] ?? null) === $departed) {
                 $reintroduced[] = $c;
             }
         }
@@ -129,12 +130,12 @@ final class ClaimIngestTest extends TestCase
     {
         $ledger = IdentityLedger::new();
         foreach ($log as $event) {
-            $ledger = IdentityLedger::evolve($ledger, $event);
+            $ledger = IdentityLedger::evolve($ledger, $event instanceof \Ingot\DomainEvent ? $event : Events::fromArray($event));
         }
 
         $claims = [];
         foreach ($log as $event) {
-            if (($event['type'] ?? null) === null && isset($event['kind'])) {
+            if (is_array($event) && ($event['type'] ?? null) === null && isset($event['kind'])) {
                 $claims[] = $event;
             }
         }

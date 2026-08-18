@@ -14,7 +14,7 @@ namespace Ingot;
 final class LegacyXref
 {
     /**
-     * @param array{log: list<array<string,mixed>>, ledger: LedgerState} $rederivation
+     * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
      * @return array{key_to_legacy: array<string, list<mixed>>, legacy_to_key: array<string, array<string,mixed>>}
      */
     public static function build(array $rederivation): array
@@ -26,11 +26,11 @@ final class LegacyXref
         // entity => code-set of its grouping codes.
         $entityCodes = [];
         foreach ($groupings as $g) {
-            $e = self::entityKey($g['data']['product']);
+            $e = self::entityKey($g->data['product']);
             if (!isset($entityCodes[$e])) {
-                $entityCodes[$e] = ['value' => $g['data']['product'], 'codes' => []];
+                $entityCodes[$e] = ['value' => $g->data['product'], 'codes' => []];
             }
-            $entityCodes[$e]['codes'][Codes::key($g['data']['code'])] = $g['data']['code'];
+            $entityCodes[$e]['codes'][Codes::key($g->data['code'])] = $g->data['code'];
         }
 
         // SK => {entities, sources, codes} — product lane only.
@@ -38,7 +38,7 @@ final class LegacyXref
         foreach (Lanes::partitionMembers($ledger->members)['product'] as $key => $memberCodes) {
             $contributing = [];
             foreach ($groupings as $g) {
-                if (Sets::member($memberCodes, $g['data']['code'])) {
+                if (Sets::member($memberCodes, $g->data['code'])) {
                     $contributing[] = $g;
                 }
             }
@@ -46,12 +46,12 @@ final class LegacyXref
             $entSeen = [];
             $sources = [];
             foreach ($contributing as $g) {
-                $ek = self::entityKey($g['data']['product']);
+                $ek = self::entityKey($g->data['product']);
                 if (!isset($entSeen[$ek])) {
                     $entSeen[$ek] = true;
-                    $entities[] = $g['data']['product'];
+                    $entities[] = $g->data['product'];
                 }
-                $sources[$g['source']] = true;
+                $sources[$g->source] = true;
             }
             usort($entities, self::compareEntities(...));
             $perKey[$key] = ['entities' => $entities, 'sources' => $sources, 'codes' => $memberCodes];
@@ -77,14 +77,14 @@ final class LegacyXref
     }
 
     /**
-     * @param list<array<string,mixed>> $log
-     * @return list<array<string,mixed>>
+     * @param list<DomainEvent> $log
+     * @return list<Claim>
      */
     private static function groupings(array $log): array
     {
         $out = [];
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED && $e['kind'] === 'grouping') {
+            if ($e instanceof Claim && $e->kind === 'grouping') {
                 $out[] = $e;
             }
         }

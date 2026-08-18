@@ -36,7 +36,9 @@ final class ClaimEvent
     {
         if (($event['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED) {
             if (($event['kind'] ?? null) === 'identity') {
-                $r = Lanes::ofClaim($event);
+                $claim = Events::fromArray($event);
+                \assert($claim instanceof \Ingot\Claim);
+                $r = Lanes::ofClaim($claim);
 
                 return $r[0] === 'ok' ? $r[1] : null;
             }

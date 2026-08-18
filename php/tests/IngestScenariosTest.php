@@ -75,14 +75,14 @@ final class IngestScenariosTest extends TestCase
         $maxClaimOrder = -1;
         $identity = [];
         foreach ($log as $e) {
-            if (($e['type'] ?? null) === Events::TYPE_CLAIM_ASSERTED) {
-                $maxClaimOrder = max($maxClaimOrder, $e['order']);
+            if ($e instanceof \Ingot\Claim) {
+                $maxClaimOrder = max($maxClaimOrder, $e->order);
             } else {
                 $identity[] = $e;
             }
         }
         foreach ($identity as $e) {
-            self::assertGreaterThan($maxClaimOrder, $e['order']);
+            self::assertGreaterThan($maxClaimOrder, $e->order());
         }
         self::assertSame($identity, Api::changesSince($log, $maxClaimOrder));
     }

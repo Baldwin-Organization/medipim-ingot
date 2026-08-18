@@ -53,8 +53,8 @@ final class EnvelopeDecoderTest extends TestCase
         $built = ClaimMapping::build([$env]);
         self::assertNotEmpty($built['claims']);
         foreach ($built['claims'] as $claim) {
-            self::assertArrayHasKey('kind', $claim);
-            self::assertArrayHasKey('order', $claim);
+            self::assertInstanceOf(\Ingot\Claim::class, $claim);
+            self::assertNotNull($claim->order);
         }
     }
 

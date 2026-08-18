@@ -14,12 +14,11 @@ namespace Ingot;
 final class Substrate
 {
     /**
-     * Build a ClaimAsserted. `member_of` data ({member_code, collection}) lowers to an `edge`.
+     * Build a {@see Claim}. `member_of` data ({member_code, collection}) lowers to an `edge`.
      *
      * @param array<string,mixed> $data
-     * @return array<string,mixed>
      */
-    public static function claim(?string $source, string $kind, array $data, mixed $validFrom, mixed $recordedAt): array
+    public static function claim(?string $source, string $kind, array $data, mixed $validFrom, mixed $recordedAt): Claim
     {
         if ($kind === 'member_of' && isset($data['member_code'], $data['collection'])) {
             return self::claim(
@@ -94,15 +93,14 @@ final class Substrate
      * The slot a claim addresses — its dedup key in `current/1`. Returned as a flat list whose
      * first element is the kind tag, mirroring the Elixir tuple shapes.
      *
-     * @param array<string,mixed> $claim
      * @return list<mixed>
      */
-    public static function slot(array $claim): array
+    public static function slot(Claim $claim): array
     {
-        $s = $claim['source'];
-        $d = $claim['data'];
+        $s = $claim->source;
+        $d = $claim->data;
 
-        return match ($claim['kind']) {
+        return match ($claim->kind) {
             'identity' => [$s, 'identity', $d['ref']],
             'identity_evidence' => [$s, 'identity_evidence', $d['left'], $d['right']],
             'grouping' => [$s, 'grouping', $d['code']],
@@ -110,23 +108,23 @@ final class Substrate
             'media' => [$s, 'media', $d['asset'], $d['target']],
             'edge' => [$s, 'edge', $d['from'], $d['relation'], $d['to']],
             'member_of' => [$s, 'member_of', $d['member_code'], $d['collection']],
-            default => [$s, $claim['kind']],
+            default => [$s, $claim->kind],
         };
     }
 
     /**
      * Collapse the claim log to the latest claim per slot (highest `order` wins).
      *
-     * @param list<array<string,mixed>> $claims
-     * @return list<array<string,mixed>>
+     * @param list<Claim> $claims
+     * @return list<Claim>
      */
     public static function current(array $claims): array
     {
-        /** @var array<string, array<string,mixed>> $bySlot */
+        /** @var array<string, Claim> $bySlot */
         $bySlot = [];
         foreach ($claims as $c) {
             $key = self::slotKey(self::slot($c));
-            if (!isset($bySlot[$key]) || ($c['order'] ?? 0) > ($bySlot[$key]['order'] ?? 0)) {
+            if (!isset($bySlot[$key]) || ($c->order ?? 0) > ($bySlot[$key]->order ?? 0)) {
                 $bySlot[$key] = $c;
             }
         }

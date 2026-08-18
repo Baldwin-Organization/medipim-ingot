@@ -15,7 +15,7 @@ namespace Ingot;
 final class Cluster
 {
     /**
-     * @param list<array<string,mixed>> $liveClaims
+     * @param list<Claim> $liveClaims
      * @param array<string, array{0: string, 1: string}> $shared a code-set
      * @return list<array<string, array{0: string, 1: string}>> a list of code-sets (the clusters)
      */
@@ -30,10 +30,10 @@ final class Cluster
     {
         $sets = [];
         foreach ($liveClaims as $c) {
-            if ($c['kind'] !== 'identity') {
+            if ($c->kind !== 'identity') {
                 continue;
             }
-            $codeSet = Sets::of($c['data']['codes']);
+            $codeSet = Sets::of($c->data['codes']);
             if ($codeSet === []) {
                 continue;
             }
@@ -49,16 +49,16 @@ final class Cluster
             $samePairs = [];
             foreach ($liveClaims as $claim) {
                 if (
-                    ($claim['kind'] ?? null) !== 'identity_evidence'
-                    || !in_array($claim['source'], $trustedSources, true)
+                    $claim->kind !== 'identity_evidence'
+                    || !in_array($claim->source, $trustedSources, true)
                 ) {
                     continue;
                 }
 
-                $pair = self::orderedPair($claim['data']['left'], $claim['data']['right']);
-                if ($claim['data']['relation'] === 'distinct') {
+                $pair = self::orderedPair($claim->data['left'], $claim->data['right']);
+                if ($claim->data['relation'] === 'distinct') {
                     $distinctPairs[self::pairKey(...$pair)] = $pair;
-                } elseif ($claim['data']['relation'] === 'same') {
+                } elseif ($claim->data['relation'] === 'same') {
                     $samePairs[] = $pair;
                 }
             }

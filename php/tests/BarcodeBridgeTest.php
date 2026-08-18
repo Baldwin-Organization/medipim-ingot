@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Ingot\Tests;
 
+use Ingot\Claim;
 use Ingot\Cluster;
+use Ingot\ConflictFlagged;
 use Ingot\Events;
 use Ingot\IdentityLedger;
 use Ingot\Substrate;
@@ -64,10 +66,7 @@ final class BarcodeBridgeTest extends TestCase
 
         $flagged = false;
         foreach ($events as $event) {
-            if (
-                ($event['type'] ?? null) === Events::TYPE_CONFLICT_FLAGGED
-                && ($event['subject'][0] ?? null) === 'identity_conflict'
-            ) {
+            if ($event instanceof ConflictFlagged && ($event->subject[0] ?? null) === 'identity_conflict') {
                 $flagged = true;
             }
         }
@@ -123,13 +122,13 @@ final class BarcodeBridgeTest extends TestCase
     // ── helpers ──────────────────────────────────────────────────────────────
 
     /** @param list<array{0: string, 1: string}> $codes */
-    private function listing(string $ref, array $codes): array
+    private function listing(string $ref, array $codes): Claim
     {
         return Substrate::claim('supplier', 'identity', ['ref' => $ref, 'codes' => $codes], 'd1', 'd1');
     }
 
     /**
-     * @param list<array<string,mixed>> $claims
+     * @param list<Claim> $claims
      *
      * @return list<array<string, array{0: string, 1: string}>>
      */
@@ -138,8 +137,7 @@ final class BarcodeBridgeTest extends TestCase
         $stamped = [];
         $i = 1;
         foreach ($claims as $claim) {
-            $claim['order'] = $i++;
-            $stamped[] = $claim;
+            $stamped[] = $claim->withOrder($i++);
         }
 
         return Cluster::variants(Substrate::current($stamped));

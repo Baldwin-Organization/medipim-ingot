@@ -113,7 +113,7 @@ final class ClaimMappingTest extends TestCase
 
         $byKind = [];
         foreach ($built['claims'] as $c) {
-            $byKind[$c['kind']] = ($byKind[$c['kind']] ?? 0) + 1;
+            $byKind[$c->kind] = ($byKind[$c->kind] ?? 0) + 1;
         }
         ksort($byKind);
         self::assertSame(['attribute' => 159, 'edge' => 20, 'grouping' => 22, 'identity' => 14], $byKind);
@@ -165,9 +165,9 @@ final class ClaimMappingTest extends TestCase
     public function test_one_identity_claim_per_listing(): void
     {
         $env = $this->envelope(7, [$this->id('A', 'set', 'cnk', '111', 10), $this->id('B', 'set', 'cnk', '222', 10)]);
-        $ids = array_filter(ClaimMapping::build([$env])['claims'], static fn ($c): bool => $c['kind'] === 'identity');
+        $ids = array_filter(ClaimMapping::build([$env])['claims'], static fn ($c): bool => $c->kind === 'identity');
         self::assertCount(2, $ids);
-        $refs = array_map(static fn ($c): string => $c['data']['ref'], $ids);
+        $refs = array_map(static fn ($c): string => $c->data['ref'], $ids);
         sort($refs);
         self::assertSame(['7:A', '7:B'], $refs);
     }
@@ -181,14 +181,14 @@ final class ClaimMappingTest extends TestCase
         ]);
         $attr = null;
         foreach (ClaimMapping::build([$env])['claims'] as $c) {
-            if ($c['kind'] === 'attribute') {
+            if ($c->kind === 'attribute') {
                 $attr = $c;
                 break;
             }
         }
-        self::assertSame(['cnk', '111'], $attr['data']['code']);
-        self::assertSame('name:fr', $attr['data']['field']);
-        self::assertSame('Crème', $attr['data']['value']);
+        self::assertSame(['cnk', '111'], $attr->data['code']);
+        self::assertSame('name:fr', $attr->data['field']);
+        self::assertSame('Crème', $attr->data['value']);
     }
 
     // ── the real 422156 fixture ──────────────────────────────────────────────────

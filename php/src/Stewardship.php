@@ -19,7 +19,7 @@ final class Stewardship
      *
      * @param array<string, array<string, array{0: string, 1: string}>> $members
      * @param list<string> $keys
-     * @return list<array<string,mixed>>
+     * @return list<DomainEvent>
      */
     public static function approveMerge(
         array $members,
@@ -80,10 +80,10 @@ final class Stewardship
      * Flag SOURCE WITHDRAWALS: a source retracted its listing (codes: []) but the key
      * survives under other sources.
      *
-     * @param list<array<string,mixed>> $oldLive current identity claims BEFORE the retraction
-     * @param list<array<string,mixed>> $newLive current identity claims AFTER the retraction
+     * @param list<Claim> $oldLive current identity claims BEFORE the retraction
+     * @param list<Claim> $newLive current identity claims AFTER the retraction
      * @param array<string, array<string, array{0: string, 1: string}>> $members post-reconcile ledger members
-     * @return list<array<string,mixed>> ConflictFlagged events with subject ['source_withdrew', key]
+     * @return list<ConflictFlagged> flags with subject ['source_withdrew', key]
      */
     public static function detectWithdrawals(array $oldLive, array $newLive, array $members, mixed $at): array
     {
@@ -115,7 +115,7 @@ final class Stewardship
      * For each key, compute which sources contribute non-empty identity claims with codes
      * that belong to that key's code-set.
      *
-     * @param list<array<string,mixed>> $liveClaims
+     * @param list<Claim> $liveClaims
      * @param array<string, array<string, array{0: string, 1: string}>> $members
      * @return array<string, list<string>> key => list of source names
      */
@@ -123,16 +123,16 @@ final class Stewardship
     {
         $result = [];
         foreach ($liveClaims as $claim) {
-            if (($claim['kind'] ?? null) !== 'identity') {
+            if ($claim->kind !== 'identity') {
                 continue;
             }
-            if (empty($claim['data']['codes'])) {
+            if (empty($claim->data['codes'])) {
                 continue;
             }
             foreach ($members as $key => $codes) {
-                foreach ($claim['data']['codes'] as $code) {
+                foreach ($claim->data['codes'] as $code) {
                     if (Sets::member($codes, $code)) {
-                        $result[$key][] = $claim['source'];
+                        $result[$key][] = $claim->source;
                         break;
                     }
                 }
