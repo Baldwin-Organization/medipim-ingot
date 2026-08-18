@@ -30,6 +30,25 @@ final class ClaimMapping
         'leaflets' => ['leaflet_id', 'media', 'depicts'],
     ];
 
+    // One fold's working state: every output of a build reads the same per-listing identity
+    // periods, and canonical/rejected ask the same codesAt questions — so one instance per
+    // build holds the fold and its memos, and is unreachable again when build() returns.
+
+    /** @var array<string, list<Period>> the per-listing identity fold every output reads */
+    private readonly array $periods;
+
+    /** @var array<string, list<Code>> codesAt memo, keyed (entity, source, at) */
+    private array $codesAtMemo = [];
+
+    /** @var array<string, list<string>>|null lazy entity → listing-keys index for unsourced lookups */
+    private ?array $entityListings = null;
+
+    /** @param list<Envelope> $envelopes */
+    private function __construct(private readonly array $envelopes)
+    {
+        $this->periods = self::listingPeriods($envelopes);
+    }
+
     /**
      * Map envelopes to ['claims' => [Claim...], 'shared' => code-set].
      *
@@ -38,16 +57,12 @@ final class ClaimMapping
      */
     public static function build(array $envelopes): array
     {
-        // One identity fold serves all three outputs: canonical anchors on the periods, `shared`
-        // reads each listing's final (= last period's) codes, and `rejected` re-asks the same
-        // codesAt questions canonical just answered — so the answers are cached and shared.
-        $periods = self::listingPeriods($envelopes);
-        $cache = [];
+        $fold = new self($envelopes);
 
         return [
-            'claims' => self::stamp(CanonicalClaims::toEngineBang(self::canonical($envelopes, $periods, $cache))),
-            'shared' => self::sharedCodes(self::finalCodes($periods))->toSets(),
-            'rejected' => self::rejected($envelopes, $periods, $cache),
+            'claims' => self::stamp(CanonicalClaims::toEngineBang($fold->canonical())),
+            'shared' => self::sharedCodes(self::finalCodes($fold->periods))->toSets(),
+            'rejected' => $fold->rejectedClaims(),
         ];
     }
 
@@ -59,7 +74,7 @@ final class ClaimMapping
      */
     public static function canonicalClaims(array $envelopes): array
     {
-        return self::canonical($envelopes);
+        return (new self($envelopes))->canonical();
     }
 
     /**
@@ -75,17 +90,14 @@ final class ClaimMapping
     }
 
     /**
-     * @param list<Envelope> $envelopes
-     * @param array<string, list<Period>>|null $periods
-     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
-    private static function canonical(array $envelopes, ?array $periods = null, array &$cache = []): array
+    private function canonical(): array
     {
         // A claim is ABOUT a code — cnk, ean, cn — and about ONE OR MORE of them. So the anchor is
         // every code the asserting source itself held AT THE TIME it spoke, read out of that
         // listing's periods. Mirrors ClaimMapping.codes_at/4 in lib/ingest/claim_mapping.ex.
-        $periods ??= self::listingPeriods($envelopes);
+        $periods = $this->periods;
 
         $orderedKeys = array_keys($periods);
         sort($orderedKeys, SORT_STRING);
@@ -127,12 +139,12 @@ final class ClaimMapping
         }
 
         $attribute = [];
-        foreach ($envelopes as $env) {
+        foreach ($this->envelopes as $env) {
             foreach ($env->events as $ev) {
                 if ($ev->kind !== 'attribute') {
                     continue;
                 }
-                foreach (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) as $code) {
+                foreach ($this->codesAtMemoized($env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
                     $attribute[] = [
                         'kind' => 'attribute',
                         'source' => $ev->source,
@@ -147,7 +159,7 @@ final class ClaimMapping
         }
 
         $memberOf = [];
-        foreach ($envelopes as $env) {
+        foreach ($this->envelopes as $env) {
             foreach ($env->events as $ev) {
                 if ($ev->kind !== 'edge') {
                     continue;
@@ -161,7 +173,7 @@ final class ClaimMapping
                 if (isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
                     continue;
                 }
-                foreach (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) as $code) {
+                foreach ($this->codesAtMemoized($env->legacyEntity, $ev->source, $ev->recordedAt) as $code) {
                     $memberOf[] = [
                         'kind' => 'member_of',
                         'source' => $ev->source,
@@ -175,7 +187,7 @@ final class ClaimMapping
             }
         }
 
-        return array_merge($identity, $grouping, $attribute, $memberOf, self::laneEntities($envelopes, $periods, $cache));
+        return array_merge($identity, $grouping, $attribute, $memberOf, $this->laneEntities());
     }
 
     /**
@@ -183,14 +195,11 @@ final class ClaimMapping
      * emit an identity claim in the entity's lane + a typed edge back to every code the entity
      * held at that instant.
      *
-     * @param list<Envelope> $envelopes
-     * @param array<string, list<Period>> $periods
-     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
-    private static function laneEntities(array $envelopes, array $periods, array &$cache = []): array
+    private function laneEntities(): array
     {
-        $refs = self::laneRefs($envelopes);
+        $refs = self::laneRefs($this->envelopes);
 
         $keys = array_keys($refs);
         sort($keys, SORT_STRING);
@@ -220,7 +229,7 @@ final class ClaimMapping
                 // Media events are entity-scoped (source: nil in real dumps), so one edge per
                 // product code the entity held then — the same image reaches every product it was
                 // listed against.
-                foreach (self::codesAtCached($periods, $ref['entity'], null, $at, $cache) as $code) {
+                foreach ($this->codesAtMemoized($ref['entity'], null, $at) as $code) {
                     $out[] = [
                         'kind' => 'edge',
                         'source' => $ref['source'],
@@ -449,21 +458,23 @@ final class ClaimMapping
      * has nothing to be about, so it is refused rather than dropped quietly.
      *
      * @param list<Envelope> $envelopes
-     * @param array<string, list<Period>>|null $periods
-     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<array<string,mixed>>
      */
-    public static function rejected(array $envelopes, ?array $periods = null, array &$cache = []): array
+    public static function rejected(array $envelopes): array
     {
-        $periods ??= self::listingPeriods($envelopes);
+        return (new self($envelopes))->rejectedClaims();
+    }
 
+    /** @return list<array<string,mixed>> */
+    private function rejectedClaims(): array
+    {
         $out = [];
-        foreach ($envelopes as $env) {
+        foreach ($this->envelopes as $env) {
             foreach ($env->events as $ev) {
                 if (!in_array($ev->kind, ['attribute', 'edge'], true)) {
                     continue;
                 }
-                if (self::codesAtCached($periods, $env->legacyEntity, $ev->source, $ev->recordedAt, $cache) !== []) {
+                if ($this->codesAtMemoized($env->legacyEntity, $ev->source, $ev->recordedAt) !== []) {
                     continue;
                 }
                 $out[] = [
@@ -502,34 +513,32 @@ final class ClaimMapping
     }
 
     /**
-     * codesAt with a per-build memo — canonical and rejected ask the same (entity, source, at)
-     * questions; codesAt is pure over $periods, so the first answer serves both. Unsourced
-     * lookups additionally go through a lazily built entity → listing-keys index: the public
-     * codesAt scans every listing in $periods per call, which is O(batch²) across a multi-entity
+     * codesAt with the build's memo — canonical and rejected ask the same (entity, source, at)
+     * questions; codesAt is pure over the fold's periods, so the first answer serves both.
+     * Unsourced lookups additionally go through the lazily built entity → listing-keys index:
+     * the public codesAt scans every listing per call, which is O(batch²) across a multi-entity
      * backfill batch (most media events are unsourced).
      *
-     * @param array<string, list<Period>> $periods
-     * @param array{at?: array<string, list<Code>>, listings?: array<string, list<string>>} $cache
      * @return list<Code>
      */
-    private static function codesAtCached(array $periods, mixed $entity, ?string $source, int $at, array &$cache): array
+    private function codesAtMemoized(mixed $entity, ?string $source, int $at): array
     {
         $key = (is_int($entity) ? 'i:' : 's:').$entity."\x1f".($source ?? "\x00")."\x1f".$at;
-        if (isset($cache['at'][$key])) {
-            return $cache['at'][$key];
+        if (isset($this->codesAtMemo[$key])) {
+            return $this->codesAtMemo[$key];
         }
 
         if ($source !== null) {
-            return $cache['at'][$key] = self::codesAt($periods, $entity, $source, $at);
+            return $this->codesAtMemo[$key] = self::codesAt($this->periods, $entity, $source, $at);
         }
 
-        $cache['listings'] ??= self::entityListings($periods);
+        $this->entityListings ??= self::entityListings($this->periods);
         $union = CodeSet::none();
-        foreach ($cache['listings'][(string) $entity] ?? [] as $listingKey) {
-            $union = $union->union(self::codesCovering($periods[$listingKey], $at));
+        foreach ($this->entityListings[(string) $entity] ?? [] as $listingKey) {
+            $union = $union->union(self::codesCovering($this->periods[$listingKey], $at));
         }
 
-        return $cache['at'][$key] = $union->sorted();
+        return $this->codesAtMemo[$key] = $union->sorted();
     }
 
     /**
