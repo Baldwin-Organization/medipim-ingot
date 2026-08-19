@@ -300,6 +300,31 @@ final class ClaimIngestTest extends TestCase
         self::assertNull($store->resolveLegacy('medipim-be', '555'));
     }
 
+    // ── claim-shape fingerprint version (medipimv2-sgh.12) ────────────────────────
+
+    public function test_envelope_fingerprint_is_derived_from_the_claim_shape_version(): void
+    {
+        $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
+
+        $expected = hash('sha256', \Ingot\ClaimShape::VERSION."\n".json_encode($env->toArray(), JSON_THROW_ON_ERROR));
+        self::assertSame($expected, ClaimIngest::envelopeFingerprint($env));
+    }
+
+    public function test_envelope_fingerprint_would_differ_across_claim_shape_versions(): void
+    {
+        // Proves the version is actually mixed into the hash (not just declared): a differently
+        // versioned fingerprint of the SAME envelope payload must differ, or a claim-shape change
+        // would silently skip previously-seen entities via backfill_seen.
+        $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
+        $payload = json_encode($env->toArray(), JSON_THROW_ON_ERROR);
+
+        self::assertNotSame(
+            hash('sha256', '1'."\n".$payload),
+            hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload),
+        );
+        self::assertSame(hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload), ClaimIngest::envelopeFingerprint($env));
+    }
+
     public function test_schema_statements_apply_the_prefix(): void
     {
         $statements = Schema::statements('gr_');

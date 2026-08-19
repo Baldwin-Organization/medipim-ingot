@@ -6,6 +6,7 @@ namespace Ingot\Storage;
 
 use Ingot\Claim;
 use Ingot\ClaimMapping;
+use Ingot\ClaimShape;
 use Ingot\Codes;
 use Ingot\ConflictFlagged;
 use Ingot\DomainEvent;
@@ -558,7 +559,18 @@ final class ClaimIngest
     /** Content fingerprint for replay-is-a-no-op (stable for identical content). */
     private static function fingerprint(Envelope $env): string
     {
-        return hash('sha256', json_encode($env->toArray(), JSON_THROW_ON_ERROR));
+        return self::envelopeFingerprint($env);
+    }
+
+    /**
+     * The backfill idempotency fingerprint: the envelope's content, salted with
+     * {@see ClaimShape::VERSION} so a claim-shape change invalidates every `backfill_seen` marker
+     * instead of silently leaving already-ingested entities un-reconciled under the new shape
+     * (medipimv2-sgh.12).
+     */
+    public static function envelopeFingerprint(Envelope $env): string
+    {
+        return hash('sha256', ClaimShape::VERSION."\n".json_encode($env->toArray(), JSON_THROW_ON_ERROR));
     }
 
     /**
