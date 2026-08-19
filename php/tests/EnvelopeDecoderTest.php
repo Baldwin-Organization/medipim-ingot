@@ -7,6 +7,7 @@ namespace Ingot\Tests;
 use Ingot\ClaimMapping;
 use Ingot\EnvelopeDecoder;
 use Ingot\EnvelopeLoader;
+use Ingot\IdentityScheme;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -78,6 +79,24 @@ final class EnvelopeDecoderTest extends TestCase
         self::assertSame('ok', $ok);
         $built = ClaimMapping::build([$env]);
         self::assertNotEmpty($built['claims']);
+    }
+
+    public function test_identity_scheme_accepts_enum(): void
+    {
+        $deltas = [
+            ['created_at' => 1000, 'created_by' => null, 'tag' => null, 'events' => [
+                ['1', 'title:nl', 'Bijsluiter'],
+            ]],
+        ];
+
+        $decoded = EnvelopeDecoder::decode(
+            $deltas,
+            'medipim-be',
+            9001,
+            ['identity_scheme' => IdentityScheme::TextId],
+        );
+
+        self::assertSame('text_id', $decoded['events'][0]['scheme']);
     }
 
     /** Recursively key-sort assoc maps (key-order-insensitive) while preserving list order + types. */

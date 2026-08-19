@@ -11,13 +11,16 @@ namespace Ingot;
  * each lane folds its own ledger under a lane-qualified surrogate-key prefix. `uuid` is the one
  * shared (lane-neutral) scheme, so a claim made of only lane-neutral codes must carry an explicit
  * `entity`. Cross-lane bridging is structurally impossible — the lanes are disjoint folds.
+ *
+ * Prefer the {@see Lane} / {@see IdentityScheme} enums at call sites; the string helpers here remain
+ * for the engine's internal wire shapes and for backward compatibility.
  */
 final class Lanes
 {
     /** @var list<string> */
     public const LANES = ['product', 'substance', 'description', 'media'];
 
-    /** scheme => lane. Anything unlisted is 'product' (every pre-lane scheme was a product code). */
+    /** Non-product scheme => lane. Anything unlisted is 'product' (every pre-lane scheme was a product code). */
     private const LANE_OF = [
         'cas' => 'substance',
         'unii' => 'substance',
@@ -27,46 +30,71 @@ final class Lanes
         'leaflet_id' => 'media',
     ];
 
-    /** Lane-qualified surrogate-key prefixes. 'product' keeps the legacy "SK". */
-    private const PREFIX = ['product' => 'SK', 'substance' => 'SUB', 'description' => 'DSC', 'media' => 'MED'];
-
     /** @return list<string> */
     public static function lanes(): array
     {
-        return self::LANES;
+        return array_map(static fn (Lane $lane): string => $lane->value, Lane::cases());
     }
 
     public static function prefix(string $lane): string
     {
-        return self::PREFIX[$lane];
+        return Lane::from($lane)->prefix();
     }
 
     /** Lane atom for a wire entity name ("description" => 'description'), or null if unknown. */
     public static function parse(string $name): ?string
     {
-        return in_array($name, self::LANES, true) ? $name : null;
+        return self::tryParse($name)?->value;
+    }
+
+    public static function tryParse(string $name): ?Lane
+    {
+        return Lane::tryFrom($name);
     }
 
     /** Lane of one code scheme. 'uuid' is shared (null); unknown schemes default to 'product'. */
     public static function laneOfScheme(string $scheme): ?string
     {
+        $lane = self::ofScheme($scheme);
+
+        return $lane?->value;
+    }
+
+    /**
+     * Typed lane of one code scheme. 'uuid' is shared (null); unknown schemes default to Product.
+     * Synthetic lane-anchor schemes ({@see IdentityScheme}) resolve via their enum.
+     */
+    public static function ofScheme(string $scheme): ?Lane
+    {
         if ($scheme === 'uuid') {
             return null;
         }
 
-        return self::LANE_OF[$scheme] ?? 'product';
+        $identity = IdentityScheme::tryFrom($scheme);
+        if ($identity !== null) {
+            return $identity->lane();
+        }
+
+        return isset(self::LANE_OF[$scheme])
+            ? Lane::from(self::LANE_OF[$scheme])
+            : Lane::Product;
     }
 
     /** Lane of a surrogate key, by its prefix ("SUB_3" => 'substance'). */
     public static function laneOfKey(string $key): string
     {
-        foreach (['substance', 'description', 'media'] as $lane) {
-            if (str_starts_with($key, self::PREFIX[$lane].'_')) {
+        return self::ofKey($key)->value;
+    }
+
+    public static function ofKey(string $key): Lane
+    {
+        foreach ([Lane::Substance, Lane::Description, Lane::Media] as $lane) {
+            if (str_starts_with($key, $lane->prefix().'_')) {
                 return $lane;
             }
         }
 
-        return 'product';
+        return Lane::Product;
     }
 
     /**

@@ -23,13 +23,14 @@ namespace Ingot;
  *   ]
  * A `fields` value that is a locale map (assoc array) emits one event per locale; any other value is
  * a single scalar event. For a non-product lane (descriptions/media) whose snapshot carries no
- * identity code, pass `['identity_scheme' => 'text_id'|'asset_id']` so the entity mints a lane record.
+ * identity code, pass `['identity_scheme' => IdentityScheme::TextId|AssetId]` (or the wire string)
+ * so the entity mints a lane record.
  */
 final class SnapshotTranslator
 {
     /**
      * @param list<array{source?: ?string, fields?: array<string,mixed>, collections?: array<string, list<mixed>>}> $perSource
-     * @param array{identity_fields?: array<string,true>, identity_scheme?: string, identity_source?: string, by?: mixed, tag?: ?string} $opts
+     * @param array{identity_fields?: array<string,true>, identity_scheme?: IdentityScheme|string, identity_source?: string, by?: mixed, tag?: ?string} $opts
      * @return array<string,mixed> a contract-C envelope map (feed to ClaimIngest::live)
      */
     public static function toEnvelope(array $perSource, string $sourceSystem, int|string $legacyEntity, ?int $recordedAt = null, array $opts = []): array
