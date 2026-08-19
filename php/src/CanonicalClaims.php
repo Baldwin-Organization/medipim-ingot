@@ -62,7 +62,7 @@ final class CanonicalClaims
             $data['entity'] = $lane;
         }
 
-        return Substrate::claim($m['source'], 'identity', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'identity', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**
@@ -76,7 +76,7 @@ final class CanonicalClaims
         }
         $data = ['from' => self::codeBang($m['from']), 'relation' => $relation, 'to' => self::codeBang($m['to'])];
 
-        return Substrate::claim($m['source'], 'edge', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'edge', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**
@@ -86,7 +86,7 @@ final class CanonicalClaims
     {
         $data = ['code' => self::codeBang($m['code']), 'field' => $m['field'], 'value' => $m['value']];
 
-        return Substrate::claim($m['source'], 'attribute', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'attribute', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**
@@ -97,7 +97,7 @@ final class CanonicalClaims
         $role = ($m['role'] ?? null) === 'primary' ? 'primary' : 'secondary';
         $data = ['asset' => ['dam', $m['asset']], 'target' => self::codeBang($m['target']), 'role' => $role, 'uri' => $m['uri']];
 
-        return Substrate::claim($m['source'], 'media', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'media', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**
@@ -107,7 +107,7 @@ final class CanonicalClaims
     {
         $data = ['code' => self::codeBang($m['code']), 'product' => $m['product']];
 
-        return Substrate::claim($m['source'], 'grouping', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'grouping', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**
@@ -117,7 +117,7 @@ final class CanonicalClaims
     {
         $data = ['member_code' => self::codeBang($m['code']), 'collection' => [$m['collection'], $m['member']]];
 
-        return Substrate::claim($m['source'], 'member_of', $data, self::validFrom($m, $at), self::recordedAt($m, $at));
+        return Substrate::claim($m['source'], 'member_of', $data, self::validFrom($m, $at), self::recordedAt($m, $at), $m['valid_to'] ?? null);
     }
 
     /**

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Ingot;
 
 /**
- * The customer read layer — a MINIMAL port of `Api` (lib/golden_record_core.ex), limited to the
- * Date-free entrypoints the 422156 ingest path exercises: `resolveKey` (code → current owner key),
- * `changesSince` (the identity-event change feed), and `identityStatus`. The full `Api` (lookup/get
- * via History, which needs Date comparisons) is out of scope.
+ * The customer read layer — ported from `GoldenRecord.Api` (lib/golden_record/api.ex). Two rules
+ * make splits/merges survivable: customers address by CODE (resolved to the current owner), not
+ * by surrogate key, and every key carries an identity status so a stale key redirects instead of
+ * breaking. `lookup`/`get` answer point-in-time via {@see History::now}.
  */
 final class Api
 {
@@ -70,6 +70,60 @@ final class Api
         }
 
         return IdentityStatus::active();
+    }
+
+    /**
+     * Customer lookup by code — the robust access pattern. `['ok', record]` with the current
+     * record + identity block, or `['not_found', canonicalCode]`.
+     *
+     * Like the Elixir raw-log lookup, this refolds the ENTIRE log per call (GH #57) — fine at
+     * fixture scale; callers fetching many keys prebuild `History::now` and use `getProjected`.
+     *
+     * @param list<DomainEvent> $log
+     * @param array{0: string, 1: string} $code
+     * @return array{0: 'ok', 1: array{key: string, identity: IdentityStatus, variant: ?Variant}}|array{0: 'not_found', 1: array{0: string, 1: string}}
+     */
+    public static function lookup(array $log, array $code, Priority|callable $priority): array
+    {
+        $key = self::resolveKey($log, $code);
+        if ($key === null) {
+            return ['not_found', Codes::canonicalize($code)];
+        }
+
+        return ['ok', self::get($log, $key, $priority)];
+    }
+
+    /**
+     * Fetch by surrogate key with its identity status (a stale key still answers, with a redirect).
+     *
+     * @param list<DomainEvent> $log
+     * @return array{key: string, identity: IdentityStatus, variant: ?Variant}
+     */
+    public static function get(array $log, string $key, Priority|callable $priority): array
+    {
+        return self::getProjected(History::now($log, $priority), $log, $key);
+    }
+
+    /**
+     * `get` with the `History::now` projection prebuilt, for callers fetching many keys.
+     *
+     * @param list<GoldenRecord> $projection
+     * @param list<DomainEvent> $log
+     * @return array{key: string, identity: IdentityStatus, variant: ?Variant}
+     */
+    public static function getProjected(array $projection, array $log, string $key): array
+    {
+        $variant = null;
+        foreach ($projection as $record) {
+            foreach ($record->variants as $v) {
+                if ($v->key === $key) {
+                    $variant = $v;
+                    break 2;
+                }
+            }
+        }
+
+        return ['key' => $key, 'identity' => self::identityStatus($log, $key), 'variant' => $variant];
     }
 
     /**

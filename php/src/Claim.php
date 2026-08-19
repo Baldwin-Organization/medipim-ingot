@@ -19,6 +19,7 @@ final readonly class Claim implements DomainEvent
         public mixed $validFrom,
         public mixed $recordedAt,
         public ?int $order = null,
+        public mixed $validTo = null,
     ) {
     }
 
@@ -34,7 +35,7 @@ final readonly class Claim implements DomainEvent
 
     public function withOrder(int $order): static
     {
-        return new self($this->source, $this->kind, $this->data, $this->validFrom, $this->recordedAt, $order);
+        return new self($this->source, $this->kind, $this->data, $this->validFrom, $this->recordedAt, $order, $this->validTo);
     }
 
     public function toArray(): array
@@ -45,6 +46,7 @@ final readonly class Claim implements DomainEvent
             'kind' => $this->kind,
             'data' => $this->data,
             'valid_from' => $this->validFrom,
+            'valid_to' => $this->validTo,
             'recorded_at' => $this->recordedAt,
             'order' => $this->order,
         ];
