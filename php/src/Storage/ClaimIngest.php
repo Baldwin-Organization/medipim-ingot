@@ -532,7 +532,7 @@ final class ClaimIngest
     /** The deterministic claim identity (idempotent resubmission): {source, kind, data, valid_from}. */
     private static function claimIdentity(Claim $claim): string
     {
-        return json_encode([$claim->source, $claim->kind, $claim->data, $claim->validFrom], JSON_THROW_ON_ERROR);
+        return json_encode([$claim->source, $claim->kind, $claim->data, $claim->validFrom, $claim->validTo], JSON_THROW_ON_ERROR);
     }
 
     /**

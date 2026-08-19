@@ -14,5 +14,5 @@ namespace Ingot;
  */
 final class ClaimShape
 {
-    public const VERSION = 2;
+    public const VERSION = 3;
 }

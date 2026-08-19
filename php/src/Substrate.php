@@ -18,7 +18,7 @@ final class Substrate
      *
      * @param array<string,mixed> $data
      */
-    public static function claim(?string $source, string $kind, array $data, mixed $validFrom, mixed $recordedAt): Claim
+    public static function claim(?string $source, string $kind, array $data, mixed $validFrom, mixed $recordedAt, mixed $validTo = null): Claim
     {
         if ($kind === 'member_of' && isset($data['member_code'], $data['collection'])) {
             return self::claim(
@@ -26,11 +26,12 @@ final class Substrate
                 'edge',
                 ['from' => $data['member_code'], 'relation' => 'member_of', 'to' => $data['collection']],
                 $validFrom,
-                $recordedAt
+                $recordedAt,
+                $validTo
             );
         }
 
-        return Events::claimAsserted($source, $kind, self::normalize($kind, $data), $validFrom, $recordedAt);
+        return Events::claimAsserted($source, $kind, self::normalize($kind, $data), $validFrom, $recordedAt, null, $validTo);
     }
 
     /**
