@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ingot\Tests;
 
+use Ingot\Api;
 use Ingot\Catalog;
 use Ingot\Claim;
 use Ingot\Cluster;
@@ -334,6 +335,40 @@ final class EngineTest extends TestCase
     }
 
     // ── shared codes ──────────────────────────────────────────────────────────────
+
+    public function test_a_code_held_by_two_keys_resolves_to_the_byte_wise_smallest(): void
+    {
+        // gr-bf0: a held conflict can leave one code in two keys' sets. Elixir resolves in
+        // term-sorted key order — "SK_10" < "SK_2" byte-wise — where insertion order picked SK_2.
+        $log = [
+            Events::identityMinted('SK_2', Sets::of([['gtin', '7777'], ['cnk', '111']]), 'd1', 1),
+            Events::identityMinted('SK_10', Sets::of([['gtin', '7777'], ['cnk', '222']]), 'd1', 2),
+        ];
+
+        self::assertSame('SK_10', Api::resolveKey($log, ['gtin', '7777']));
+    }
+
+    public function test_split_tie_break_follows_byte_wise_signature_order(): void
+    {
+        // gr-51z: two clusters overlap SK_1 via one barcode each and bring cnk values of
+        // different digit widths; keepScores tie, so Elixir keeps the cluster whose sorted code
+        // list is byte-wise smallest — 'cnk 1035' < 'cnk 44' (numeric comparison says otherwise).
+        $res1 = IdentityLedger::decide(IdentityLedger::new(), ['reconcile', [Sets::of([['gtin', '1000'], ['gtin', '2000']])], 'd1']);
+        [$res1] = $this->stamp($res1, 1);
+        $ledger1 = $this->fold($res1, IdentityLedger::new());
+        self::assertArrayHasKey('SK_1', $ledger1->members);
+
+        $clusters = [
+            Sets::of([['gtin', '1000'], ['cnk', '44']]),
+            Sets::of([['gtin', '2000'], ['cnk', '1035']]),
+        ];
+        $res2 = IdentityLedger::decide($ledger1, ['reconcile', $clusters, 'd2']);
+        $ledger2 = $this->fold($res2, $ledger1);
+
+        self::assertCount(2, $ledger2->members);
+        self::assertTrue(Sets::member($ledger2->members['SK_1'], ['cnk', '1035']));
+        self::assertTrue(Sets::member($ledger2->members['SK_2'], ['cnk', '44']));
+    }
 
     public function test_marking_code_shared_splits_a_wrong_merge(): void
     {

@@ -13,6 +13,7 @@ use Ingot\Envelope;
 use Ingot\EnvelopeLoader;
 use Ingot\Events;
 use Ingot\IdentitiesMerged;
+use Ingot\IdentityRetracted;
 use Ingot\Lanes;
 use Ingot\LedgerState;
 use Ingot\Substrate;
@@ -91,9 +92,12 @@ final class ClaimIngest
         return $store->transactionally(static function () use ($store, $envelopes, $at): array {
             $built = ClaimMapping::build($envelopes);
             // The live batch is the source's CURRENT truth, not a replay of its history: keep only
-            // the last claim per slot (the cutover's `compact`), so re-running converges.
+            // the last claim per slot (the cutover's `compact`), so re-running converges. The
+            // UNCOMPACTED claims still anchor the subgraph load (gr-iy5): a fully delisted listing
+            // compacts to an identity claim with NO codes, and only its earlier periods can name
+            // the key that must be loaded — and retracted. (Elixir folds full state instead.)
             $compacted = self::onLiveCodes(Substrate::current($built['claims']));
-            $result = self::pipeline($store, $compacted, $built['shared'], $at, true);
+            $result = self::pipeline($store, $compacted, $built['shared'], $at, true, $built['claims']);
 
             return self::summary($result['appended'] > 0 ? 1 : 0, 0, $result['appended'], $result['identity']);
         });
@@ -150,9 +154,11 @@ final class ClaimIngest
     /**
      * @param list<Claim> $claims canonical engine claims (from ClaimMapping)
      * @param array<string, array{0:string,1:string}> $shared
+     * @param list<Claim>|null $anchorClaims wider anchor set for the subgraph load (live path:
+     *        the uncompacted claims, whose earlier periods still carry a delisted listing's codes)
      * @return array{appended: int, identity: list<DomainEvent>}
      */
-    private static function pipeline(ClaimStore $store, array $claims, array $shared, mixed $at, bool $winnow): array
+    private static function pipeline(ClaimStore $store, array $claims, array $shared, mixed $at, bool $winnow, ?array $anchorClaims = null): array
     {
         if ($winnow) {
             $claims = self::winnow($store, $claims);
@@ -165,7 +171,7 @@ final class ClaimIngest
         $prestamped = self::stampFrom($claims, $base + 1);
 
         // Load the affected subgraph: every key any batch claim anchors on.
-        $loaded = $store->loadKeys(self::affectedKeys($store, $prestamped));
+        $loaded = $store->loadKeys(self::affectedKeys($store, $anchorClaims ?? $prestamped));
 
         // The current view of the affected subgraph + the new batch (last-wins per slot reflects
         // retractions), and the shared codes among all of it. The store speaks arrays; revive.
@@ -308,6 +314,12 @@ final class ClaimIngest
                         unset($byKey[$from]);
                     }
                 }
+            }
+            // A retracted key has no live claims left to flow through $byKey — drop its rows
+            // here or the store answers with the retired key forever (gr-iy5).
+            if ($e instanceof IdentityRetracted) {
+                $store->removeKey($e->key);
+                unset($byKey[$e->key]);
             }
         }
 

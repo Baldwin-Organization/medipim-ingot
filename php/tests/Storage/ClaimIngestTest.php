@@ -143,6 +143,34 @@ final class ClaimIngestTest extends TestCase
         return Catalog::project($ledger->members, Substrate::current($claims), Priority::new([], []), ['attr' => [], 'product' => []]);
     }
 
+    public function test_live_full_delisting_retracts_the_key(): void
+    {
+        // gr-iy5: a live envelope whose listing clears every code must retract the key and drop
+        // its member rows — the previous codes live only in the batch's EARLIER periods, which is
+        // why the subgraph load anchors on the uncompacted claims.
+        $store = new InMemoryClaimStore();
+        $listing = static fn (array $events): array => ['schema_version' => '1', 'legacy_entity' => 9001, 'events' => $events];
+        $set = ['recorded_at' => 10, 'source' => 'A', 'op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '111'];
+        $clear = ['recorded_at' => 2 * 86_400, 'source' => 'A', 'op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => null];
+
+        ClaimIngest::live($store, [$listing([$set])]);
+        $cnk = Codes::key(Codes::canonicalize(['cnk', '111']));
+        $key = $store->resolveKey($cnk);
+        self::assertNotNull($key);
+
+        ClaimIngest::live($store, [$listing([$set, $clear])]);
+
+        self::assertNull($store->resolveKey($cnk), 'a fully delisted key must stop resolving');
+        self::assertSame([], $store->loadKeys([$key]), 'the retired snapshot must be gone');
+        $types = array_column($store->log(), 'type');
+        self::assertContains(Events::TYPE_IDENTITY_RETRACTED, $types);
+
+        // re-running the same truth leaves the converged state untouched
+        ClaimIngest::live($store, [$listing([$set, $clear])]);
+        self::assertNull($store->resolveKey($cnk));
+        self::assertSame([], $store->loadKeys([$key]));
+    }
+
     public function test_schema_statements_apply_the_prefix(): void
     {
         $statements = Schema::statements('gr_');

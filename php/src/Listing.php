@@ -15,9 +15,12 @@ namespace Ingot;
  */
 final readonly class Listing
 {
+    /** Key encoding for a null source — Elixir keys listings on {entity, nil} (gr-c37). */
+    private const NO_SOURCE = "\x00";
+
     public function __construct(
         public mixed $entity,
-        public string $source,
+        public ?string $source,
     ) {
     }
 
@@ -29,12 +32,20 @@ final readonly class Listing
 
     public function isFor(mixed $entity): bool
     {
-        return (string) $this->entity === (string) $entity;
+        // Type-preserving, like Elixir's `e == entity`: int 422156 and string "422156" are
+        // DIFFERENT entities — key() tags them apart, so matching must too (gr-c37).
+        return $this->entity === $entity;
     }
 
     public function key(): string
     {
-        return (is_int($this->entity) ? 'i:' : 's:').$this->entity."\x1f".$this->source;
+        return self::entityTag($this->entity)."\x1f".($this->source ?? self::NO_SOURCE);
+    }
+
+    /** The tagged entity scalar — the same encoding key() uses for its entity half. */
+    public static function entityTag(mixed $entity): string
+    {
+        return (is_int($entity) ? 'i:' : 's:').$entity;
     }
 
     public static function fromKey(string $key): self
@@ -42,6 +53,6 @@ final readonly class Listing
         [$entityPart, $source] = explode("\x1f", $key, 2) + [1 => ''];
         $entity = str_starts_with($entityPart, 'i:') ? (int) substr($entityPart, 2) : substr($entityPart, 2);
 
-        return new self($entity, $source);
+        return new self($entity, $source === self::NO_SOURCE ? null : $source);
     }
 }

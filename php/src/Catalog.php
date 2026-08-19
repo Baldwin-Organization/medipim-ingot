@@ -234,7 +234,9 @@ final class Catalog
                     $codesList[] = $e->data['to'];
                 }
             }
-            usort($codesList, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+            // strcmp, not <=>: '99' sorts after '100' byte-wise, like Elixir (gr-bf0) — same
+            // comparator resolveCategories already uses.
+            usort($codesList, self::compareStringPair(...));
             $out[] = ['key' => $keyOrder[$ok], 'codes' => $codesList, 'sources' => self::sortedUniqueSources($es)];
         }
 
@@ -394,6 +396,11 @@ final class Catalog
      */
     private static function ownerIndex(array $members): array
     {
+        // Term-sorted key order, like Elixir's owner_index (Map.put_new over a sorted map): when
+        // a held conflict leaves one code in two keys' sets, the byte-wise smallest key owns it —
+        // insertion (minting) order picked a different owner (gr-bf0).
+        ksort($members, SORT_STRING);
+
         $index = [];
         foreach ($members as $k => $set) {
             foreach ($set as $ck => $_code) {

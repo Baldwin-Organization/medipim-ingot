@@ -21,7 +21,11 @@ final class Api
     public static function resolveKey(array $log, array $code): ?string
     {
         $canon = Codes::canonicalize($code);
-        foreach (self::ledger($log)->members as $k => $codes) {
+        // Term-sorted key order like Elixir's map iteration — a held conflict can leave one code
+        // in two keys' sets, and insertion (minting) order picks a different owner (gr-bf0).
+        $members = self::ledger($log)->members;
+        ksort($members, SORT_STRING);
+        foreach ($members as $k => $codes) {
             if (Sets::member($codes, $canon)) {
                 return $k;
             }
