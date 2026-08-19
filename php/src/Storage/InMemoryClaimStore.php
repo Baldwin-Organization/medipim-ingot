@@ -200,6 +200,15 @@ final class InMemoryClaimStore implements ClaimStore
         return $key;
     }
 
+    public function resolveSurrogate(string $surrogateKey): string
+    {
+        while (isset($this->redirects[$surrogateKey])) {
+            $surrogateKey = $this->redirects[$surrogateKey]['new_key'];
+        }
+
+        return $surrogateKey;
+    }
+
     public function resolveLegacies(array $pairs): array
     {
         $out = [];

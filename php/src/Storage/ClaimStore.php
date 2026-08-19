@@ -121,4 +121,11 @@ interface ClaimStore
      * @return array<string,string> "sourceSystem\x1flegacyEntity" => surrogateKey
      */
     public function resolveLegacies(array $pairs): array;
+
+    /**
+     * Follow merge redirects from a (possibly stale) surrogate key to the current live key —
+     * the key itself when it was never absorbed (gh-118). Presence is not checked: a key with
+     * neither snapshot nor redirect resolves to itself.
+     */
+    public function resolveSurrogate(string $surrogateKey): string;
 }
