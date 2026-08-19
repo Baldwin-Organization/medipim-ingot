@@ -138,6 +138,9 @@ defmodule Demo do
   defp timeline_line(%Events.IdentityMembersChanged{key: k, codes: c}),
     do: "MEMBERS   #{k}  [#{listcodes(c)}]"
 
+  defp timeline_line(%Events.IdentityRetracted{key: k, codes: c}),
+    do: "RETRACT   #{k}  [#{listcodes(c)}]"
+
   defp timeline_line(%Events.IdentitiesMerged{from: from, into: into}),
     do: "MERGE     #{Enum.join(from, ", ")} -> #{into}"
 
