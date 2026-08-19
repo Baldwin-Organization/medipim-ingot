@@ -80,4 +80,30 @@ final class SnapshotTranslatorTest extends TestCase
         self::assertNotNull($key);
         self::assertStringStartsWith('DSC_', $key);
     }
+
+    public function test_collection_members_carry_the_source(): void
+    {
+        $envelope = SnapshotTranslator::toEnvelope(
+            [[
+                'source' => '1034',
+                'fields' => ['cnk' => '3612173'],
+                'collections' => ['brands' => [9]],
+            ]],
+            'medipim-be',
+            422156,
+            1_700_000_000,
+        );
+
+        $brand = null;
+        foreach ($envelope['events'] as $event) {
+            if ('edge' === ($event['kind'] ?? null) && 'brands' === ($event['collection'] ?? null)) {
+                $brand = $event;
+                break;
+            }
+        }
+
+        self::assertNotNull($brand);
+        self::assertSame('1034', $brand['source']);
+        self::assertSame(9, $brand['value']);
+    }
 }

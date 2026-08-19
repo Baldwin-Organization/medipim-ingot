@@ -53,7 +53,7 @@ final class SnapshotTranslator
 
             foreach ($entry['collections'] ?? [] as $collection => $members) {
                 foreach ($members as $member) {
-                    $events[] = ['2', (string) $collection, $member];
+                    $events[] = ['2', self::key((string) $collection, null, $source), $member];
                 }
             }
         }
