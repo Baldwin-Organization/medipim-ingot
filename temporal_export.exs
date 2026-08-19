@@ -330,6 +330,9 @@ defmodule TemporalExport do
   defp event(%Events.IdentityMembersChanged{key: k, codes: c, recorded_at: at}),
     do: %{date: date_str(at), type: "MEMBERS", key: k, codes: codes_str(c)}
 
+  defp event(%Events.IdentityRetracted{key: k, codes: c, recorded_at: at}),
+    do: %{date: date_str(at), type: "RETRACT", key: k, codes: codes_str(c)}
+
   defp event(%Events.IdentitiesMerged{from: from, into: into, recorded_at: at}),
     do: %{date: date_str(at), type: "MERGE", from: from, into: into}
 
