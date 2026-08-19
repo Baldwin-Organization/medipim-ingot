@@ -38,6 +38,25 @@ final class ClaimIngestTest extends TestCase
         return json_decode(file_get_contents(self::FIXTURE), true, 512, JSON_THROW_ON_ERROR);
     }
 
+    /** @return array<string,mixed> the raw contract-C map (flat payload keys, as EnvelopeLoader::fromMap expects) */
+    private function rawMap(int $entity, array $events): array
+    {
+        return ['schema_version' => '1', 'source_system' => 'medipim-be', 'legacy_entity' => $entity, 'events' => $events];
+    }
+
+    private function envelope(int $entity, array $events): \Ingot\Envelope
+    {
+        [$ok, $env] = EnvelopeLoader::fromMap($this->rawMap($entity, $events));
+        self::assertSame('ok', $ok);
+
+        return $env;
+    }
+
+    private function id(string $source, string $op, string $scheme, ?string $code, int $at): array
+    {
+        return ['recorded_at' => $at, 'source' => $source, 'op' => $op, 'kind' => 'identity', 'scheme' => $scheme, 'code' => $code];
+    }
+
     public function test_backfill_mints_sk1_and_resolves_the_cnk(): void
     {
         $store = new InMemoryClaimStore();
@@ -171,10 +190,145 @@ final class ClaimIngestTest extends TestCase
         self::assertSame([], $store->loadKeys([$key]));
     }
 
+    // ── durable shared-codes map (gh-119) ────────────────────────────────────────
+
+    public function test_backfill_persists_the_batchs_shared_codes(): void
+    {
+        // The restricted-GTIN fixture from ClaimMappingTest::test_restricted_gtin_lands_in_shared.
+        $events = [
+            $this->id('A', 'add', 'gtin', '02000000000000', 10),
+            $this->id('A', 'set', 'cnk', '111', 20),
+        ];
+        $env = $this->envelope(1, $events);
+
+        $store = new InMemoryClaimStore();
+        ClaimIngest::backfill($store, [$this->rawMap(1, $events)]);
+
+        self::assertSame(
+            ClaimMapping::build([$env])['shared'],
+            $store->allShared(),
+        );
+    }
+
+    public function test_shared_codes_accumulate_add_only_across_separate_backfills(): void
+    {
+        $store = new InMemoryClaimStore();
+
+        ClaimIngest::backfill($store, [$this->rawMap(1, [
+            $this->id('A', 'add', 'gtin', '02000000000017', 10),
+            $this->id('A', 'set', 'cnk', '111', 20),
+        ])]);
+
+        ClaimIngest::backfill($store, [$this->rawMap(2, [
+            $this->id('B', 'set', 'artg_id', '207479', 10),
+            $this->id('B', 'add', 'ean', '9338475000364', 10),
+        ])]);
+
+        $shared = $store->allShared();
+        self::assertArrayHasKey(Codes::key(['gtin', '02000000000017']), $shared, 'the first backfill\'s shared code must survive the second');
+        self::assertArrayHasKey(Codes::key(['artg_id', '207479']), $shared);
+    }
+
+    // ── durable legacy xref (gh-120) ─────────────────────────────────────────────
+
+    public function test_backfill_records_a_resolvable_legacy_xref(): void
+    {
+        $store = new InMemoryClaimStore();
+        ClaimIngest::backfill($store, [self::rawEnvelope()]);
+
+        self::assertSame('SK_1', $store->resolveLegacy('medipim-be', '422156'));
+    }
+
+    public function test_live_records_a_resolvable_legacy_xref(): void
+    {
+        $store = new InMemoryClaimStore();
+        ClaimIngest::live($store, [self::rawEnvelope()]);
+
+        self::assertSame('SK_1', $store->resolveLegacy('medipim-be', '422156'));
+    }
+
+    public function test_xref_tracks_the_current_key_across_separate_ingests(): void
+    {
+        $store = new InMemoryClaimStore();
+
+        ClaimIngest::backfill($store, [$this->rawMap(1, [$this->id('A', 'set', 'cnk', '100', 10)])]);
+        self::assertNotNull($store->resolveLegacy('medipim-be', '1'));
+
+        // Entity 2 shares the same national CNK, established by entity 1's earlier backfill —
+        // it extends that same key rather than minting its own.
+        ClaimIngest::backfill($store, [$this->rawMap(2, [$this->id('B', 'set', 'cnk', '100', 10)])]);
+
+        $skAfter1 = $store->resolveLegacy('medipim-be', '1');
+        $skAfter2 = $store->resolveLegacy('medipim-be', '2');
+        self::assertSame($skAfter1, $skAfter2, 'both legacy entities must resolve to the same current key');
+    }
+
+    public function test_xref_follows_an_addRedirect_merge(): void
+    {
+        // A real steward-approved merge is gated behind human review and out of ClaimIngest's own
+        // reconcile loop (established keys are never auto-merged), so this drives the store-level
+        // primitive ClaimIngest::reproject already calls on an IdentitiesMerged event — proving the
+        // xref rows it wrote earlier stay resolvable to the surviving key.
+        $store = new InMemoryClaimStore();
+
+        $env = self::rawEnvelope();
+        ClaimIngest::backfill($store, [$env]);
+        $before = $store->resolveLegacy('medipim-be', '422156');
+        self::assertNotNull($before);
+
+        $store->addRedirect($before, 'SK_999', 1_700_000_000);
+
+        self::assertSame('SK_999', $store->resolveLegacy('medipim-be', '422156'));
+    }
+
+    public function test_envelope_with_no_resolvable_identity_leaves_no_dangling_xref(): void
+    {
+        // An unsourced attribute-only envelope carries no identity code at all — nothing to anchor
+        // an xref row to, so none must be written rather than a dangling one.
+        $raw = [
+            'schema_version' => '1',
+            'source_system' => 'medipim-be',
+            'legacy_entity' => 555,
+            'events' => [
+                ['recorded_at' => 10, 'source' => null, 'op' => 'set', 'kind' => 'attribute', 'field' => 'name', 'value' => 'Orphan'],
+            ],
+        ];
+
+        $store = new InMemoryClaimStore();
+        ClaimIngest::live($store, [$raw]);
+
+        self::assertNull($store->resolveLegacy('medipim-be', '555'));
+    }
+
+    // ── claim-shape fingerprint version (medipimv2-sgh.12) ────────────────────────
+
+    public function test_envelope_fingerprint_is_derived_from_the_claim_shape_version(): void
+    {
+        $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
+
+        $expected = hash('sha256', \Ingot\ClaimShape::VERSION."\n".json_encode($env->toArray(), JSON_THROW_ON_ERROR));
+        self::assertSame($expected, ClaimIngest::envelopeFingerprint($env));
+    }
+
+    public function test_envelope_fingerprint_would_differ_across_claim_shape_versions(): void
+    {
+        // Proves the version is actually mixed into the hash (not just declared): a differently
+        // versioned fingerprint of the SAME envelope payload must differ, or a claim-shape change
+        // would silently skip previously-seen entities via backfill_seen.
+        $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
+        $payload = json_encode($env->toArray(), JSON_THROW_ON_ERROR);
+
+        self::assertNotSame(
+            hash('sha256', '1'."\n".$payload),
+            hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload),
+        );
+        self::assertSame(hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload), ClaimIngest::envelopeFingerprint($env));
+    }
+
     public function test_schema_statements_apply_the_prefix(): void
     {
         $statements = Schema::statements('gr_');
-        self::assertCount(6, $statements);
+        self::assertCount(8, $statements);
 
         $all = implode("\n", $statements);
         self::assertStringContainsString('`gr_events`', $all);
@@ -183,5 +337,7 @@ final class ClaimIngestTest extends TestCase
         self::assertStringContainsString('`gr_redirects`', $all);
         self::assertStringContainsString('`gr_lane_seq`', $all);
         self::assertStringContainsString('`gr_backfill_seen`', $all);
+        self::assertStringContainsString('`gr_shared`', $all);
+        self::assertStringContainsString('`gr_legacy_xref`', $all);
     }
 }

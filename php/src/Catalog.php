@@ -113,7 +113,7 @@ final class Catalog
      * @param array<string, array{0: string, 1: string}> $codes
      * @param list<Claim> $groups
      */
-    private static function resolveProductFromClaims(array $codes, array $groups, Priority|callable $priority): Decision
+    public static function resolveProductFromClaims(array $codes, array $groups, Priority|callable $priority): Decision
     {
         $entries = [];
         foreach ($groups as $g) {
@@ -429,7 +429,7 @@ final class Catalog
      * @param list<Claim> $attrs
      * @return list<array{0: string, 1: Decision}>
      */
-    private static function laneAttributes(array $codes, array $attrs, Priority|callable $priority): array
+    public static function laneAttributes(array $codes, array $attrs, Priority|callable $priority): array
     {
         $decisions = Survivorship::fieldDecisions($codes, $attrs, $priority);
         usort($decisions, static fn (array $a, array $b): int => strcmp($a[0], $b[0]));

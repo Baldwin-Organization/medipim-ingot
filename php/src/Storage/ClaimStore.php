@@ -87,4 +87,45 @@ interface ClaimStore
 
     /** Mark a backfill envelope ingested (idempotency). */
     public function markBackfillSeen(string $legacyEntity, string $fingerprint): void;
+
+    /**
+     * Add to the durable shared-codes map (restricted/non-bridging identity codes) — add-only, so
+     * a stored code is never forgotten. Lets identity reconcile be re-run from the store alone,
+     * without replaying every envelope ever ingested (gh-119).
+     *
+     * @param array<string, array{0:string,1:string}> $codes a code-set ({@see \Ingot\Sets})
+     */
+    public function addShared(array $codes): void;
+
+    /**
+     * The full durable shared-codes map — the union of every code ever passed to {@see addShared}.
+     *
+     * @return array<string, array{0:string,1:string}>
+     */
+    public function allShared(): array;
+
+    /**
+     * Record where one legacy entity currently resolves to — the durable legacy -> surrogate-key
+     * cross-reference (gh-120). An upsert: re-saving the same (source_system, legacy_entity)
+     * overwrites its prior row.
+     */
+    public function saveLegacyXref(string $sourceSystem, string $legacyEntity, string $surrogateKey, string $placement = 'stable'): void;
+
+    /** Resolve one (source_system, legacy_entity) to its current surrogate key (following redirects), or null if never recorded. */
+    public function resolveLegacy(string $sourceSystem, string $legacyEntity): ?string;
+
+    /**
+     * Bulk-resolve (source_system, legacy_entity) pairs — only present ones.
+     *
+     * @param list<array{0:string,1:string}> $pairs
+     * @return array<string,string> "sourceSystem\x1flegacyEntity" => surrogateKey
+     */
+    public function resolveLegacies(array $pairs): array;
+
+    /**
+     * Follow merge redirects from a (possibly stale) surrogate key to the current live key —
+     * the key itself when it was never absorbed (gh-118). Presence is not checked: a key with
+     * neither snapshot nor redirect resolves to itself.
+     */
+    public function resolveSurrogate(string $surrogateKey): string;
 }

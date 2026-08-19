@@ -34,6 +34,12 @@ final class InMemoryClaimStore implements ClaimStore
     /** @var array<string, true> */
     private array $backfillSeen = [];
 
+    /** @var array<string, array{0:string,1:string}> */
+    private array $shared = [];
+
+    /** @var array<string, array{surrogate_key: string, placement: string}> keyed "sourceSystem\x1flegacyEntity" */
+    private array $legacyXref = [];
+
     public function transactionally(callable $fn): mixed
     {
         return $fn();
@@ -137,6 +143,12 @@ final class InMemoryClaimStore implements ClaimStore
     public function addRedirect(string $oldKey, string $newKey, mixed $at): void
     {
         $this->redirects[$oldKey] = ['new_key' => $newKey, 'at' => $at];
+
+        foreach ($this->legacyXref as $lookupKey => $row) {
+            if ($row['surrogate_key'] === $oldKey) {
+                $this->legacyXref[$lookupKey] = ['surrogate_key' => $newKey, 'placement' => 'merged'];
+            }
+        }
     }
 
     public function laneNext(string $lane): int
@@ -157,5 +169,56 @@ final class InMemoryClaimStore implements ClaimStore
     public function markBackfillSeen(string $legacyEntity, string $fingerprint): void
     {
         $this->backfillSeen[$legacyEntity."\x1f".$fingerprint] = true;
+    }
+
+    public function addShared(array $codes): void
+    {
+        $this->shared += $codes;
+    }
+
+    public function allShared(): array
+    {
+        return $this->shared;
+    }
+
+    public function saveLegacyXref(string $sourceSystem, string $legacyEntity, string $surrogateKey, string $placement = 'stable'): void
+    {
+        $this->legacyXref[$sourceSystem."\x1f".$legacyEntity] = ['surrogate_key' => $surrogateKey, 'placement' => $placement];
+    }
+
+    public function resolveLegacy(string $sourceSystem, string $legacyEntity): ?string
+    {
+        $key = $this->legacyXref[$sourceSystem."\x1f".$legacyEntity]['surrogate_key'] ?? null;
+        if ($key === null) {
+            return null;
+        }
+
+        while (isset($this->redirects[$key])) {
+            $key = $this->redirects[$key]['new_key'];
+        }
+
+        return $key;
+    }
+
+    public function resolveSurrogate(string $surrogateKey): string
+    {
+        while (isset($this->redirects[$surrogateKey])) {
+            $surrogateKey = $this->redirects[$surrogateKey]['new_key'];
+        }
+
+        return $surrogateKey;
+    }
+
+    public function resolveLegacies(array $pairs): array
+    {
+        $out = [];
+        foreach ($pairs as [$sourceSystem, $legacyEntity]) {
+            $key = $this->resolveLegacy($sourceSystem, $legacyEntity);
+            if ($key !== null) {
+                $out[$sourceSystem."\x1f".$legacyEntity] = $key;
+            }
+        }
+
+        return $out;
     }
 }
