@@ -16,6 +16,7 @@ use Ingot\IdentitiesMerged;
 use Ingot\IdentityRetracted;
 use Ingot\Lanes;
 use Ingot\LedgerState;
+use Ingot\Sets;
 use Ingot\Substrate;
 
 /**
@@ -62,6 +63,8 @@ final class ClaimIngest
             }
 
             if ($fresh === []) {
+                self::recordXrefs($store, $envelopes);
+
                 return self::summary(0, count($envelopes), 0, []);
             }
 
@@ -71,6 +74,8 @@ final class ClaimIngest
             foreach ($fresh as [$_env, $fp, $entity]) {
                 $store->markBackfillSeen($entity, $fp);
             }
+
+            self::recordXrefs($store, $envelopes);
 
             return self::summary(count($fresh), count($envelopes) - count($fresh), $result['appended'], $result['identity']);
         });
@@ -98,6 +103,8 @@ final class ClaimIngest
             // the key that must be loaded — and retracted. (Elixir folds full state instead.)
             $compacted = self::onLiveCodes(Substrate::current($built['claims']));
             $result = self::pipeline($store, $compacted, $built['shared'], $at, true, $built['claims']);
+
+            self::recordXrefs($store, $envelopes);
 
             return self::summary($result['appended'] > 0 ? 1 : 0, 0, $result['appended'], $result['identity']);
         });
@@ -182,7 +189,10 @@ final class ClaimIngest
             }
         }
         $live = Substrate::current($combined);
-        $sharedAll = self::sharedOf($live, $shared);
+        // Union the batch's own shared codes with whatever the store has durably persisted so far
+        // (gh-119): a shared classification can otherwise be lost once its asserting entity falls
+        // out of the affected subgraph, letting a later batch bridge two products it must not.
+        $sharedAll = self::sharedOf($live, Sets::union($shared, $store->allShared()));
 
         $ledgers = self::buildLedgers($store, $loaded);
         $atResolved = self::reconcileAt($prestamped) ?? $at ?? time();
@@ -194,6 +204,7 @@ final class ClaimIngest
 
         self::persistLedger($store, $ledgers2);
         self::reproject($store, $ledgers2, $live, $identityStamped, $seq);
+        $store->addShared($sharedAll);
 
         return ['appended' => count($prestamped), 'identity' => $identityStamped];
     }
@@ -421,6 +432,42 @@ final class ClaimIngest
         }
 
         return $codes;
+    }
+
+    // ── legacy xref (gh-120) ─────────────────────────────────────────────────────
+
+    /**
+     * Record where each envelope's (source_system, legacy_entity) currently resolves, by the same
+     * resolution path the rest of ingest uses ({@see ClaimStore::resolveKey} on the listing's
+     * identity codes). An envelope with no resolvable identity yet is skipped rather than writing
+     * a dangling xref row.
+     *
+     * @param list<Envelope> $envelopes
+     */
+    private static function recordXrefs(ClaimStore $store, array $envelopes): void
+    {
+        foreach ($envelopes as $env) {
+            self::recordXref($store, $env);
+        }
+    }
+
+    private static function recordXref(ClaimStore $store, Envelope $env): void
+    {
+        $sourceSystem = $env->sourceSystem;
+        if ($sourceSystem === null) {
+            return;
+        }
+
+        foreach (ClaimMapping::listings([$env]) as $codes) {
+            foreach ($codes as $code) {
+                $surrogateKey = $store->resolveKey(Codes::key($code));
+                if ($surrogateKey !== null) {
+                    $store->saveLegacyXref((string) $sourceSystem, (string) $env->legacyEntity, $surrogateKey);
+
+                    return;
+                }
+            }
+        }
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────────

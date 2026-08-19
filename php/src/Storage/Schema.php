@@ -103,6 +103,29 @@ final class Schema
               PRIMARY KEY (`legacy_entity`, `fingerprint`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             SQL,
+            // The shared-codes map (restricted/non-bridging identity codes) as of the last ingest —
+            // add-only, so identity reconcile can be re-run from the store without replaying every
+            // envelope ({@see \Ingot\Storage\ClaimIngest}, gh-119).
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS `{$p}shared` (
+              `code` VARCHAR(191) NOT NULL,
+              `scheme` VARCHAR(32) NOT NULL,
+              `value` VARCHAR(160) NOT NULL,
+              PRIMARY KEY (`code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            SQL,
+            // Durable legacy -> surrogate-key cross-reference ({@see \Ingot\LegacyXref}, gh-120):
+            // where each (source_system, legacy_entity) currently resolves, and how it got there.
+            <<<SQL
+            CREATE TABLE IF NOT EXISTS `{$p}legacy_xref` (
+              `source_system` VARCHAR(64) NOT NULL,
+              `legacy_entity` VARCHAR(64) NOT NULL,
+              `surrogate_key` VARCHAR(64) NOT NULL,
+              `placement` VARCHAR(20) NOT NULL DEFAULT 'stable',
+              PRIMARY KEY (`source_system`, `legacy_entity`),
+              KEY `{$p}legacy_xref_surrogate_key` (`surrogate_key`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            SQL,
         ];
     }
 }
