@@ -46,9 +46,9 @@ final class EnvelopeDecoder
      * shaped exactly like the committed `.json` fixtures and accepted by {@see EnvelopeLoader::fromMap}).
      *
      * @param list<array<string,mixed>> $deltas raw rows, each {events: [[op,key,value],...], created_at, created_by, tag}
-     * @param array{identity_fields?: array<string,true>, identity_scheme?: string, identity_source?: string} $opts
-     *        `identity_scheme` injects an entity-level identity (e.g. 'text_id'/'asset_id') so a
-     *        non-product entity whose deltas carry no identity code still mints a lane record;
+     * @param array{identity_fields?: array<string,true>, identity_scheme?: IdentityScheme|string, identity_source?: string} $opts
+     *        `identity_scheme` injects an entity-level identity ({@see IdentityScheme}, e.g. TextId/AssetId)
+     *        so a non-product entity whose deltas carry no identity code still mints a lane record;
      *        `identity_source` is the asserting source for that injected identity (default: source_system).
      * @return array<string,mixed>
      */
@@ -73,7 +73,8 @@ final class EnvelopeDecoder
 
         if (isset($opts['identity_scheme'])) {
             $identitySource = $opts['identity_source'] ?? $sourceSystem;
-            array_unshift($events, self::entityIdentity($opts['identity_scheme'], $identitySource, $legacyEntity, $deltas));
+            $scheme = IdentityScheme::coerce($opts['identity_scheme'])->value;
+            array_unshift($events, self::entityIdentity($scheme, $identitySource, $legacyEntity, $deltas));
         }
 
         return [
@@ -89,7 +90,7 @@ final class EnvelopeDecoder
     /**
      * Decode one JSONL dump (one raw delta per line) — the `.raw.jsonl` fixture format.
      *
-     * @param array{identity_fields?: array<string,true>, identity_scheme?: string} $opts
+     * @param array{identity_fields?: array<string,true>, identity_scheme?: IdentityScheme|string} $opts
      * @return array<string,mixed>
      */
     public static function decodeJsonl(string $jsonl, string $sourceSystem, int|string $legacyEntity, array $opts = []): array
