@@ -490,8 +490,10 @@ defmodule ClaimMapping do
   # a contradiction to survivorship. Longer lists are left alone — none occur in the fixtures, and
   # the right shape for a genuine multi-value field (several claims? member_of?) is undecided.
   # See docs/CLAIM_MAPPING_SPEC.md.
-  defp attribute_value(field, [single]), do: normalize_quantity(field, single)
-  defp attribute_value(field, value), do: normalize_quantity(field, value)
+  @doc false
+  # Shared with FinerClaims — both folds must serialize an attribute value the same way.
+  def attribute_value(field, [single]), do: normalize_quantity(field, single)
+  def attribute_value(field, value), do: normalize_quantity(field, value)
 
   # Quantity fields with a DECLARED storage unit (gr-sx7.3, closing the spec's former OPEN
   # QUESTION): medipim stores weight in grams and dimensions in millimetres; "<num>_<unit>"

@@ -142,6 +142,18 @@ defmodule FinerClaimsTest do
       assert new.data.code == {:cnk, "1000000"}
     end
 
+    test ~s(a one-element list value unwraps exactly like the batch fold: ["human"] == "human") do
+      env =
+        envelope(905, [
+          id("A", "cnk", "1000000", epoch(~D[2020-01-01])),
+          attr("A", "allowedSpecies", ["human"], epoch(~D[2020-06-01]))
+        ])
+
+      %{claims: claims} = FinerClaims.build([env])
+      assert [a] = Enum.filter(claims, &(&1.kind == :attribute))
+      assert a.data.value == "human"
+    end
+
     test "an attribute BEFORE any identity falls back to the listing's final primary" do
       env =
         envelope(904, [
