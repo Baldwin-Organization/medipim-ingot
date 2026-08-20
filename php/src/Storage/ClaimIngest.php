@@ -9,6 +9,7 @@ use Ingot\ClaimMapping;
 use Ingot\ClaimShape;
 use Ingot\Codes;
 use Ingot\ConflictFlagged;
+use Ingot\DimensionAliases;
 use Ingot\DomainEvent;
 use Ingot\Envelope;
 use Ingot\EnvelopeLoader;
@@ -42,17 +43,23 @@ final class ClaimIngest
     /**
      * Backfill full-history envelopes (idempotent per envelope).
      *
+     * `$aliases` is the dimension-alias seam ({@see DimensionAliases}): incoming AND stored
+     * claims are normalized before the reconcile compares or groups them, so a field rename
+     * folds as one dimension. The idempotency fingerprint hashes the PRE-alias envelope — a
+     * rename never invalidates `backfill_seen`, so a replay stays a no-op.
+     *
      * @param list<array<string,mixed>> $envelopeMaps decoded envelope maps (see {@see \Ingot\EnvelopeDecoder})
+     * @param array<string,string> $aliases
      * @return array<string,mixed> a summary, or ['errors' => ...] on invalid input
      */
-    public static function backfill(ClaimStore $store, array $envelopeMaps, mixed $at = null): array
+    public static function backfill(ClaimStore $store, array $envelopeMaps, mixed $at = null, array $aliases = []): array
     {
         [$ok, $envelopes, $errors] = self::decodeEnvelopes($envelopeMaps);
         if (!$ok) {
             return ['errors' => $errors];
         }
 
-        return $store->transactionally(static function () use ($store, $envelopes, $at): array {
+        return $store->transactionally(static function () use ($store, $envelopes, $at, $aliases): array {
             $fresh = [];
             foreach ($envelopes as $env) {
                 $fp = self::fingerprint($env);
@@ -70,7 +77,8 @@ final class ClaimIngest
             }
 
             $built = ClaimMapping::build(array_map(static fn (array $f): Envelope => $f[0], $fresh));
-            $result = self::pipeline($store, $built['claims'], $built['shared'], $at, false);
+            $claims = DimensionAliases::normalize($built['claims'], $aliases);
+            $result = self::pipeline($store, $claims, $built['shared'], $at, false, null, $aliases);
 
             foreach ($fresh as [$_env, $fp, $entity]) {
                 $store->markBackfillSeen($entity, $fp);
@@ -85,25 +93,31 @@ final class ClaimIngest
     /**
      * Ingest current-truth envelopes (idempotent per slot) — the live path.
      *
+     * `$aliases` is the dimension-alias seam ({@see DimensionAliases}); see {@see backfill}.
+     *
      * @param list<array<string,mixed>> $envelopeMaps
+     * @param array<string,string> $aliases
      * @return array<string,mixed>
      */
-    public static function live(ClaimStore $store, array $envelopeMaps, mixed $at = null): array
+    public static function live(ClaimStore $store, array $envelopeMaps, mixed $at = null, array $aliases = []): array
     {
         [$ok, $envelopes, $errors] = self::decodeEnvelopes($envelopeMaps);
         if (!$ok) {
             return ['errors' => $errors];
         }
 
-        return $store->transactionally(static function () use ($store, $envelopes, $at): array {
+        return $store->transactionally(static function () use ($store, $envelopes, $at, $aliases): array {
             $built = ClaimMapping::build($envelopes);
+            // Alias BEFORE the per-slot compaction, so both spellings of a renamed field share
+            // one slot and last-wins settles across the rename.
+            $claims = DimensionAliases::normalize($built['claims'], $aliases);
             // The live batch is the source's CURRENT truth, not a replay of its history: keep only
             // the last claim per slot (the cutover's `compact`), so re-running converges. The
             // UNCOMPACTED claims still anchor the subgraph load (gr-iy5): a fully delisted listing
             // compacts to an identity claim with NO codes, and only its earlier periods can name
             // the key that must be loaded — and retracted. (Elixir folds full state instead.)
-            $compacted = self::onLiveCodes(Substrate::current($built['claims']));
-            $result = self::pipeline($store, $compacted, $built['shared'], $at, true, $built['claims']);
+            $compacted = self::onLiveCodes(Substrate::current($claims));
+            $result = self::pipeline($store, $compacted, $built['shared'], $at, true, $claims, $aliases);
 
             self::recordXrefs($store, $envelopes);
 
@@ -160,16 +174,19 @@ final class ClaimIngest
     }
 
     /**
-     * @param list<Claim> $claims canonical engine claims (from ClaimMapping)
+     * @param list<Claim> $claims canonical engine claims (from ClaimMapping), already aliased
      * @param array<string, array{0:string,1:string}> $shared
      * @param list<Claim>|null $anchorClaims wider anchor set for the subgraph load (live path:
      *        the uncompacted claims, whose earlier periods still carry a delisted listing's codes)
+     * @param array<string,string> $aliases applied to STORED claims on load, so the reconcile and
+     *        the rewritten snapshots group by the terminal dimension names (snapshots self-heal
+     *        key-by-key; `{prefix}events` keeps the historical spelling as the audit trail)
      * @return array{appended: int, identity: list<DomainEvent>}
      */
-    private static function pipeline(ClaimStore $store, array $claims, array $shared, mixed $at, bool $winnow, ?array $anchorClaims = null): array
+    private static function pipeline(ClaimStore $store, array $claims, array $shared, mixed $at, bool $winnow, ?array $anchorClaims = null, array $aliases = []): array
     {
         if ($winnow) {
-            $claims = self::winnow($store, $claims);
+            $claims = self::winnow($store, $claims, $aliases);
         }
         if ($claims === []) {
             return ['appended' => 0, 'identity' => []];
@@ -189,7 +206,7 @@ final class ClaimIngest
                 $combined[] = Events::fromArray($c);
             }
         }
-        $live = Substrate::current($combined);
+        $live = Substrate::current(DimensionAliases::normalize($combined, $aliases));
         // Union the batch's own shared codes with whatever the store has durably persisted so far
         // (gh-119): a shared classification can otherwise be lost once its asserting entity falls
         // out of the affected subgraph, letting a later batch bridge two products it must not.
@@ -212,21 +229,28 @@ final class ClaimIngest
 
     /**
      * Drop claims whose slot already holds identical content (in-store OR earlier in the batch) —
-     * the live path's per-slot idempotency, mirroring Elixir's `winnow`.
+     * the live path's per-slot idempotency, mirroring Elixir's `winnow`. Stored claims are
+     * aliased before the comparison, so resubmitting an old-name claim that matches its stored
+     * (renamed) content stays a no-op.
      *
-     * @param list<Claim> $claims
+     * @param list<Claim> $claims already-aliased batch claims
+     * @param array<string,string> $aliases
      * @return list<Claim>
      */
-    private static function winnow(ClaimStore $store, array $claims): array
+    private static function winnow(ClaimStore $store, array $claims, array $aliases = []): array
     {
         $loaded = $store->loadKeys(self::affectedKeys($store, $claims));
 
-        $view = [];
+        $storedClaims = [];
         foreach ($loaded as $info) {
             foreach ($info['claims'] as $c) {
-                $stored = Events::fromArray($c);
-                $view[self::slotKey($stored)] = self::claimIdentity($stored);
+                $storedClaims[] = Events::fromArray($c);
             }
+        }
+
+        $view = [];
+        foreach (DimensionAliases::normalize($storedClaims, $aliases) as $stored) {
+            $view[self::slotKey($stored)] = self::claimIdentity($stored);
         }
 
         $kept = [];
