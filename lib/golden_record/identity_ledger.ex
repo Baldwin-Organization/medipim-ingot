@@ -9,6 +9,16 @@ defmodule GoldenRecord.IdentityLedger do
   def new(prefix \\ "SK"),
     do: %__MODULE__{members: %{}, next: 1, prefix: prefix, next_by_prefix: %{prefix => 1}}
 
+  @type t :: %__MODULE__{}
+
+  # The explicit contract keeps Dialyzer from inferring MapSet's opaque :sets.set() internals
+  # from the empty-set default below and flagging the delegation as an opaqueness mismatch (gr-opa).
+  @spec decide(
+          t(),
+          {:reconcile, [MapSet.t()], term()}
+          | {:reconcile, [MapSet.t()], MapSet.t(), term()}
+          | {:reconcile, [MapSet.t()], MapSet.t(), map(), term()}
+        ) :: [struct()]
   def decide(state, {:reconcile, clusters, at}), do: decide(state, {:reconcile, clusters, MapSet.new(), at})
 
   def decide(state, {:reconcile, clusters, shared, at}),
