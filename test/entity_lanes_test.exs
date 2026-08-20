@@ -113,6 +113,25 @@ defmodule EntityLanesTest do
       assert Uuid.mint() != Uuid.mint()
     end
 
+    test "depicted media provenance follows survivorship priority, not source name order" do
+      # :vidal outranks :supplier here, but "supplier" sorts before "vidal" alphabetically.
+      claims = [
+        claim(:supplier, :identity, %{ref: "A", codes: [{:cnk, "0111"}]}, @d1, @d1),
+        claim(:vidal, :identity, %{ref: "IMG", codes: [{:asset_id, "IMG-1"}]}, @d1, @d1),
+        claim(:vidal, :edge, %{from: {:asset_id, "IMG-1"}, relation: :depicts, to: {:cnk, "0111"}}, @d1, @d1),
+        claim(
+          :supplier,
+          :edge,
+          %{from: {:asset_id, "IMG-1"}, relation: :depicts, to: {:cnk, "0111"}},
+          @d1,
+          @d1
+        )
+      ]
+
+      variant = find_variant(project(claims), {:cnk, "0111"})
+      assert [%{source: :vidal}] = variant.media
+    end
+
     test "lane_records: a non-product lane projects standalone, first-class records" do
       %{live: live, members: members} = build(scenario())
       lanes = Lanes.partition_members(members)

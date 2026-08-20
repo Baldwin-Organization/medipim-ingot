@@ -259,6 +259,8 @@ final class Catalog
     {
         [$byKey, $keyOrder] = self::groupEdgesByOwner($edges, $codes, $mediaIndex, 'depicts', 'to', 'from');
 
+        $rank = Survivorship::rankFn($priority);
+
         $out = [];
         foreach ($byKey as $ok => $es) {
             $owner = $keyOrder[$ok];
@@ -267,12 +269,20 @@ final class Catalog
                 : Sets::of([self::ownerAsCode($owner)]);
             $attributes = self::laneAttributes($assetCodes, $attrs, $priority);
 
-            $sources = self::sortedUniqueSources($es);
+            $best = $es[0]->source;
+            $bestRank = $rank('media', $best);
+            foreach ($es as $e) {
+                $r = $rank('media', $e->source);
+                if ($r < $bestRank) {
+                    $bestRank = $r;
+                    $best = $e->source;
+                }
+            }
 
             $out[] = [
                 'asset' => $owner,
                 'role' => self::attrValue($attributes, 'role', 'secondary'),
-                'source' => $sources[0],
+                'source' => $best,
                 'uri' => self::attrValue($attributes, 'uri', null),
             ];
         }
