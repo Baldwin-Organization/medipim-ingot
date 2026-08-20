@@ -211,6 +211,47 @@ defmodule ClaimMappingTest do
       assert ClaimMapping.rejected([env]) == []
     end
 
+    # gr-6us: every shape that cannot become a claim reports a reason — nothing vanishes
+    # between the member_of/lane filters.
+    test "edges and media events that cannot become claims are refused with a reason" do
+      env =
+        envelope(1, [
+          id("A", "set", "cnk", "111", 10),
+          %{
+            "recorded_at" => 20,
+            "source" => "A",
+            "op" => "remove",
+            "kind" => "edge",
+            "collection" => "organizations",
+            "value" => 9
+          },
+          %{
+            "recorded_at" => 21,
+            "source" => "A",
+            "op" => "set",
+            "kind" => "edge",
+            "collection" => "organizations",
+            "value" => nil
+          },
+          %{
+            "recorded_at" => 22,
+            "source" => "A",
+            "op" => "add",
+            "kind" => "media",
+            "collection" => "videos",
+            "asset" => 7
+          }
+        ])
+
+      reasons = [env] |> ClaimMapping.rejected() |> Enum.map(&{&1.reason, &1.detail}) |> Enum.sort()
+
+      assert reasons == [
+               {:empty_edge_value, "organizations"},
+               {:unknown_lane_collection, "videos"},
+               {:unsupported_edge_op, "organizations"}
+             ]
+    end
+
     test "attribute at the opening instant of a live period anchors to the new codes" do
       day2 = 2 * 86_400
 

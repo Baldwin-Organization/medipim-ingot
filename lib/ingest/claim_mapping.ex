@@ -393,21 +393,46 @@ defmodule ClaimMapping do
   defp rejected(envelopes, periods) do
     for env <- envelopes,
         ev <- env.events,
-        ev.kind in [:attribute, :edge],
-        codes_at(periods, env.legacy_entity, ev.source, ev.recorded_at) == [] do
+        reason = rejection_reason(ev, periods, env.legacy_entity),
+        reason != nil do
       %{
         entity: env.legacy_entity,
         source: ev.source,
         kind: ev.kind,
         detail: rejection_detail(ev),
         recorded_at: ev.recorded_at,
-        reason: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+        reason: reason
       }
     end
   end
 
+  defp rejection_reason(%{kind: :attribute} = ev, periods, entity),
+    do: if(codes_at(periods, entity, ev.source, ev.recorded_at) == [], do: no_code_reason(ev))
+
+  # gr-6us: every way an edge fails to become a member_of claim (see the comprehension in
+  # wire_claims/2) lands here with its own reason, instead of vanishing between the filters.
+  defp rejection_reason(%{kind: :edge} = ev, periods, entity) do
+    cond do
+      Map.has_key?(@lane_collections, ev.data.collection) -> nil
+      ev.op not in [:set, :add] -> :unsupported_edge_op
+      ev.data.value == nil -> :empty_edge_value
+      codes_at(periods, entity, ev.source, ev.recorded_at) == [] -> no_code_reason(ev)
+      true -> nil
+    end
+  end
+
+  # A media event referencing a collection the lane table doesn't know is a NEW medipim asset
+  # collection — the one shape that must never pass a backfill report unnoticed.
+  defp rejection_reason(%{kind: :media} = ev, _periods, _entity),
+    do: if(not Map.has_key?(@lane_collections, ev.data.collection), do: :unknown_lane_collection)
+
+  defp rejection_reason(_ev, _periods, _entity), do: nil
+
+  defp no_code_reason(ev), do: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+
   defp rejection_detail(%{kind: :attribute} = ev), do: field_dim(ev)
   defp rejection_detail(%{kind: :edge} = ev), do: ev.data.collection
+  defp rejection_detail(%{kind: :media} = ev), do: ev.data.collection
 
   # ── fold ──────────────────────────────────────────────────────────────────
 

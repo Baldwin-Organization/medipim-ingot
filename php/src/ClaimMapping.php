@@ -474,10 +474,8 @@ final class ClaimMapping
         $out = [];
         foreach ($this->envelopes as $env) {
             foreach ($env->events as $ev) {
-                if (!in_array($ev->kind, ['attribute', 'edge'], true)) {
-                    continue;
-                }
-                if ($this->codesAtMemoized($env->legacyEntity, $ev->source, $ev->recordedAt) !== []) {
+                $reason = $this->rejectionReason($env->legacyEntity, $ev);
+                if ($reason === null) {
                     continue;
                 }
                 $out[] = [
@@ -486,12 +484,50 @@ final class ClaimMapping
                     'kind' => $ev->kind,
                     'detail' => $ev->kind === 'attribute' ? self::fieldDim($ev) : $ev->data->collection,
                     'recorded_at' => $ev->recordedAt,
-                    'reason' => $ev->source === null ? 'unsourced' : 'source_held_no_code',
+                    'reason' => $reason,
                 ];
             }
         }
 
         return $out;
+    }
+
+    /**
+     * gr-6us: every way an event fails to become a claim lands here with its own reason,
+     * instead of vanishing between the memberOf/lane filters — mirrors rejection_reason/3.
+     */
+    private function rejectionReason(mixed $entity, DecodedEvent $ev): ?string
+    {
+        if ($ev->kind === 'attribute') {
+            if ($this->codesAtMemoized($entity, $ev->source, $ev->recordedAt) === []) {
+                return $ev->source === null ? 'unsourced' : 'source_held_no_code';
+            }
+
+            return null;
+        }
+
+        if ($ev->kind === 'edge') {
+            if (isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
+                return null;
+            }
+            if (!in_array($ev->op, ['set', 'add'], true)) {
+                return 'unsupported_edge_op';
+            }
+            if ($ev->data->value === null) {
+                return 'empty_edge_value';
+            }
+            if ($this->codesAtMemoized($entity, $ev->source, $ev->recordedAt) === []) {
+                return $ev->source === null ? 'unsourced' : 'source_held_no_code';
+            }
+
+            return null;
+        }
+
+        if ($ev->kind === 'media' && !isset(self::LANE_COLLECTIONS[$ev->data->collection])) {
+            return 'unknown_lane_collection';
+        }
+
+        return null;
     }
 
     /**

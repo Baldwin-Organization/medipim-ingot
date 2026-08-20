@@ -108,7 +108,18 @@ final class ClaimMappingTest extends TestCase
         self::assertSame('ok', $ok);
 
         $built = ClaimMapping::build([$env]);
-        self::assertSame([], $built['rejected']);
+
+        // gr-6us widened the loud channel: the two edge REMOVE events (snapshot-v1 keeps only
+        // surviving members, so the removal itself cannot become a claim) report instead of vanishing.
+        $rejected = array_map(
+            static fn (array $r): array => [$r['reason'], $r['detail'], $r['recorded_at']],
+            $built['rejected'],
+        );
+        self::assertSame([
+            ['unsupported_edge_op', 'internationalBrands', 1753271466],
+            ['unsupported_edge_op', 'organizations', 1767725928],
+        ], $rejected);
+
         self::assertCount(215, $built['claims']);
 
         $byKind = [];
