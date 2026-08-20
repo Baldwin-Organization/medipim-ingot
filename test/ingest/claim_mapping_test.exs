@@ -125,6 +125,20 @@ defmodule ClaimMappingTest do
       env = envelope(1, [id("A", "set", "cnk", "111", 10), id("A", "add", "gtin", "5012345678900", 20)])
       assert ClaimMapping.build([env]).shared == MapSet.new()
     end
+
+    # gr-o91: shared comes from the FULL history — a restricted code dropped before
+    # end-of-history must still never bridge (Temporal reconciles PAST dates against it).
+    test "a restricted GTIN removed before end-of-history still lands in shared" do
+      env =
+        envelope(1, [
+          id("A", "add", "gtin", "02000000000000", 10),
+          id("A", "set", "cnk", "111", 20),
+          id("A", "remove", "gtin", "02000000000000", 3 * 86_400)
+        ])
+
+      %{shared: shared} = ClaimMapping.build([env])
+      assert MapSet.member?(shared, {:gtin, "02000000000000"})
+    end
   end
 
   # ── claim shapes ─────────────────────────────────────────────────────────────

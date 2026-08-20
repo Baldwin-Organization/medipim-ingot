@@ -61,7 +61,9 @@ final class ClaimMapping
 
         return [
             'claims' => self::stamp(CanonicalClaims::toEngineBang($fold->canonical())),
-            'shared' => self::sharedCodes(self::finalCodes($fold->periods))->toSets(),
+            // gr-o91: shared comes from the FULL history — every code a listing EVER carried —
+            // so a restricted code dropped before end-of-history still never bridges.
+            'shared' => self::sharedCodes(self::allPeriodCodes($fold->periods))->toSets(),
             'rejected' => $fold->rejectedClaims(),
         ];
     }
@@ -711,8 +713,26 @@ final class ClaimMapping
         return $codes;
     }
 
-    /** @param array<string, CodeSet> $codesByListing */
-    private static function sharedCodes(array $codesByListing): CodeSet
+    /**
+     * Every code-set any listing held at any point in its history — one entry per period.
+     *
+     * @param array<string, list<Period>> $periods
+     * @return list<CodeSet>
+     */
+    private static function allPeriodCodes(array $periods): array
+    {
+        $out = [];
+        foreach ($periods as $list) {
+            foreach ($list as $p) {
+                $out[] = $p->codes;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param iterable<CodeSet> $codesByListing */
+    private static function sharedCodes(iterable $codesByListing): CodeSet
     {
         $shared = CodeSet::none();
         foreach ($codesByListing as $codes) {

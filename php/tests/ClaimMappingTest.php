@@ -98,6 +98,18 @@ final class ClaimMappingTest extends TestCase
         self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
     }
 
+    public function test_restricted_gtin_removed_before_end_of_history_still_lands_in_shared(): void
+    {
+        // gr-o91: shared comes from the FULL history, so a dropped restricted code still never bridges.
+        $env = $this->envelope(1, [
+            $this->id('A', 'add', 'gtin', '02000000000000', 10),
+            $this->id('A', 'set', 'cnk', '111', 20),
+            $this->id('A', 'remove', 'gtin', '02000000000000', 3 * 86_400),
+        ]);
+        $built = ClaimMapping::build([$env]);
+        self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
+    }
+
     public function test_fr_fixture_matches_the_elixir_reference_exactly(): void
     {
         // The cross-language pin (gr-6u6): the FR fixture exercises gr-gh0 (parting-attribute

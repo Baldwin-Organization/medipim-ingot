@@ -78,12 +78,14 @@ defmodule ClaimMapping do
   live-wire validator (member_of + unix-second temporals; see CanonicalClaims).
   """
   def build(envelopes) when is_list(envelopes) do
-    folded = fold_raw(envelopes)
     periods = listing_periods(envelopes)
 
     %{
       claims: envelopes |> canonical(periods) |> CanonicalClaims.to_engine!() |> stamp(),
-      shared: folded |> listing_codes() |> shared_codes(),
+      # gr-o91: shared comes from the FULL history — every code a listing EVER carried — matching
+      # Temporal.run's invariant and FinerClaims.build. The old final-state fold missed a
+      # restricted code dropped before end-of-history, letting it bridge two entities.
+      shared: periods |> all_period_codes() |> shared_codes(),
       rejected: rejected(envelopes, periods)
     }
   end
@@ -561,9 +563,10 @@ defmodule ClaimMapping do
     end
   end
 
-  defp shared_codes(listing_codes) do
-    for {_k, set} <- listing_codes, code <- set, shared?(code), into: MapSet.new(), do: code
-  end
+  defp all_period_codes(periods),
+    do: for({_k, ps} <- periods, %{codes: codes} <- ps, code <- codes, into: MapSet.new(), do: code)
+
+  defp shared_codes(codes), do: MapSet.filter(codes, &shared?/1)
 
   @doc false
   # Shared with FinerClaims — both folds must agree on what may never bridge. The predicate
