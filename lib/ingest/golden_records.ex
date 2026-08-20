@@ -35,7 +35,7 @@
 # SCOPE BOUNDARY: this bead produces ONLY the projection. It does NOT build the LegacyXref /
 # legacy⟷SK map (gr-0c2), nor the demo script / synthetic fixtures (gr-bxf).
 
-alias GoldenRecord.{Events, Substrate, Priority, Catalog, PublicId}
+alias GoldenRecord.{Events, Substrate, Priority, Catalog, PublicId, DimensionAliases}
 
 defmodule GoldenRecords do
   @moduledoc """
@@ -75,10 +75,15 @@ defmodule GoldenRecords do
   fun `(dimension, source) -> rank` (e.g. medipim's context-aware, off-product-penalty scoring; see
   `Survivorship`). It defaults to the permissive `Priority.new(%{}, [])` so unranked-source conflicts
   surface as `:needs_review`. The toggle is thus reachable from the fold entry, not just `decide/3`.
-  """
-  def project(rederivation, priority \\ default_priority())
 
-  def project(%{log: log, ledger: ledger}, priority)
+  `aliases` is the dimension-alias seam (GH #129, `GoldenRecord.DimensionAliases`): an injected
+  old→new field-name map applied to the live claim view BEFORE the per-slot collapse, so a
+  renamed field folds as one dimension. Identity claims (schemes, not field names) are untouched,
+  so clustering and CNK enrichment are alias-independent.
+  """
+  def project(rederivation, priority \\ default_priority(), aliases \\ %{})
+
+  def project(%{log: log, ledger: ledger}, priority, aliases)
       when is_struct(priority, Priority) or is_function(priority, 2) do
     # Fold state for CNK enrichment built ONCE — the ledger is already in hand, and the identity
     # claims fold once — instead of PublicId.canonical/4 refolding the whole log per variant.
@@ -86,7 +91,7 @@ defmodule GoldenRecords do
 
     records =
       ledger.members
-      |> Catalog.project(live_claims(log), priority, @no_overrides)
+      |> Catalog.project(live_claims(log, aliases), priority, @no_overrides)
       |> Enum.map(fn %{product: product, variants: variants} ->
         %{product: product, variants: Enum.map(variants, &enrich(&1, ledger.members, idclaims, priority))}
       end)
@@ -98,8 +103,9 @@ defmodule GoldenRecords do
   Convenience entrypoint: re-derive `envelopes` at instant `at`, then project. Equivalent to
   `envelopes |> Rederivation.run(at) |> project(priority)`.
   """
-  def from_envelopes(envelopes, at, priority \\ default_priority()) when is_list(envelopes) do
-    envelopes |> Rederivation.run(at) |> project(priority)
+  def from_envelopes(envelopes, at, priority \\ default_priority(), aliases \\ %{})
+      when is_list(envelopes) do
+    envelopes |> Rederivation.run(at) |> project(priority, aliases)
   end
 
   @doc "The permissive default priority — every source unranked, so conflicts tie (see moduledoc)."
@@ -110,8 +116,13 @@ defmodule GoldenRecords do
     Map.put(variant, :cnk, PublicId.canonical(:cnk, variant.key, members, idclaims, priority))
   end
 
-  # The CURRENT ClaimAsserted view of the log — what Catalog.project folds over.
-  defp live_claims(log) do
-    log |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1)) |> Substrate.current()
+  # The CURRENT ClaimAsserted view of the log — what Catalog.project folds over. Dimension
+  # aliases apply BEFORE the per-slot collapse, so both spellings of a renamed field share one
+  # slot and last-wins settles across the rename.
+  defp live_claims(log, aliases) do
+    log
+    |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1))
+    |> DimensionAliases.normalize(aliases)
+    |> Substrate.current()
   end
 end

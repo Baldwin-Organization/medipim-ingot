@@ -20,15 +20,26 @@ final class GoldenRecords
      * off-product-penalty scoring lives there). The toggle is thus reachable from the fold entry,
      * not just {@see Survivorship::decide()}.
      *
+     * `$aliases` is the dimension-alias seam (GH #129, {@see DimensionAliases}): an injected
+     * old→new field-name map applied to the live claim view BEFORE the per-slot collapse, so a
+     * renamed field folds as one dimension. Identity claims (schemes, not field names) are
+     * untouched, so clustering and CNK enrichment are alias-independent.
+     *
      * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
+     * @param array<string,string> $aliases
      * @return array{records: list<GoldenRecord>, log: list<DomainEvent>}
      */
-    public static function project(array $rederivation, Priority|callable|null $priority = null): array
+    public static function project(array $rederivation, Priority|callable|null $priority = null, array $aliases = []): array
     {
         $priority ??= self::defaultPriority();
         $log = $rederivation['log'];
         $ledger = $rederivation['ledger'];
         $live = $rederivation['live'] ?? self::liveClaims($log);
+        if ($aliases !== []) {
+            // Re-collapse after aliasing: both spellings of a renamed field now share one slot,
+            // and last-wins settles across the rename.
+            $live = Substrate::current(DimensionAliases::normalize($live, $aliases));
+        }
 
         $projected = Catalog::project($ledger->members, $live, $priority, self::NO_OVERRIDES);
 
@@ -57,11 +68,12 @@ final class GoldenRecords
      * Convenience: re-derive envelopes at `at`, then project.
      *
      * @param list<Envelope> $envelopes
+     * @param array<string,string> $aliases
      * @return array{records: list<GoldenRecord>, log: list<DomainEvent>}
      */
-    public static function fromEnvelopes(array $envelopes, mixed $at, Priority|callable|null $priority = null): array
+    public static function fromEnvelopes(array $envelopes, mixed $at, Priority|callable|null $priority = null, array $aliases = []): array
     {
-        return self::project(Rederivation::run($envelopes, $at), $priority);
+        return self::project(Rederivation::run($envelopes, $at), $priority, $aliases);
     }
 
     /** The permissive default priority — every source unranked, so conflicts tie. */

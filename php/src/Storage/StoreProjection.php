@@ -6,6 +6,7 @@ namespace Ingot\Storage;
 
 use Ingot\Catalog;
 use Ingot\Decision;
+use Ingot\DimensionAliases;
 use Ingot\Events;
 use Ingot\GoldenRecords;
 use Ingot\Priority;
@@ -24,11 +25,14 @@ final class StoreProjection
      * The resolved record for `$surrogateKey`, following merge redirects to the surviving key,
      * or null when the key (after redirects) has no snapshot. `$policy` is the survivorship
      * policy — a {@see Priority} or an injected rank fn (e.g. MedipimPolicy) — defaulting to the
-     * permissive unranked priority, exactly as {@see \Ingot\GoldenRecords::project}.
+     * permissive unranked priority, exactly as {@see \Ingot\GoldenRecords::project}. `$aliases`
+     * is the dimension-alias seam ({@see DimensionAliases}), applied to the snapshot's claims
+     * before grouping so a snapshot written before a field rename still resolves as one dimension.
      *
+     * @param array<string,string> $aliases
      * @return array{key: string, lane: string, codes: list<array{0:string,1:string}>, product: Decision, attributes: list<array{0:string,1:Decision}>}|null
      */
-    public static function record(ClaimStore $store, string $surrogateKey, Priority|callable|null $policy = null): ?array
+    public static function record(ClaimStore $store, string $surrogateKey, Priority|callable|null $policy = null, array $aliases = []): ?array
     {
         $policy ??= GoldenRecords::defaultPriority();
 
@@ -44,7 +48,7 @@ final class StoreProjection
         foreach ($info['claims'] as $c) {
             $claims[] = Events::fromArray($c);
         }
-        $live = Substrate::current($claims);
+        $live = Substrate::current(DimensionAliases::normalize($claims, $aliases));
 
         $attrs = [];
         $groups = [];
