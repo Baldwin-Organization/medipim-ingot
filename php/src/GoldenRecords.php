@@ -21,9 +21,10 @@ final class GoldenRecords
      * not just {@see Survivorship::decide()}.
      *
      * `$aliases` is the dimension-alias seam (GH #129, {@see DimensionAliases}): an injected
-     * old→new field-name map applied to the live claim view BEFORE the per-slot collapse, so a
-     * renamed field folds as one dimension. Identity claims (schemes, not field names) are
-     * untouched, so clustering and CNK enrichment are alias-independent.
+     * old→new field-name map applied to the whole log ONCE, before any fold, so a renamed field
+     * folds as one dimension — in this projection AND in every read over the returned log
+     * (gr-1y5). Identity claims (schemes, not field names) are untouched, so clustering and CNK
+     * enrichment are alias-independent.
      *
      * @param array{log: list<DomainEvent>, ledger: LedgerState} $rederivation
      * @param array<string,string> $aliases
@@ -34,11 +35,14 @@ final class GoldenRecords
         $priority ??= self::defaultPriority();
         $log = $rederivation['log'];
         $ledger = $rederivation['ledger'];
-        $live = $rederivation['live'] ?? self::liveClaims($log);
         if ($aliases !== []) {
-            // Re-collapse after aliasing: both spellings of a renamed field now share one slot,
-            // and last-wins settles across the rename.
-            $live = Substrate::current(DimensionAliases::normalize($live, $aliases));
+            // gr-1y5: aliases apply to the WHOLE log, once, up front — and the normalized log is
+            // what we return, so every read over it (Api::get, History::now) folds the same
+            // dimensions this projection did. Both spellings then share one slot, last-wins.
+            $log = DimensionAliases::normalize($log, $aliases);
+            $live = self::liveClaims($log);
+        } else {
+            $live = $rederivation['live'] ?? self::liveClaims($log);
         }
 
         $projected = Catalog::project($ledger->members, $live, $priority, self::NO_OVERRIDES);

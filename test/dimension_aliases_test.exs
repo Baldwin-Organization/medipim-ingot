@@ -159,4 +159,19 @@ defmodule DimensionAliasesTest do
     assert [{"title", decision}] = variant.attributes
     assert decision.value == "New"
   end
+
+  # gr-1y5: the projection returns the alias-normalized log, so the customer read layer
+  # (Api.get / History.now over that log) folds the SAME dimension the projection did — the
+  # stale spelling must not survive in a second Substrate slot.
+  test "the engine read layer over the projected log agrees with the projection" do
+    priority = GoldenRecords.default_priority()
+
+    %{log: log} =
+      GoldenRecords.from_envelopes([rename_envelope()], 100, priority, %{"name" => "title"})
+
+    {:ok, %{variant: variant}} = GoldenRecord.Api.lookup(log, {:cnk, "1234567"}, priority)
+
+    assert [{"title", decision}] = variant.attributes
+    assert decision.value == "New"
+  end
 end
