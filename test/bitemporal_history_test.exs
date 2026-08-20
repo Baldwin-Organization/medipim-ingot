@@ -178,6 +178,51 @@ defmodule BitemporalHistoryTest do
     assert value(back, "name") == "Back"
   end
 
+  test "a later stamped resolution beats an earlier unstamped one (order: nil)" do
+    claim =
+      Substrate.claim(
+        "supplier",
+        :attribute,
+        %{code: @code, field: "name", value: "Original"},
+        ~D[2026-01-01],
+        ~D[2026-01-01]
+      )
+      |> Map.put(:order, 2)
+
+    identity =
+      Substrate.claim(
+        "supplier",
+        :identity,
+        %{ref: "P-1", codes: [@code]},
+        ~D[2026-01-01],
+        ~D[2026-01-01]
+      )
+      |> Map.put(:order, 1)
+
+    mint = %Events.IdentityMinted{
+      key: "SK_1",
+      codes: MapSet.new(identity.data.codes),
+      recorded_at: ~D[2026-01-01],
+      order: 3
+    }
+
+    resolve = fn value, order ->
+      %Events.ConflictResolved{
+        subject: {:attr, "SK_1", "name"},
+        decision: {:pick, value},
+        by: "steward",
+        valid_from: ~D[2026-02-01],
+        valid_to: nil,
+        recorded_at: timestamp(~D[2026-04-01]),
+        order: order
+      }
+    end
+
+    log = [identity, claim, mint, resolve.("A", nil), resolve.("B", 42)]
+
+    assert value(variant(log, timestamp(~D[2026-04-02]), ~D[2026-02-05]), "name") == "B"
+  end
+
   test "steward decisions, merges, and splits obey both clocks and bounded intervals" do
     claim =
       Substrate.claim(

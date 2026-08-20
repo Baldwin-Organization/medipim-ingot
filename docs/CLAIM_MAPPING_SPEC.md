@@ -75,6 +75,12 @@ the backfill report and the fix belongs upstream.
 | reason | events | who |
 |---|---|---|
 | `source_held_no_code` | 73 | `4996` and `5480` — they never assert a code anywhere in either fixture |
+| `unsupported_edge_op` | 4 | edge `remove` events (`internationalBrands`, `organizations`) — snapshot-v1 keeps only surviving members, so the removal itself cannot become a claim |
+
+Two more reasons exist for shapes the fixtures don't currently contain (gr-6us): `empty_edge_value`
+(an edge with nothing to attach) and `unknown_lane_collection` (a `media` event referencing an
+asset collection the lane table doesn't know — the one shape that must never pass a backfill
+report unnoticed).
 
 This group is **settled, not outstanding**. `4996` reports the four sales-price aggregates and
 `5480` reports packaging, and neither ever names a code for the product it is describing. Under the

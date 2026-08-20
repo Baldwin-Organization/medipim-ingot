@@ -125,6 +125,20 @@ defmodule ClaimMappingTest do
       env = envelope(1, [id("A", "set", "cnk", "111", 10), id("A", "add", "gtin", "5012345678900", 20)])
       assert ClaimMapping.build([env]).shared == MapSet.new()
     end
+
+    # gr-o91: shared comes from the FULL history — a restricted code dropped before
+    # end-of-history must still never bridge (Temporal reconciles PAST dates against it).
+    test "a restricted GTIN removed before end-of-history still lands in shared" do
+      env =
+        envelope(1, [
+          id("A", "add", "gtin", "02000000000000", 10),
+          id("A", "set", "cnk", "111", 20),
+          id("A", "remove", "gtin", "02000000000000", 3 * 86_400)
+        ])
+
+      %{shared: shared} = ClaimMapping.build([env])
+      assert MapSet.member?(shared, {:gtin, "02000000000000"})
+    end
   end
 
   # ── claim shapes ─────────────────────────────────────────────────────────────
@@ -209,6 +223,47 @@ defmodule ClaimMappingTest do
       attr = Enum.find(ClaimMapping.build([env]).claims, &(&1.kind == :attribute))
       assert attr.data.code == {:cnk, "111"}
       assert ClaimMapping.rejected([env]) == []
+    end
+
+    # gr-6us: every shape that cannot become a claim reports a reason — nothing vanishes
+    # between the member_of/lane filters.
+    test "edges and media events that cannot become claims are refused with a reason" do
+      env =
+        envelope(1, [
+          id("A", "set", "cnk", "111", 10),
+          %{
+            "recorded_at" => 20,
+            "source" => "A",
+            "op" => "remove",
+            "kind" => "edge",
+            "collection" => "organizations",
+            "value" => 9
+          },
+          %{
+            "recorded_at" => 21,
+            "source" => "A",
+            "op" => "set",
+            "kind" => "edge",
+            "collection" => "organizations",
+            "value" => nil
+          },
+          %{
+            "recorded_at" => 22,
+            "source" => "A",
+            "op" => "add",
+            "kind" => "media",
+            "collection" => "videos",
+            "asset" => 7
+          }
+        ])
+
+      reasons = [env] |> ClaimMapping.rejected() |> Enum.map(&{&1.reason, &1.detail}) |> Enum.sort()
+
+      assert reasons == [
+               {:empty_edge_value, "organizations"},
+               {:unknown_lane_collection, "videos"},
+               {:unsupported_edge_op, "organizations"}
+             ]
     end
 
     test "attribute at the opening instant of a live period anchors to the new codes" do

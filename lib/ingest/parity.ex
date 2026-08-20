@@ -106,11 +106,11 @@ defmodule ParityHarness do
   from the lane ledgers, not by the engine's `MED_*`/`DSC_*` surrogate keys — the applier speaks
   legacy ids, and the diff needs one vocabulary.
   """
-  def snapshot(envelopes, at \\ 1, priority \\ GoldenRecords.default_priority())
+  def snapshot(envelopes, at \\ 1, priority \\ GoldenRecords.default_priority(), aliases \\ %{})
 
-  def snapshot([%HistoryEnvelope{} = first | _] = envelopes, at, priority) do
+  def snapshot([%HistoryEnvelope{} = first | _] = envelopes, at, priority, aliases) do
     rederivation = Rederivation.run(envelopes, at)
-    %{records: records} = GoldenRecords.project(rederivation, priority)
+    %{records: records} = GoldenRecords.project(rederivation, priority, aliases)
     variants = Enum.flat_map(records, & &1.variants)
     ledgers = rederivation.ledgers
 
@@ -181,9 +181,10 @@ defmodule ParityHarness do
 
   @doc """
   Run a whole cohort. Each case is `%{envelopes: [%HistoryEnvelope{}], applier: <wire map>}`.
-  Options: `:at` (the instant to re-derive at, default 1) and `:priority` (the survivorship policy
+  Options: `:at` (the instant to re-derive at, default 1), `:priority` (the survivorship policy
   handed to `GoldenRecords.project/2`, default the permissive one — so ties surface as
-  `:unresolved` rather than being decided arbitrarily).
+  `:unresolved` rather than being decided arbitrarily) and `:aliases` (the dimension-alias map,
+  gr-1y5 — so the parity gate exercises the same seam production folds through).
 
   Returns the cohort report:
 
@@ -197,10 +198,11 @@ defmodule ParityHarness do
   def run(cases, opts \\ []) when is_list(cases) do
     at = Keyword.get(opts, :at, 1)
     priority = Keyword.get(opts, :priority, GoldenRecords.default_priority())
+    aliases = Keyword.get(opts, :aliases, %{})
 
     cases =
       Enum.map(cases, fn %{envelopes: envelopes, applier: applier} ->
-        compare(snapshot(envelopes, at, priority), applier)
+        compare(snapshot(envelopes, at, priority, aliases), applier)
       end)
 
     %{

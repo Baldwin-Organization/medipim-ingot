@@ -68,8 +68,9 @@ defmodule GoldenRecords do
         descriptions: [%{key: "DSC_n", via, asserted_by, attributes}, ...]  # derived (gr-sw0)
       }
 
-  `log` is passed through unchanged so downstream callers keep the engine's read layer
-  (`Api.resolve_key/2`, `Api.changes_since/2`, `PublicId.collisions/2`).
+  `log` is passed through (alias-normalized when `aliases` is given) so downstream callers keep
+  the engine's read layer (`Api.resolve_key/2`, `Api.changes_since/2`, `PublicId.collisions/2`)
+  — and see the SAME dimensions this projection folded.
 
   `priority` is the survivorship policy — a `%Priority{}` (tier ranking) OR a 2-arity injected rank
   fun `(dimension, source) -> rank` (e.g. medipim's context-aware, off-product-penalty scoring; see
@@ -77,21 +78,28 @@ defmodule GoldenRecords do
   surface as `:needs_review`. The toggle is thus reachable from the fold entry, not just `decide/3`.
 
   `aliases` is the dimension-alias seam (GH #129, `GoldenRecord.DimensionAliases`): an injected
-  old→new field-name map applied to the live claim view BEFORE the per-slot collapse, so a
-  renamed field folds as one dimension. Identity claims (schemes, not field names) are untouched,
-  so clustering and CNK enrichment are alias-independent.
+  old→new field-name map applied to the whole log ONCE, before any fold, so a renamed field
+  folds as one dimension — in this projection AND in every read over the returned log. Identity
+  claims (schemes, not field names) are untouched, so clustering and CNK enrichment are
+  alias-independent.
   """
   def project(rederivation, priority \\ default_priority(), aliases \\ %{})
 
   def project(%{log: log, ledger: ledger}, priority, aliases)
       when is_struct(priority, Priority) or is_function(priority, 2) do
+    # gr-1y5: aliases apply to the WHOLE log, once, up front — and the normalized log is what we
+    # return, so every downstream read (Api.get, History.now, Temporal.golden_as_of over this
+    # log) folds the same dimensions the projection did. Identity claims carry schemes, not
+    # field names, so the ledger/clustering side is alias-independent by construction.
+    log = DimensionAliases.normalize(log, aliases)
+
     # Fold state for CNK enrichment built ONCE — the ledger is already in hand, and the identity
     # claims fold once — instead of PublicId.canonical/4 refolding the whole log per variant.
     idclaims = PublicId.identity_claims(log)
 
     records =
       ledger.members
-      |> Catalog.project(live_claims(log, aliases), priority, @no_overrides)
+      |> Catalog.project(live_claims(log), priority, @no_overrides)
       |> Enum.map(fn %{product: product, variants: variants} ->
         %{product: product, variants: Enum.map(variants, &enrich(&1, ledger.members, idclaims, priority))}
       end)
@@ -116,13 +124,12 @@ defmodule GoldenRecords do
     Map.put(variant, :cnk, PublicId.canonical(:cnk, variant.key, members, idclaims, priority))
   end
 
-  # The CURRENT ClaimAsserted view of the log — what Catalog.project folds over. Dimension
-  # aliases apply BEFORE the per-slot collapse, so both spellings of a renamed field share one
-  # slot and last-wins settles across the rename.
-  defp live_claims(log, aliases) do
+  # The CURRENT ClaimAsserted view of the (already alias-normalized) log — what Catalog.project
+  # folds over. Both spellings of a renamed field share one slot and last-wins settles across
+  # the rename.
+  defp live_claims(log) do
     log
     |> Enum.filter(&match?(%Events.ClaimAsserted{}, &1))
-    |> DimensionAliases.normalize(aliases)
     |> Substrate.current()
   end
 end

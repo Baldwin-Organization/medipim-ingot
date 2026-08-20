@@ -10,11 +10,7 @@ defmodule GoldenRecord.Api do
 
   @doc "Identity status of a key, derived from the log: :active | :merged (-> survivor) | :split (-> parts)."
   def identity_status(log, key) do
-    superseded_by =
-      Enum.find_value(log, fn
-        %Events.IdentitiesMerged{from: from, into: into} -> if key in from and key != into, do: into
-        _ -> nil
-      end)
+    superseded_by = follow_merges(log, key, MapSet.new([key]))
 
     split_into =
       Enum.find_value(log, fn
@@ -69,6 +65,21 @@ defmodule GoldenRecord.Api do
   @doc "Change feed: identity events after `cursor`, so customers can repair local copies after churn."
   def changes_since(log, cursor) do
     Enum.filter(log, fn e -> identity_event?(e) and (e.order || 0) > cursor end)
+  end
+
+  # Merges chain (A->B, then B->C): follow until the survivor; the seen set guards odd logs.
+  defp follow_merges(log, key, seen) do
+    next =
+      Enum.find_value(log, fn
+        %Events.IdentitiesMerged{from: from, into: into} -> if key in from and key != into, do: into
+        _ -> nil
+      end)
+
+    if next == nil or MapSet.member?(seen, next) do
+      nil
+    else
+      follow_merges(log, next, MapSet.put(seen, next)) || next
+    end
   end
 
   defp identity_event?(%Events.IdentityMinted{}), do: true

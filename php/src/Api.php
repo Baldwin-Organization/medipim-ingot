@@ -41,15 +41,26 @@ final class Api
      */
     public static function identityStatus(array $log, string $key): IdentityStatus
     {
+        // Merges chain (A->B, then B->C): follow until the survivor; $seen guards odd logs.
         $supersededBy = null;
-        foreach ($log as $e) {
-            if ($e instanceof IdentitiesMerged
-                && in_array($key, $e->from, true) && $key !== $e->into
-            ) {
-                $supersededBy = $e->into;
+        $cursor = $key;
+        $seen = [$key => true];
+        do {
+            $next = null;
+            foreach ($log as $e) {
+                if ($e instanceof IdentitiesMerged
+                    && in_array($cursor, $e->from, true) && $cursor !== $e->into
+                ) {
+                    $next = $e->into;
+                    break;
+                }
+            }
+            if ($next === null || isset($seen[$next])) {
                 break;
             }
-        }
+            $seen[$next] = true;
+            $supersededBy = $cursor = $next;
+        } while (true);
 
         $splitInto = null;
         foreach ($log as $e) {

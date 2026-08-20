@@ -60,7 +60,7 @@ defmodule LegacyIds do
 
     # Two keys can inherit the SAME entity id only if identity genuinely split inside one legacy
     # entity — keep the deterministic winner (lowest key) and re-allocate the rest.
-    dedup_inherited(events)
+    dedup_inherited(events, floor)
   end
 
   @doc """
@@ -116,7 +116,7 @@ defmodule LegacyIds do
     end
   end
 
-  defp dedup_inherited(events) do
+  defp dedup_inherited(events, global_floor) do
     {kept, _seen, dups} =
       Enum.reduce(events, {[], MapSet.new(), []}, fn e, {kept, seen, dups} ->
         if MapSet.member?(seen, e.legacy_id),
@@ -124,7 +124,9 @@ defmodule LegacyIds do
           else: {[e | kept], MapSet.put(seen, e.legacy_id), dups}
       end)
 
-    floor = events |> Enum.map(& &1.legacy_id) |> Enum.max(fn -> 0 end)
+    # Re-allocation must clear every id ever seen (assigned or voted — the global floor from
+    # decide/4), not just this batch's, or a re-assigned id can collide with a real entity.
+    floor = events |> Enum.map(& &1.legacy_id) |> Enum.max(fn -> 0 end) |> max(global_floor)
 
     reallocated =
       dups

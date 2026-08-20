@@ -173,6 +173,8 @@ defmodule GoldenRecord.Catalog do
   # Media-lane records reach the page via :depicts edges — the first-class path (gr-kek). The
   # legacy :media claim kind keeps resolving in resolve_media/3 until every producer emits lanes.
   defp resolve_depicted(codes, edges, media_members, media_index, attrs, priority) do
+    rank = Survivorship.rank_fun(priority)
+
     edges
     |> Enum.filter(&(&1.data.relation == :depicts and MapSet.member?(codes, &1.data.to)))
     |> Enum.group_by(&owner_key(media_index, &1.data.from))
@@ -182,7 +184,7 @@ defmodule GoldenRecord.Catalog do
       %{
         asset: key,
         role: attr_value(attributes, "role", :secondary),
-        source: es |> Enum.map(& &1.source) |> Enum.uniq() |> Enum.sort() |> hd(),
+        source: es |> Enum.min_by(&rank.(:media, &1.source)) |> Map.fetch!(:source),
         uri: attr_value(attributes, "uri", nil)
       }
     end)

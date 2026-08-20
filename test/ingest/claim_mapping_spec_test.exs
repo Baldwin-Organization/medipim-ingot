@@ -106,8 +106,11 @@ defmodule ClaimMappingSpecTest do
       # Exactly the never-identifying sources remain; the outside-the-window group is anchored
       # by gr-4iu's nearest-codes rule. (The old `reasons[:unsourced] > 0` assertion here was
       # vacuously true — nil > 0 holds under term ordering — there are no unsourced rejections.)
+      # gr-6us widened the channel: the four edge REMOVE events (snapshot-v1 keeps only
+      # surviving members, so the removal itself cannot become a claim) now report instead of
+      # vanishing between the member_of filters.
       reasons = rejected |> Enum.map(& &1.reason) |> Enum.frequencies()
-      assert reasons == %{source_held_no_code: 73}
+      assert reasons == %{source_held_no_code: 73, unsupported_edge_op: 4}
 
       # 4996 and 5480 never assert a code anywhere in either fixture.
       never_identify =
@@ -120,8 +123,16 @@ defmodule ClaimMappingSpecTest do
     test "every rejection carries a reason and enough to find the event" do
       rejected = @fixtures |> Enum.map(&HistoryEnvelope.load!/1) |> ClaimMapping.rejected()
 
+      reasons = [
+        :unsourced,
+        :source_held_no_code,
+        :unsupported_edge_op,
+        :empty_edge_value,
+        :unknown_lane_collection
+      ]
+
       assert Enum.all?(rejected, fn r ->
-               is_integer(r.entity) and r.reason in [:unsourced, :source_held_no_code] and
+               is_integer(r.entity) and r.reason in reasons and
                  is_binary(r.detail) and is_integer(r.recorded_at)
              end)
     end

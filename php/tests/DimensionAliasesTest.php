@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Ingot\Tests;
 
+use Ingot\Api;
 use Ingot\DimensionAliases;
 use Ingot\EnvelopeLoader;
 use Ingot\GoldenRecords;
@@ -120,6 +121,22 @@ final class DimensionAliasesTest extends TestCase
     public function test_with_aliases_the_rename_folds_as_one_dimension(): void
     {
         $variant = GoldenRecords::fromEnvelopes([$this->renameEnvelope()], 100, null, ['name' => 'title'])['records'][0]->variants[0];
+
+        self::assertCount(1, $variant->attributes);
+        [$field, $decision] = $variant->attributes[0];
+        self::assertSame('title', $field);
+        self::assertSame('New', $decision->value);
+    }
+
+    public function test_the_engine_read_layer_over_the_projected_log_agrees_with_the_projection(): void
+    {
+        // gr-1y5: the projection returns the alias-normalized log, so Api::get over that log
+        // folds the SAME dimension — the stale spelling must not survive in a second slot.
+        $log = GoldenRecords::fromEnvelopes([$this->renameEnvelope()], 100, null, ['name' => 'title'])['log'];
+
+        $priority = GoldenRecords::defaultPriority();
+        $key = Api::resolveKey($log, ['cnk', '1234567']);
+        $variant = Api::get($log, $key, $priority)['variant'];
 
         self::assertCount(1, $variant->attributes);
         [$field, $decision] = $variant->attributes[0];

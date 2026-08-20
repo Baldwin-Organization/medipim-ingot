@@ -370,6 +370,34 @@ final class EngineTest extends TestCase
         self::assertTrue(Sets::member($ledger2->members['SK_2'], ['cnk', '44']));
     }
 
+    public function test_a_split_sharing_a_contested_barcode_yields_a_merge_proposal(): void
+    {
+        // gr-dc2: the split parts still share a contested barcode, so the freshly minted key and
+        // the kept key must land in front of a steward as a merge proposal — not vanish silently.
+        $ledger = $this->fold([
+            Events::identityMinted('SK_1', Sets::of([['cnk', '111'], ['cnk', '222'], ['gtin', '5012345678900']]), 'd1', 1),
+        ], IdentityLedger::new());
+
+        $events = IdentityLedger::decide($ledger, ['reconcile', [
+            Sets::of([['cnk', '111'], ['gtin', '5012345678900']]),
+            Sets::of([['cnk', '222'], ['gtin', '5012345678900']]),
+        ], 'd2']);
+
+        $split = false;
+        $mergeKeys = null;
+        foreach ($events as $e) {
+            if ($e instanceof IdentitySplit && $e->key === 'SK_1') {
+                $split = true;
+            }
+            if ($e instanceof ConflictFlagged && $e->subject[0] === 'merge') {
+                $mergeKeys = $e->subject[1];
+            }
+        }
+
+        self::assertTrue($split);
+        self::assertSame(['SK_1', 'SK_2'], $mergeKeys);
+    }
+
     public function test_marking_code_shared_splits_a_wrong_merge(): void
     {
         $claims = [

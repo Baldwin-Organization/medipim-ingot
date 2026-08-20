@@ -98,6 +98,18 @@ final class ClaimMappingTest extends TestCase
         self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
     }
 
+    public function test_restricted_gtin_removed_before_end_of_history_still_lands_in_shared(): void
+    {
+        // gr-o91: shared comes from the FULL history, so a dropped restricted code still never bridges.
+        $env = $this->envelope(1, [
+            $this->id('A', 'add', 'gtin', '02000000000000', 10),
+            $this->id('A', 'set', 'cnk', '111', 20),
+            $this->id('A', 'remove', 'gtin', '02000000000000', 3 * 86_400),
+        ]);
+        $built = ClaimMapping::build([$env]);
+        self::assertSame([['gtin', '02000000000000']], Sets::values($built['shared']));
+    }
+
     public function test_fr_fixture_matches_the_elixir_reference_exactly(): void
     {
         // The cross-language pin (gr-6u6): the FR fixture exercises gr-gh0 (parting-attribute
@@ -108,7 +120,18 @@ final class ClaimMappingTest extends TestCase
         self::assertSame('ok', $ok);
 
         $built = ClaimMapping::build([$env]);
-        self::assertSame([], $built['rejected']);
+
+        // gr-6us widened the loud channel: the two edge REMOVE events (snapshot-v1 keeps only
+        // surviving members, so the removal itself cannot become a claim) report instead of vanishing.
+        $rejected = array_map(
+            static fn (array $r): array => [$r['reason'], $r['detail'], $r['recorded_at']],
+            $built['rejected'],
+        );
+        self::assertSame([
+            ['unsupported_edge_op', 'internationalBrands', 1753271466],
+            ['unsupported_edge_op', 'organizations', 1767725928],
+        ], $rejected);
+
         self::assertCount(215, $built['claims']);
 
         $byKind = [];

@@ -8,10 +8,11 @@ defmodule GoldenRecord.DimensionAliases do
 
   Claims are write-time canonical — the dimension name current at ingest time is baked into the
   stored claim, and stored events keep that historical spelling forever (the audit trail, same
-  posture as medipim's `products_deltas`). Every fold entry that groups by dimension
-  (`Substrate.current/1` slots, `Survivorship.field_decisions/3`) therefore normalizes through
-  `normalize/2` FIRST, so survivorship sees one dimension regardless of when a claim was written.
-  Backfill fingerprints hash the pre-alias envelope, so a rename never invalidates
+  posture as medipim's `products_deltas`). The contract (gr-1y5): `normalize/2` the LOG once, at
+  the boundary, before ANY fold that groups by dimension — `GoldenRecords.project/3` does this
+  and returns the normalized log, so its projection and every read over that log (`Api.get`,
+  `History.now`, `Temporal.golden_as_of`) agree; a caller folding a raw log directly normalizes
+  it first. Backfill fingerprints hash the pre-alias envelope, so a rename never invalidates
   `backfill_seen` markers — a replay stays a no-op.
 
   Aliased spots: an attribute claim's `data.field` (including its optional `":locale"` suffix —

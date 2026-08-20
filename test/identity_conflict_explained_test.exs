@@ -96,6 +96,35 @@ defmodule IdentityConflictExplainedTest do
       assert number_of_products(result) == 2
       assert a_clash_was_flagged?(result)
     end
+
+    test "WHEN one product splits but the parts still share a contested barcode, THEN the steward gets a merge proposal" do
+      # ── INPUT (in plain words) ────────────────────────────────────────────────
+      #   Yesterday the system knew ONE product carrying national codes 111 and 222 plus a barcode.
+      #   Today the sources describe TWO products — 111 with the barcode, and 222 with the barcode.
+      #   The barcode is contested (both sides claim it), so the split parts might still be one product.
+      prior = %Events.IdentityMinted{
+        key: "SK_1",
+        codes: MapSet.new([{:cnk, "111"}, {:cnk, "222"}, {:gtin, "5012345678900"}]),
+        recorded_at: @today,
+        order: 1
+      }
+
+      clusters = [
+        MapSet.new([{:cnk, "111"}, {:gtin, "5012345678900"}]),
+        MapSet.new([{:cnk, "222"}, {:gtin, "5012345678900"}])
+      ]
+
+      events =
+        IdentityLedger.new()
+        |> IdentityLedger.evolve(prior)
+        |> IdentityLedger.decide({:reconcile, clusters, @today})
+
+      # ── EXPECTED OUTPUT (in plain words) ──────────────────────────────────────
+      #   The key splits in two, AND the shared barcode puts the two new keys in front of a
+      #   steward as a merge proposal — the split must not silently swallow the question.
+      assert Enum.any?(events, &match?(%Events.IdentitySplit{key: "SK_1"}, &1))
+      assert Enum.any?(events, &match?(%Events.ConflictFlagged{subject: {:merge, ["SK_1", "SK_2"]}}, &1))
+    end
   end
 
   # ── tiny helpers that turn the plain-language story into engine claims/calls ──

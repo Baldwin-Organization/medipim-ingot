@@ -10,6 +10,7 @@ use Ingot\Cluster;
 use Ingot\Decision;
 use Ingot\DomainEvent;
 use Ingot\History;
+use Ingot\IdentitiesMerged;
 use Ingot\IdentityLedger;
 use Ingot\IdentityStatus;
 use Ingot\LedgerState;
@@ -42,6 +43,18 @@ final class HistoryApiTest extends TestCase
             ],
             [['manufacturer'], ['supplier'], ['marketplace']],
         );
+    }
+
+    public function test_a_chained_merge_redirects_to_the_final_survivor(): void
+    {
+        $log = [
+            new IdentitiesMerged(['SK_A', 'SK_B'], 'SK_B', self::D2, 1),
+            new IdentitiesMerged(['SK_B', 'SK_C'], 'SK_C', self::D2, 2),
+        ];
+
+        self::assertSame('SK_C', Api::identityStatus($log, 'SK_A')->supersededBy);
+        self::assertSame('SK_C', Api::identityStatus($log, 'SK_B')->supersededBy);
+        self::assertSame('active', Api::identityStatus($log, 'SK_C')->status);
     }
 
     public function test_transaction_time_travel_shows_the_old_belief(): void

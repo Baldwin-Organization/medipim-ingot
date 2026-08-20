@@ -266,13 +266,15 @@ defmodule GoldenRecord.History do
       resolved
       |> Enum.filter(&match?(%Events.ConflictResolved{subject: {:attr, _, _}, decision: {:pick, _}}, &1))
       |> Enum.group_by(fn %Events.ConflictResolved{subject: {:attr, k, d}} -> {k, d} end)
-      |> Map.new(fn {k, evs} -> {k, Enum.max_by(evs, & &1.order)} end)
+      |> Map.new(fn {k, evs} -> {k, Enum.max_by(evs, &(&1.order || -1))} end)
 
     product =
       resolved
       |> Enum.filter(&match?(%Events.ConflictResolved{subject: {:collision, _}, decision: {:product, _}}, &1))
       |> Enum.group_by(fn %Events.ConflictResolved{subject: {:collision, k}} -> k end)
-      |> Map.new(fn {k, evs} -> {k, evs |> Enum.max_by(& &1.order) |> Map.fetch!(:decision) |> elem(1)} end)
+      |> Map.new(fn {k, evs} ->
+        {k, evs |> Enum.max_by(&(&1.order || -1)) |> Map.fetch!(:decision) |> elem(1)}
+      end)
 
     %{attr: attr, product: product}
   end

@@ -78,12 +78,14 @@ defmodule ClaimMapping do
   live-wire validator (member_of + unix-second temporals; see CanonicalClaims).
   """
   def build(envelopes) when is_list(envelopes) do
-    folded = fold_raw(envelopes)
     periods = listing_periods(envelopes)
 
     %{
       claims: envelopes |> canonical(periods) |> CanonicalClaims.to_engine!() |> stamp(),
-      shared: folded |> listing_codes() |> shared_codes(),
+      # gr-o91: shared comes from the FULL history — every code a listing EVER carried — matching
+      # Temporal.run's invariant and FinerClaims.build. The old final-state fold missed a
+      # restricted code dropped before end-of-history, letting it bridge two entities.
+      shared: periods |> all_period_codes() |> shared_codes(),
       rejected: rejected(envelopes, periods)
     }
   end
@@ -393,21 +395,46 @@ defmodule ClaimMapping do
   defp rejected(envelopes, periods) do
     for env <- envelopes,
         ev <- env.events,
-        ev.kind in [:attribute, :edge],
-        codes_at(periods, env.legacy_entity, ev.source, ev.recorded_at) == [] do
+        reason = rejection_reason(ev, periods, env.legacy_entity),
+        reason != nil do
       %{
         entity: env.legacy_entity,
         source: ev.source,
         kind: ev.kind,
         detail: rejection_detail(ev),
         recorded_at: ev.recorded_at,
-        reason: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+        reason: reason
       }
     end
   end
 
+  defp rejection_reason(%{kind: :attribute} = ev, periods, entity),
+    do: if(codes_at(periods, entity, ev.source, ev.recorded_at) == [], do: no_code_reason(ev))
+
+  # gr-6us: every way an edge fails to become a member_of claim (see the comprehension in
+  # wire_claims/2) lands here with its own reason, instead of vanishing between the filters.
+  defp rejection_reason(%{kind: :edge} = ev, periods, entity) do
+    cond do
+      Map.has_key?(@lane_collections, ev.data.collection) -> nil
+      ev.op not in [:set, :add] -> :unsupported_edge_op
+      ev.data.value == nil -> :empty_edge_value
+      codes_at(periods, entity, ev.source, ev.recorded_at) == [] -> no_code_reason(ev)
+      true -> nil
+    end
+  end
+
+  # A media event referencing a collection the lane table doesn't know is a NEW medipim asset
+  # collection — the one shape that must never pass a backfill report unnoticed.
+  defp rejection_reason(%{kind: :media} = ev, _periods, _entity),
+    do: if(not Map.has_key?(@lane_collections, ev.data.collection), do: :unknown_lane_collection)
+
+  defp rejection_reason(_ev, _periods, _entity), do: nil
+
+  defp no_code_reason(ev), do: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+
   defp rejection_detail(%{kind: :attribute} = ev), do: field_dim(ev)
   defp rejection_detail(%{kind: :edge} = ev), do: ev.data.collection
+  defp rejection_detail(%{kind: :media} = ev), do: ev.data.collection
 
   # ── fold ──────────────────────────────────────────────────────────────────
 
@@ -490,8 +517,10 @@ defmodule ClaimMapping do
   # a contradiction to survivorship. Longer lists are left alone — none occur in the fixtures, and
   # the right shape for a genuine multi-value field (several claims? member_of?) is undecided.
   # See docs/CLAIM_MAPPING_SPEC.md.
-  defp attribute_value(field, [single]), do: normalize_quantity(field, single)
-  defp attribute_value(field, value), do: normalize_quantity(field, value)
+  @doc false
+  # Shared with FinerClaims — both folds must serialize an attribute value the same way.
+  def attribute_value(field, [single]), do: normalize_quantity(field, single)
+  def attribute_value(field, value), do: normalize_quantity(field, value)
 
   # Quantity fields with a DECLARED storage unit (gr-sx7.3, closing the spec's former OPEN
   # QUESTION): medipim stores weight in grams and dimensions in millimetres; "<num>_<unit>"
@@ -534,9 +563,10 @@ defmodule ClaimMapping do
     end
   end
 
-  defp shared_codes(listing_codes) do
-    for {_k, set} <- listing_codes, code <- set, shared?(code), into: MapSet.new(), do: code
-  end
+  defp all_period_codes(periods),
+    do: for({_k, ps} <- periods, %{codes: codes} <- ps, code <- codes, into: MapSet.new(), do: code)
+
+  defp shared_codes(codes), do: MapSet.filter(codes, &shared?/1)
 
   @doc false
   # Shared with FinerClaims — both folds must agree on what may never bridge. The predicate
