@@ -456,6 +456,17 @@ defmodule EngineTest do
       assert Api.resolve_key(log2, {:gtin, "0222"}) == "SK_1"
     end
 
+    test "a chained merge redirects to the final survivor, not the intermediate key" do
+      log = [
+        %Events.IdentitiesMerged{from: ["SK_A", "SK_B"], into: "SK_B", recorded_at: @d2, order: 1},
+        %Events.IdentitiesMerged{from: ["SK_B", "SK_C"], into: "SK_C", recorded_at: @d2, order: 2}
+      ]
+
+      assert Api.identity_status(log, "SK_A") == %{status: :merged, superseded_by: "SK_C"}
+      assert Api.identity_status(log, "SK_B") == %{status: :merged, superseded_by: "SK_C"}
+      assert Api.identity_status(log, "SK_C") == %{status: :active}
+    end
+
     test "the change feed returns identity events after a cursor" do
       {log, _} =
         resolve([claim(:supplier, :identity, %{ref: "A", codes: [{:gtin, "0111"}]}, @d1, @d1)])
