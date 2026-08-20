@@ -58,6 +58,20 @@ defmodule LegacyIdsTest do
       assert length(Enum.uniq(ids)) == 2
       assert Enum.max(ids) > 500
     end
+
+    test "re-allocation on duplicate inheritance clears the GLOBAL floor, not just this batch's" do
+      claims = [grouping(:a, {:cnk, "111"}, 5), grouping(:b, {:gtin, "222"}, 5)]
+
+      members = %{
+        "SK_2" => MapSet.new([{:cnk, "111"}]),
+        "SK_3" => MapSet.new([{:gtin, "222"}])
+      }
+
+      events = LegacyIds.decide(members, claims, %{"SK_9" => 30}, @d1)
+      by_key = Map.new(events, &{&1.key, &1.legacy_id})
+      assert by_key["SK_2"] == 5
+      assert by_key["SK_3"] == 31
+    end
   end
 
   describe "decide/4 — allocation for new products" do
