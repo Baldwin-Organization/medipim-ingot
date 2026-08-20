@@ -165,6 +165,32 @@ defmodule FinerClaimsTest do
       assert [a] = Enum.filter(claims, &(&1.kind == :attribute))
       assert a.data.code == {:cnk, "1000000"}
     end
+
+    test "an end-of-life listing (codes nulled) keeps anchoring post-delist events (gr-5kz)" do
+      env =
+        envelope(906, [
+          id("A", "cnk", "1000000", epoch(~D[2020-01-01])),
+          id("A", "cnk", "1000000", epoch(~D[2021-01-01]), "remove"),
+          attr("A", "name", "After the end", epoch(~D[2022-01-01]))
+        ])
+
+      %{claims: claims, rejected: rejected} = FinerClaims.build([env])
+      assert [a] = Enum.filter(claims, &(&1.kind == :attribute))
+      assert a.data.code == {:cnk, "1000000"}
+      assert rejected == []
+    end
+
+    test "an event whose source never held a code is refused LOUDLY, not dropped" do
+      env =
+        envelope(907, [
+          id("A", "cnk", "1000000", epoch(~D[2020-01-01])),
+          attr("B", "name", "Stranger", epoch(~D[2020-06-01]))
+        ])
+
+      %{claims: claims, rejected: rejected} = FinerClaims.build([env])
+      assert Enum.filter(claims, &(&1.kind == :attribute)) == []
+      assert [%{source: "B", kind: :attribute, reason: :source_held_no_code}] = rejected
+    end
   end
 
   # ── fold_forward: threading a prior ledger ───────────────────────────────────

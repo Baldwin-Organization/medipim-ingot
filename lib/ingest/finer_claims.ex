@@ -45,8 +45,9 @@ defmodule FinerClaims do
                     end)
 
   @doc """
-  Map envelopes to `%{claims: [%Events.ClaimAsserted{}], shared: MapSet}` — like
+  Map envelopes to `%{claims: [%Events.ClaimAsserted{}], shared: MapSet, rejected: [map]}` — like
   `ClaimMapping.build/1` but with per-event identity granularity and `Date`-typed stamps.
+  `rejected` lists the events no anchor could be found for, mirroring `ClaimMapping.rejected/1`.
 
   Identity snapshots that transition to an empty code-set are kept as withdrawals; empty deltas
   before a listing ever had codes are skipped. Consecutive identical snapshots are deduplicated
@@ -138,11 +139,37 @@ defmodule FinerClaims do
     all_codes =
       for %{snapshots: snaps} <- per_listing, {codes, _} <- snaps, c <- codes, into: MapSet.new(), do: c
 
+    # The loud channel (mirrors ClaimMapping.rejected/1): an event whose anchor lookup still
+    # resolves to nothing cannot become a claim — count it, never drop it in silence.
+    rejected =
+      for env <- envelopes,
+          ev <- env.events,
+          ev.kind in [:attribute, :edge],
+          anchor_for(anchors, env.legacy_entity, ev) == nil do
+        %{
+          entity: env.legacy_entity,
+          source: ev.source,
+          kind: ev.kind,
+          detail: if(ev.kind == :attribute, do: ClaimMapping.field_dim(ev), else: ev.data.collection),
+          recorded_at: ev.recorded_at,
+          reason: if(is_nil(ev.source), do: :unsourced, else: :source_held_no_code)
+        }
+      end
+
     %{
       claims: stamp(identity ++ grouping ++ attribute ++ member_of ++ lane_entities),
-      shared: MapSet.filter(all_codes, &ClaimMapping.shared?/1)
+      shared: MapSet.filter(all_codes, &ClaimMapping.shared?/1),
+      rejected: rejected
     }
   end
+
+  # Lane-collection edges anchor at the entity level (that is how lane_entities looks them up);
+  # everything else anchors per (entity, source).
+  defp anchor_for(anchors, entity, %{kind: :edge, data: %{collection: coll}} = ev)
+       when is_map_key(@lane_collections, coll),
+       do: anchors.(entity, nil, ev.recorded_at)
+
+  defp anchor_for(anchors, entity, ev), do: anchors.(entity, ev.source, ev.recorded_at)
 
   @doc """
   Reconcile `claims` date by date, threading `ledger` forward — keys stay stable, and a code that
@@ -189,11 +216,11 @@ defmodule FinerClaims do
   layer (and `Temporal.golden_as_of/3`) unchanged.
   """
   def run(envelopes) when is_list(envelopes) do
-    %{claims: claims, shared: shared} = build(envelopes)
+    %{claims: claims, shared: shared, rejected: rejected} = build(envelopes)
     %{events: events, ledger: ledger} = fold_forward(claims, shared)
     events = Rederivation.stamp(events, claims)
 
-    %{log: claims ++ events, timeline: events, ledger: ledger, shared: shared}
+    %{log: claims ++ events, timeline: events, ledger: ledger, shared: shared, rejected: rejected}
   end
 
   # ── per-listing fold: one snapshot after every identity event ──────────────────────────────────
@@ -232,10 +259,17 @@ defmodule FinerClaims do
   # Anchor lookup: (entity, source, epoch) -> the listing's primary code AS OF that moment,
   # falling back to the listing's FINAL primary when no snapshot precedes the event. A nil source
   # (genuinely unsourced event) falls back to the entity-level primary, mirroring ClaimMapping.
+  #
+  # gr-5kz: only NON-EMPTY snapshots anchor — an empty (delisted) snapshot has no primary, so an
+  # event on/after a delisting anchors to the nearest codes the listing held, mirroring
+  # ClaimMapping's nearest_codes rescue (gr-4iu) instead of silently dropping the claim.
   defp anchor_index(per_listing) do
     by_listing =
       Map.new(per_listing, fn %{entity: e, source: s, snapshots: snaps} ->
-        dated = Enum.map(snaps, fn {codes, date} -> {date, ClaimMapping.primary(Enum.sort(codes))} end)
+        dated =
+          for {codes, date} <- snaps, MapSet.size(codes) > 0 do
+            {date, ClaimMapping.primary(Enum.sort(codes))}
+          end
 
         final =
           case List.last(dated) do
@@ -252,7 +286,8 @@ defmodule FinerClaims do
       |> Map.new(fn {e, listings} ->
         union =
           for %{snapshots: snaps} <- listings,
-              {codes, _} <- Enum.take(snaps, -1),
+              {codes, _} <-
+                snaps |> Enum.filter(fn {codes, _} -> MapSet.size(codes) > 0 end) |> Enum.take(-1),
               c <- codes,
               into: MapSet.new(),
               do: c
