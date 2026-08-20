@@ -112,8 +112,15 @@ defmodule GoldenRecord.IdentityLedger do
       end)
 
     # Reversed so that on a duplicate cluster the most recent assignment wins, exactly as the
-    # Enum.find_value scan over the prepend-built list did.
-    assigns_by_cluster = assigns |> Enum.reverse() |> Map.new()
+    # Enum.find_value scan over the prepend-built list did. Then re-home clusters the split
+    # pass moved onto freshly minted keys, so a held code spanning the split still surfaces
+    # as a cross-key merge proposal below.
+    assigns_by_cluster =
+      split
+      |> Enum.flat_map(fn {_key, into} -> into end)
+      |> Enum.reduce(assigns |> Enum.reverse() |> Map.new(), fn {new_key, cluster}, acc ->
+        Map.put(acc, cluster, new_key)
+      end)
 
     held_proposals =
       conflicts

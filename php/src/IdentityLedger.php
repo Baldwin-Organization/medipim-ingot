@@ -196,11 +196,25 @@ final class IdentityLedger
             $split[] = [$key, $into];
         }
 
+        // Re-home clusters the split pass moved onto freshly minted keys, so a held code
+        // spanning the split still surfaces as a cross-key merge proposal below.
+        $splitReassigned = [];
+        foreach ($split as [$_key, $into]) {
+            foreach ($into as [$nk, $cluster]) {
+                $splitReassigned[self::codeSignature($cluster)] = $nk;
+            }
+        }
+
         $heldProposals = [];
         $seenHeldKeys = [];
         foreach ($conflicts as [$_code, $carriers]) {
             $keys = [];
             foreach ($carriers as $carrier) {
+                $reassigned = $splitReassigned[self::codeSignature($carrier)] ?? null;
+                if ($reassigned !== null) {
+                    $keys[] = $reassigned;
+                    continue;
+                }
                 foreach ($assigns as [$cluster, $key]) {
                     if (self::sameSet($cluster, $carrier)) {
                         $keys[] = $key;
