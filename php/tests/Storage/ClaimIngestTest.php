@@ -303,27 +303,26 @@ final class ClaimIngestTest extends TestCase
 
     // ── claim-shape fingerprint version (medipimv2-sgh.12) ────────────────────────
 
-    public function test_envelope_fingerprint_is_derived_from_the_claim_shape_version(): void
+    public function test_envelope_fingerprint_is_the_content_hash_unless_the_owner_salts_it(): void
     {
-        $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
-
-        $expected = hash('sha256', \Ingot\ClaimShape::VERSION."\n".json_encode($env->toArray(), JSON_THROW_ON_ERROR));
-        self::assertSame($expected, ClaimIngest::envelopeFingerprint($env));
-    }
-
-    public function test_envelope_fingerprint_would_differ_across_claim_shape_versions(): void
-    {
-        // Proves the version is actually mixed into the hash (not just declared): a differently
-        // versioned fingerprint of the SAME envelope payload must differ, or a claim-shape change
-        // would silently skip previously-seen entities via backfill_seen.
+        // gh-150: the package does not own the store's re-ingest epoch. No salt = bare content
+        // hash; a salt is mixed in, so two epochs of the SAME envelope never share a marker.
         $env = $this->envelope(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
         $payload = json_encode($env->toArray(), JSON_THROW_ON_ERROR);
 
-        self::assertNotSame(
-            hash('sha256', '1'."\n".$payload),
-            hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload),
-        );
-        self::assertSame(hash('sha256', \Ingot\ClaimShape::VERSION."\n".$payload), ClaimIngest::envelopeFingerprint($env));
+        self::assertSame(hash('sha256', $payload), ClaimIngest::envelopeFingerprint($env));
+        self::assertSame(hash('sha256', '1'."\n".$payload), ClaimIngest::envelopeFingerprint($env, '1'));
+        self::assertNotSame(ClaimIngest::envelopeFingerprint($env, '1'), ClaimIngest::envelopeFingerprint($env, '2'));
+    }
+
+    public function test_bumping_the_owners_epoch_re_ingests_an_already_seen_envelope(): void
+    {
+        $store = new InMemoryClaimStore();
+        $env = $this->rawMap(1, [$this->id('A', 'set', 'cnk', '111', 10)]);
+
+        self::assertSame(1, ClaimIngest::backfill($store, [$env], null, [], '1')['accepted']);
+        self::assertSame(0, ClaimIngest::backfill($store, [$env], null, [], '1')['accepted'], 'same epoch: a replay is a no-op');
+        self::assertSame(1, ClaimIngest::backfill($store, [$env], null, [], '2')['accepted'], 'new epoch: the store folds it again');
     }
 
     public function test_schema_statements_apply_the_prefix(): void
