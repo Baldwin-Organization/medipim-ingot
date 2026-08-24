@@ -38,9 +38,10 @@ final class Events
         mixed $validFrom,
         mixed $recordedAt,
         ?int $order = null,
-        mixed $validTo = null
+        mixed $validTo = null,
+        mixed $by = null
     ): Claim {
-        return new Claim($source, $kind, $data, $validFrom, $recordedAt, $order, $validTo);
+        return new Claim($source, $kind, $data, $validFrom, $recordedAt, $order, $validTo, $by);
     }
 
     /** @param array<string, array{0: string, 1: string}> $codes a code-set */
@@ -117,7 +118,7 @@ final class Events
         return match ($e['type'] ?? null) {
             self::TYPE_CLAIM_ASSERTED => new Claim(
                 $e['source'], $e['kind'], $e['data'], $e['valid_from'], $e['recorded_at'], $e['order'] ?? null,
-                $e['valid_to'] ?? null
+                $e['valid_to'] ?? null, $e['by'] ?? null
             ),
             self::TYPE_IDENTITY_MINTED => new IdentityMinted($e['key'], $e['codes'], $e['recorded_at'], $e['order'] ?? null),
             self::TYPE_IDENTITY_MEMBERS_CHANGED => new IdentityMembersChanged($e['key'], $e['codes'], $e['recorded_at'], $e['order'] ?? null),

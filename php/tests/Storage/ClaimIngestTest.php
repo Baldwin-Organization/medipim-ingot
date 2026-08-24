@@ -340,4 +340,44 @@ final class ClaimIngestTest extends TestCase
         self::assertStringContainsString('`gr_shared`', $all);
         self::assertStringContainsString('`gr_legacy_xref`', $all);
     }
+
+    // ── the envelope actor lands on claim rows (gh-132) ──────────────────────────
+
+    private function attr(string $source, string $field, mixed $value, int $at, mixed $by = null): array
+    {
+        return ['recorded_at' => $at, 'source' => $source, 'op' => 'set', 'kind' => 'attribute', 'field' => $field, 'value' => $value, 'by' => $by];
+    }
+
+    public function test_claim_rows_persist_the_actor_the_envelope_carried(): void
+    {
+        $store = new InMemoryClaimStore();
+        $day = 86_400;
+        ClaimIngest::live($store, [$this->rawMap(7001, [
+            $this->id('A', 'set', 'cnk', '111', $day) + ['by' => 42],
+            $this->attr('A', 'name', 'x', $day, 42),
+        ])]);
+
+        $claims = array_values(array_filter($store->log(), static fn (array $e): bool => $e['type'] === Events::TYPE_CLAIM_ASSERTED));
+        self::assertNotEmpty($claims);
+        foreach ($claims as $c) {
+            self::assertSame(42, $c['by'], $c['kind'].' claim row must carry the actor');
+        }
+        // and the boundary codec round-trips it
+        self::assertSame(42, Events::fromArray($claims[0])->by);
+    }
+
+    public function test_a_different_actor_re_asserting_identical_content_is_still_a_no_op(): void
+    {
+        // `by` is provenance, not content: the winnow identity stays {source, kind, data, valid_from}.
+        $store = new InMemoryClaimStore();
+        $day = 86_400;
+        $events = static fn (mixed $by): array => [['recorded_at' => $day, 'source' => 'A', 'op' => 'set', 'kind' => 'identity', 'scheme' => 'cnk', 'code' => '111', 'by' => $by]];
+
+        ClaimIngest::live($store, [$this->rawMap(7002, $events(1))]);
+        $seq = $store->maxSeq();
+        $second = ClaimIngest::live($store, [$this->rawMap(7002, $events(2))]);
+
+        self::assertSame(0, $second['appended']);
+        self::assertSame($seq, $store->maxSeq());
+    }
 }

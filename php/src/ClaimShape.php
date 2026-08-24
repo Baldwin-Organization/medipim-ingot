@@ -14,5 +14,5 @@ namespace Ingot;
  */
 final class ClaimShape
 {
-    public const VERSION = 3;
+    public const VERSION = 4; // 4: claims carry the envelope actor `by` (gh-132)
 }

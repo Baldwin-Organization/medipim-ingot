@@ -20,6 +20,8 @@ final readonly class Claim implements DomainEvent
         public mixed $recordedAt,
         public ?int $order = null,
         public mixed $validTo = null,
+        /** the acting user the envelope carried (gh-132) — provenance, not content: it never enters the slot identity */
+        public mixed $by = null,
     ) {
     }
 
@@ -35,7 +37,7 @@ final readonly class Claim implements DomainEvent
 
     public function withOrder(int $order): static
     {
-        return new self($this->source, $this->kind, $this->data, $this->validFrom, $this->recordedAt, $order, $this->validTo);
+        return new self($this->source, $this->kind, $this->data, $this->validFrom, $this->recordedAt, $order, $this->validTo, $this->by);
     }
 
     public function toArray(): array
@@ -49,6 +51,7 @@ final readonly class Claim implements DomainEvent
             'valid_to' => $this->validTo,
             'recorded_at' => $this->recordedAt,
             'order' => $this->order,
+            'by' => $this->by,
         ];
     }
 }
