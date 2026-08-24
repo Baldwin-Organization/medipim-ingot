@@ -9,15 +9,24 @@ defmodule GoldenRecord.IdentityLedger do
   def new(prefix \\ "SK"),
     do: %__MODULE__{members: %{}, next: 1, prefix: prefix, next_by_prefix: %{prefix => 1}}
 
-  def decide(state, {:reconcile, clusters, at}), do: decide(state, {:reconcile, clusters, MapSet.new(), at})
+  @type t :: %__MODULE__{}
 
-  def decide(state, {:reconcile, clusters, shared, at}),
-    do: decide(state, {:reconcile, clusters, shared, %{}, at})
+  # Each shape unpacks to plain arguments instead of re-wrapping a fresh MapSet into the tuple —
+  # the tuple-packed delegation made Dialyzer infer MapSet's opaque :sets.set() internals and
+  # flag an opaqueness mismatch on the inner call (gr-opa).
+  @spec decide(
+          t(),
+          {:reconcile, [MapSet.t()], term()}
+          | {:reconcile, [MapSet.t()], MapSet.t(), term()}
+          | {:reconcile, [MapSet.t()], MapSet.t(), map(), term()}
+        ) :: [struct()]
+  def decide(state, {:reconcile, clusters, at}), do: decide(state, clusters, MapSet.new(), %{}, at)
+  def decide(state, {:reconcile, clusters, shared, at}), do: decide(state, clusters, shared, %{}, at)
 
-  def decide(
-        %__MODULE__{members: members, next: next, prefix: prefix},
-        {:reconcile, clusters, shared, preferred, at}
-      ) do
+  def decide(state, {:reconcile, clusters, shared, preferred, at}),
+    do: decide(state, clusters, shared, preferred, at)
+
+  defp decide(%__MODULE__{members: members, next: next, prefix: prefix}, clusters, shared, preferred, at) do
     members
     |> reconcile(next, prefix, clusters, shared, preferred)
     |> then(&build_events(members, &1, at))
