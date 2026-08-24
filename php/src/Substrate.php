@@ -115,7 +115,8 @@ final class Substrate
     }
 
     /**
-     * Collapse the claim log to the latest claim per slot (highest `order` wins).
+     * Collapse the claim log to the latest claim per slot (highest `order` wins). A slot whose
+     * latest claim is a {@see retracted} marker has no current claim at all and is dropped.
      *
      * @param list<Claim> $claims
      * @return list<Claim>
@@ -131,7 +132,19 @@ final class Substrate
             }
         }
 
-        return array_values($bySlot);
+        return array_values(array_filter($bySlot, static fn (Claim $c): bool => !self::retracted($c)));
+    }
+
+    /**
+     * An edge retraction marker (gh-131): the live writer appends the omitted edge again with
+     * `data.retracted = true`, so the log keeps the audit trail while the current view drops the
+     * slot. The marker is an ordinary claim — it wins its slot by `order`, and a later re-assertion
+     * of the same edge (without the flag) wins it back. Attributes need no marker: a `null` value
+     * is already how a backfilled null-set reads, so live omission retracts them the same way.
+     */
+    public static function retracted(Claim $c): bool
+    {
+        return $c->kind === 'edge' && ($c->data['retracted'] ?? false) === true;
     }
 
     /**

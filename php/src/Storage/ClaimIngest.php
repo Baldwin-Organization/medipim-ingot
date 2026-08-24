@@ -18,6 +18,7 @@ use Ingot\IdentitiesMerged;
 use Ingot\IdentityRetracted;
 use Ingot\Lanes;
 use Ingot\LedgerState;
+use Ingot\Listing;
 use Ingot\Sets;
 use Ingot\Substrate;
 
@@ -93,6 +94,10 @@ final class ClaimIngest
     /**
      * Ingest current-truth envelopes (idempotent per slot) — the live path.
      *
+     * A now-envelope is a REPLACE of its listing's assertion set (gh-131, the `replace` operation
+     * of docs/API.md): an attribute or edge the store holds for that listing and the envelope
+     * omits is retracted ({@see retractions}), so omission converges with a backfilled null-set.
+     *
      * `$aliases` is the dimension-alias seam ({@see DimensionAliases}); see {@see backfill}.
      *
      * @param list<array<string,mixed>> $envelopeMaps
@@ -117,7 +122,10 @@ final class ClaimIngest
             // compacts to an identity claim with NO codes, and only its earlier periods can name
             // the key that must be loaded — and retracted. (Elixir folds full state instead.)
             $compacted = self::onLiveCodes(Substrate::current($claims));
-            $result = self::pipeline($store, $compacted, $built['shared'], $at, true, $claims, $aliases);
+            // A now-envelope is the listing's WHOLE current assertion set (gh-131): what the store
+            // holds for that listing and the batch no longer asserts is retracted, not kept.
+            $retractions = self::retractions($store, $compacted, ClaimMapping::listings($envelopes), $at, $aliases);
+            $result = self::pipeline($store, array_merge($compacted, $retractions), $built['shared'], $at, true, $claims, $aliases);
 
             self::recordXrefs($store, $envelopes);
 
@@ -142,6 +150,11 @@ final class ClaimIngest
      *
      * Live only. The backfill path deliberately keeps the whole history, intervals and all.
      *
+     * A claim is "on" the code it HOMES on ({@see homeAnchors}): an edge's `from`. Its `to` is
+     * not required to be live — a member_of edge points at a collection tuple that no identity
+     * ever asserts, and anchoring on it dropped every collection member from the live path
+     * (gh-131).
+     *
      * @param list<Claim> $claims
      * @return list<Claim>
      */
@@ -162,7 +175,7 @@ final class ClaimIngest
                 $kept[] = $c;
                 continue;
             }
-            foreach (self::loadAnchors($c) as $code) {
+            foreach (self::homeAnchors($c) as $code) {
                 if (!isset($live[Codes::key($code)])) {
                     continue 2;
                 }
@@ -171,6 +184,83 @@ final class ClaimIngest
         }
 
         return $kept;
+    }
+
+    /**
+     * The retractions a live batch implies (gh-131): for every listing in the batch, each STORED
+     * attribute / edge that listing owns and the batch no longer asserts. An attribute retracts to
+     * a `null` value — exactly what a backfilled set-then-null folds to, so the two paths agree —
+     * and an edge to a {@see Substrate::retracted} marker.
+     *
+     * A listing owns a claim when the claim's owning code is one the listing holds now, from the
+     * same source: an attribute's `code`, a member_of edge's `from`, any other edge's `to` (lane
+     * edges — depicts/describes — are emitted from the PRODUCT's envelope, so the product side
+     * owns them; a media entity's own snapshot must not retract them).
+     *
+     * ponytail: the reach is the loaded subgraph — the keys the batch's own codes resolve to.
+     * A lane edge homes on the ASSET's key, which is only loaded while the asset is still in the
+     * batch, so dropping a media asset from a product leaves its depicts edge in place. Retracting
+     * those needs a to-side edge index on the ClaimStore port.
+     *
+     * @param list<Claim> $compacted the batch's current claims (aliased, compacted, on live codes)
+     * @param array<string, array<string, array{0:string,1:string}>> $listings "entity\x1fsource" => code-set
+     * @param array<string,string> $aliases
+     * @return list<Claim>
+     */
+    private static function retractions(ClaimStore $store, array $compacted, array $listings, mixed $at, array $aliases): array
+    {
+        $present = [];
+        $bySource = [];
+        foreach ($compacted as $c) {
+            $present[self::slotKey($c)] = true;
+            if ($c->by !== null) {
+                $bySource[$c->source ?? ''] ??= $c->by;
+            }
+        }
+
+        /** @var array<string, array<string, true>> $owned source => code key => true */
+        $owned = [];
+        foreach ($listings as $key => $codes) {
+            $source = Listing::fromKey($key)->source ?? '';
+            foreach ($codes as $codeKey => $_code) {
+                $owned[$source][$codeKey] = true;
+            }
+        }
+        if ($owned === []) {
+            return [];
+        }
+
+        $stored = [];
+        foreach ($store->loadKeys(self::affectedKeys($store, $compacted)) as $info) {
+            foreach ($info['claims'] as $raw) {
+                $stored[] = Events::fromArray($raw);
+            }
+        }
+
+        $when = self::reconcileAt($compacted) ?? $at ?? time();
+        $out = [];
+        foreach (DimensionAliases::normalize($stored, $aliases) as $c) {
+            $owner = match ($c->kind) {
+                'attribute' => $c->data['code'],
+                'edge' => ($c->data['relation'] ?? null) === 'member_of' ? ($c->data['from'] ?? null) : ($c->data['to'] ?? null),
+                default => null,
+            };
+            if (!is_array($owner) || !isset($owned[$c->source ?? ''][Codes::key($owner)])) {
+                continue;
+            }
+            $slot = self::slotKey($c);
+            if (isset($present[$slot])) {
+                continue;
+            }
+            $present[$slot] = true;
+            if ($c->kind === 'attribute' && ($c->data['value'] ?? null) === null) {
+                continue; // already retracted (a backfilled null-set or an earlier live omission)
+            }
+            $data = $c->kind === 'attribute' ? array_merge($c->data, ['value' => null]) : $c->data + ['retracted' => true];
+            $out[] = new Claim($c->source, $c->kind, $data, $when, $when, null, null, $bySource[$c->source ?? ''] ?? null);
+        }
+
+        return $out;
     }
 
     /**
