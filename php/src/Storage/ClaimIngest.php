@@ -6,7 +6,6 @@ namespace Ingot\Storage;
 
 use Ingot\Claim;
 use Ingot\ClaimMapping;
-use Ingot\ClaimShape;
 use Ingot\Codes;
 use Ingot\ConflictFlagged;
 use Ingot\DimensionAliases;
@@ -49,21 +48,24 @@ final class ClaimIngest
      * folds as one dimension. The idempotency fingerprint hashes the PRE-alias envelope — a
      * rename never invalidates `backfill_seen`, so a replay stays a no-op.
      *
+     * `$salt` is the store owner's re-ingest epoch ({@see envelopeFingerprint}, gh-150): bump it
+     * when THIS store must fold every envelope again without a `--reset`.
+     *
      * @param list<array<string,mixed>> $envelopeMaps decoded envelope maps (see {@see \Ingot\EnvelopeDecoder})
      * @param array<string,string> $aliases
      * @return array<string,mixed> a summary, or ['errors' => ...] on invalid input
      */
-    public static function backfill(ClaimStore $store, array $envelopeMaps, mixed $at = null, array $aliases = []): array
+    public static function backfill(ClaimStore $store, array $envelopeMaps, mixed $at = null, array $aliases = [], string $salt = ''): array
     {
         [$ok, $envelopes, $errors] = self::decodeEnvelopes($envelopeMaps);
         if (!$ok) {
             return ['errors' => $errors];
         }
 
-        return $store->transactionally(static function () use ($store, $envelopes, $at, $aliases): array {
+        return $store->transactionally(static function () use ($store, $envelopes, $at, $aliases, $salt): array {
             $fresh = [];
             foreach ($envelopes as $env) {
-                $fp = self::fingerprint($env);
+                $fp = self::envelopeFingerprint($env, $salt);
                 $entity = (string) ($env->legacyEntity ?? '');
                 if ($store->backfillSeen($entity, $fp)) {
                     continue;
@@ -682,21 +684,19 @@ final class ClaimIngest
         return [$errors === [], $envelopes, $errors];
     }
 
-    /** Content fingerprint for replay-is-a-no-op (stable for identical content). */
-    private static function fingerprint(Envelope $env): string
-    {
-        return self::envelopeFingerprint($env);
-    }
-
     /**
-     * The backfill idempotency fingerprint: the envelope's content, salted with
-     * {@see ClaimShape::VERSION} so a claim-shape change invalidates every `backfill_seen` marker
-     * instead of silently leaving already-ingested entities un-reconciled under the new shape
-     * (medipimv2-sgh.12).
+     * The backfill idempotency fingerprint: sha256 of the envelope's content — stable for identical
+     * content, so a replay is a no-op. `$salt` is the STORE OWNER's re-ingest epoch (gh-150): when
+     * the same envelope must fold again (the claim mapping changed, or the owner decided to
+     * rebuild), the owner bumps its epoch and every `backfill_seen` marker written under the old
+     * one stops matching. The package does not own that knob — whether a mapping change warrants
+     * a re-ingest of a given store is that store's call. No salt = the bare content hash.
      */
-    public static function envelopeFingerprint(Envelope $env): string
+    public static function envelopeFingerprint(Envelope $env, string $salt = ''): string
     {
-        return hash('sha256', ClaimShape::VERSION."\n".json_encode($env->toArray(), JSON_THROW_ON_ERROR));
+        $bytes = json_encode($env->toArray(), JSON_THROW_ON_ERROR);
+
+        return hash('sha256', $salt === '' ? $bytes : $salt."\n".$bytes);
     }
 
     /**
