@@ -12,6 +12,7 @@ use Ingot\IdentityLedger;
 use Ingot\EnvelopeLoader;
 use Ingot\Events;
 use Ingot\Priority;
+use Ingot\SnapshotTranslator;
 use Ingot\Substrate;
 use Ingot\Storage\ClaimIngest;
 use Ingot\Storage\InMemoryClaimStore;
@@ -379,5 +380,128 @@ final class ClaimIngestTest extends TestCase
 
         self::assertSame(0, $second['appended']);
         self::assertSame($seq, $store->maxSeq());
+    }
+
+    // ── a now-envelope replaces the listing's assertion set (gh-131) ─────────────
+
+    private function edge(string $source, string $collection, mixed $member, int $at): array
+    {
+        return ['recorded_at' => $at, 'source' => $source, 'op' => 'add', 'kind' => 'edge', 'collection' => $collection, 'value' => $member];
+    }
+
+    /** @return list<array<string,mixed>> the current claim view of the key a code resolves to */
+    private static function view(InMemoryClaimStore $store, string $codeKey): array
+    {
+        $key = $store->resolveKey($codeKey);
+        self::assertNotNull($key);
+
+        return $store->loadKeys([$key])[$key]['claims'];
+    }
+
+    /** @return array<string,mixed> field => value */
+    private static function fields(InMemoryClaimStore $store, string $codeKey): array
+    {
+        $out = [];
+        foreach (self::view($store, $codeKey) as $c) {
+            if ($c['kind'] === 'attribute') {
+                $out[$c['data']['field']] = $c['data']['value'];
+            }
+        }
+        ksort($out);
+
+        return $out;
+    }
+
+    /** @return list<string> "from→to" per edge of $relation, sorted */
+    private static function edges(InMemoryClaimStore $store, string $codeKey, string $relation): array
+    {
+        $out = [];
+        foreach (self::view($store, $codeKey) as $c) {
+            if ($c['kind'] === 'edge' && $c['data']['relation'] === $relation) {
+                $out[] = implode(':', $c['data']['from']).'→'.implode(':', $c['data']['to']);
+            }
+        }
+        sort($out);
+
+        return $out;
+    }
+
+    public function test_live_omitting_an_attribute_retracts_it_like_a_backfilled_null_set(): void
+    {
+        $day = 86_400;
+        $cnk = Codes::key(Codes::canonicalize(['cnk', '111']));
+        $set = $this->id('A', 'set', 'cnk', '111', $day);
+
+        $live = new InMemoryClaimStore();
+        ClaimIngest::live($live, [$this->rawMap(8001, [$set, $this->attr('A', 'name', 'A', $day), $this->attr('A', 'dosage', '500mg', $day)])]);
+        self::assertSame(['dosage' => '500mg', 'name' => 'A'], self::fields($live, $cnk));
+
+        $omitting = $this->rawMap(8001, [$set, $this->attr('A', 'name', 'A', 2 * $day)]);
+        ClaimIngest::live($live, [$omitting]);
+        self::assertSame(['dosage' => null, 'name' => 'A'], self::fields($live, $cnk), 'an omitted attribute is retracted');
+
+        // the same history as a backfill that nulls the field folds to the same current truth
+        $backfill = new InMemoryClaimStore();
+        ClaimIngest::backfill($backfill, [$this->rawMap(8001, [
+            $set, $this->attr('A', 'name', 'A', $day), $this->attr('A', 'dosage', '500mg', $day), $this->attr('A', 'dosage', null, 2 * $day),
+        ])]);
+        self::assertSame(self::fields($backfill, $cnk), self::fields($live, $cnk));
+
+        // converged: the same truth again is a no-op
+        $seq = $live->maxSeq();
+        self::assertSame(0, ClaimIngest::live($live, [$omitting])['appended']);
+        self::assertSame($seq, $live->maxSeq());
+    }
+
+    public function test_live_collection_members_land_and_an_omitted_member_is_retracted(): void
+    {
+        $day = 86_400;
+        $cnk = Codes::key(Codes::canonicalize(['cnk', '111']));
+        $set = $this->id('A', 'set', 'cnk', '111', $day);
+        $store = new InMemoryClaimStore();
+
+        ClaimIngest::live($store, [$this->rawMap(8002, [$set, $this->edge('A', 'brands', 9, $day), $this->edge('A', 'brands', 12, $day)])]);
+        self::assertSame(['cnk:111→brands:12', 'cnk:111→brands:9'], self::edges($store, $cnk, 'member_of'), 'members land on the live path');
+
+        $only9 = $this->rawMap(8002, [$set, $this->edge('A', 'brands', 9, 2 * $day)]);
+        ClaimIngest::live($store, [$only9]);
+        self::assertSame(['cnk:111→brands:9'], self::edges($store, $cnk, 'member_of'), 'an omitted member is retracted');
+
+        // the log keeps the retraction as an audit row; the current view dropped the slot
+        $markers = array_values(array_filter(
+            $store->log(),
+            static fn (array $e): bool => $e['type'] === Events::TYPE_CLAIM_ASSERTED && $e['kind'] === 'edge' && ($e['data']['retracted'] ?? false) === true,
+        ));
+        self::assertCount(1, $markers);
+        self::assertSame(['brands', '12'], $markers[0]['data']['to']);
+
+        $seq = $store->maxSeq();
+        self::assertSame(0, ClaimIngest::live($store, [$only9])['appended'], 'the same truth again is a no-op');
+        self::assertSame($seq, $store->maxSeq());
+
+        // re-asserting the member wins the slot back
+        ClaimIngest::live($store, [$this->rawMap(8002, [$set, $this->edge('A', 'brands', 9, 3 * $day), $this->edge('A', 'brands', 12, 3 * $day)])]);
+        self::assertSame(['cnk:111→brands:12', 'cnk:111→brands:9'], self::edges($store, $cnk, 'member_of'));
+    }
+
+    public function test_a_media_entitys_own_snapshot_does_not_retract_the_edges_its_products_own(): void
+    {
+        // depicts/describes edges are asserted by the PRODUCT's envelope; an asset's own snapshot
+        // carries fields only and must leave them alone.
+        $day = 86_400;
+        $store = new InMemoryClaimStore();
+        $set = $this->id('A', 'set', 'cnk', '111', $day);
+        $media = ['recorded_at' => $day, 'source' => 'A', 'op' => 'add', 'kind' => 'media', 'collection' => 'media', 'asset' => 158717];
+        ClaimIngest::live($store, [$this->rawMap(8003, [$set, $media])]);
+
+        $asset = Codes::key(Codes::canonicalize(['asset_id', '158717']));
+        $before = self::edges($store, $asset, 'depicts');
+        self::assertCount(1, $before);
+
+        $own = SnapshotTranslator::toEnvelope([['source' => 'A', 'fields' => ['uri' => 'x']]], 'medipim-be', 158717, 2 * $day, ['identity_scheme' => 'asset_id']);
+        ClaimIngest::live($store, [$own]);
+
+        self::assertSame($before, self::edges($store, $asset, 'depicts'));
+        self::assertSame(['x'], array_values(self::fields($store, $asset)), 'its own field landed');
     }
 }
