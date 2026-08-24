@@ -484,24 +484,56 @@ final class ClaimIngestTest extends TestCase
         self::assertSame(['cnk:111→brands:12', 'cnk:111→brands:9'], self::edges($store, $cnk, 'member_of'));
     }
 
+    private function media(string $source, int $asset, int $at): array
+    {
+        return ['recorded_at' => $at, 'source' => $source, 'op' => 'add', 'kind' => 'media', 'collection' => 'media', 'asset' => $asset];
+    }
+
     public function test_a_media_entitys_own_snapshot_does_not_retract_the_edges_its_products_own(): void
     {
-        // depicts/describes edges are asserted by the PRODUCT's envelope; an asset's own snapshot
-        // carries fields only and must leave them alone.
+        // depicts/describes edges are asserted by the PRODUCT's envelope and stored on the
+        // product's key (gr-vas); an asset's own snapshot carries fields only and must leave them.
         $day = 86_400;
         $store = new InMemoryClaimStore();
-        $set = $this->id('A', 'set', 'cnk', '111', $day);
-        $media = ['recorded_at' => $day, 'source' => 'A', 'op' => 'add', 'kind' => 'media', 'collection' => 'media', 'asset' => 158717];
-        ClaimIngest::live($store, [$this->rawMap(8003, [$set, $media])]);
+        $cnk = Codes::key(Codes::canonicalize(['cnk', '111']));
+        ClaimIngest::live($store, [$this->rawMap(8003, [$this->id('A', 'set', 'cnk', '111', $day), $this->media('A', 158717, $day)])]);
+
+        $before = self::edges($store, $cnk, 'depicts');
+        self::assertSame(['asset_id:158717→cnk:111'], $before);
 
         $asset = Codes::key(Codes::canonicalize(['asset_id', '158717']));
-        $before = self::edges($store, $asset, 'depicts');
-        self::assertCount(1, $before);
-
         $own = SnapshotTranslator::toEnvelope([['source' => 'A', 'fields' => ['uri' => 'x']]], 'medipim-be', 158717, 2 * $day, ['identity_scheme' => 'asset_id']);
         ClaimIngest::live($store, [$own]);
 
-        self::assertSame($before, self::edges($store, $asset, 'depicts'));
+        self::assertSame($before, self::edges($store, $cnk, 'depicts'));
         self::assertSame(['x'], array_values(self::fields($store, $asset)), 'its own field landed');
+    }
+
+    public function test_a_product_dropping_a_media_asset_retracts_its_depicts_edge(): void
+    {
+        // gr-vas: the edge lives on the product's key, so the product's own now-envelope reaches
+        // it even though the asset is no longer in the batch. The asset itself is orphaned, not
+        // deleted.
+        $day = 86_400;
+        $store = new InMemoryClaimStore();
+        $cnk = Codes::key(Codes::canonicalize(['cnk', '111']));
+        $asset = Codes::key(Codes::canonicalize(['asset_id', '158717']));
+        $set = $this->id('A', 'set', 'cnk', '111', $day);
+
+        ClaimIngest::live($store, [$this->rawMap(8004, [$set, $this->media('A', 158717, $day), $this->media('A', 158718, $day)])]);
+        self::assertSame(['asset_id:158717→cnk:111', 'asset_id:158718→cnk:111'], self::edges($store, $cnk, 'depicts'));
+
+        $only18 = $this->rawMap(8004, [$set, $this->media('A', 158718, 2 * $day)]);
+        ClaimIngest::live($store, [$only18]);
+        self::assertSame(['asset_id:158718→cnk:111'], self::edges($store, $cnk, 'depicts'), 'the dropped asset\'s edge is retracted');
+        self::assertNotNull($store->resolveKey($asset), 'the asset record stays (orphaned, not deleted)');
+
+        $seq = $store->maxSeq();
+        self::assertSame(0, ClaimIngest::live($store, [$only18])['appended'], 'the same truth again is a no-op');
+        self::assertSame($seq, $store->maxSeq());
+
+        // re-listing the asset wins the edge back
+        ClaimIngest::live($store, [$this->rawMap(8004, [$set, $this->media('A', 158717, 3 * $day), $this->media('A', 158718, 3 * $day)])]);
+        self::assertSame(['asset_id:158717→cnk:111', 'asset_id:158718→cnk:111'], self::edges($store, $cnk, 'depicts'));
     }
 }

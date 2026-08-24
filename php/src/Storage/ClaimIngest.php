@@ -193,14 +193,9 @@ final class ClaimIngest
      * and an edge to a {@see Substrate::retracted} marker.
      *
      * A listing owns a claim when the claim's owning code is one the listing holds now, from the
-     * same source: an attribute's `code`, a member_of edge's `from`, any other edge's `to` (lane
-     * edges — depicts/describes — are emitted from the PRODUCT's envelope, so the product side
-     * owns them; a media entity's own snapshot must not retract them).
-     *
-     * ponytail: the reach is the loaded subgraph — the keys the batch's own codes resolve to.
-     * A lane edge homes on the ASSET's key, which is only loaded while the asset is still in the
-     * batch, so dropping a media asset from a product leaves its depicts edge in place. Retracting
-     * those needs a to-side edge index on the ClaimStore port.
+     * same source: an attribute's `code`, an edge's {@see owner} endpoint. Claims are STORED on
+     * the key of that same code ({@see homeAnchors}), so the listing's own key — always in the
+     * loaded subgraph — holds everything it can retract (gr-vas).
      *
      * @param list<Claim> $compacted the batch's current claims (aliased, compacted, on live codes)
      * @param array<string, array<string, array{0:string,1:string}>> $listings "entity\x1fsource" => code-set
@@ -242,7 +237,7 @@ final class ClaimIngest
         foreach (DimensionAliases::normalize($stored, $aliases) as $c) {
             $owner = match ($c->kind) {
                 'attribute' => $c->data['code'],
-                'edge' => ($c->data['relation'] ?? null) === 'member_of' ? ($c->data['from'] ?? null) : ($c->data['to'] ?? null),
+                'edge' => self::owner($c),
                 default => null,
             };
             if (!is_array($owner) || !isset($owned[$c->source ?? ''][Codes::key($owner)])) {
@@ -482,7 +477,8 @@ final class ClaimIngest
     }
 
     /**
-     * The code a claim HOMES on (which key it belongs to): an edge homes on its `from` endpoint.
+     * The code a claim HOMES on (which key's snapshot stores it): an edge homes on its
+     * {@see owner} endpoint.
      *
      * @return list<array{0:string,1:string}>
      */
@@ -491,9 +487,25 @@ final class ClaimIngest
         return match ($c->kind) {
             'identity' => array_values($c->data['codes']),
             'grouping', 'attribute' => [$c->data['code']],
-            'edge' => isset($c->data['from']) && is_array($c->data['from']) ? [$c->data['from']] : [],
+            'edge' => is_array($owner = self::owner($c)) ? [$owner] : [],
             default => [],
         };
+    }
+
+    /**
+     * The endpoint whose listing asserts (and may retract) an edge: a member_of edge is the
+     * product's statement about a collection, so `from`; a lane edge (depicts/describes) is
+     * emitted from the PRODUCT's envelope about an asset, so `to` (gr-vas). Homing lane edges on
+     * the product key is what lets a product that drops an asset retract the edge — the asset's
+     * key is not in the batch any more, the product's always is.
+     *
+     * @return array{0:string,1:string}|null
+     */
+    private static function owner(Claim $c): ?array
+    {
+        $end = ($c->data['relation'] ?? null) === 'member_of' ? ($c->data['from'] ?? null) : ($c->data['to'] ?? null);
+
+        return is_array($end) ? $end : null;
     }
 
     /**
