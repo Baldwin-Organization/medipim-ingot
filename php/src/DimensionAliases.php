@@ -100,6 +100,6 @@ final class DimensionAliases
             return $e;
         }
 
-        return new Claim($e->source, $e->kind, $d, $e->validFrom, $e->recordedAt, $e->order, $e->validTo);
+        return new Claim($e->source, $e->kind, $d, $e->validFrom, $e->recordedAt, $e->order, $e->validTo, $e->by);
     }
 }

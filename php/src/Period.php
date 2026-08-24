@@ -17,6 +17,8 @@ final readonly class Period
         public int $from,
         public ?int $to,
         public CodeSet $codes,
+        /** who recorded the event that opened (or last rewrote) this period (gh-132) */
+        public mixed $by = null,
     ) {
     }
 
@@ -50,11 +52,11 @@ final readonly class Period
 
     public function closedAt(int $at): self
     {
-        return new self($this->from, $at, $this->codes);
+        return new self($this->from, $at, $this->codes, $this->by);
     }
 
-    public function withCodes(CodeSet $codes): self
+    public function withCodes(CodeSet $codes, mixed $by = null): self
     {
-        return new self($this->from, $this->to, $codes);
+        return new self($this->from, $this->to, $codes, $by);
     }
 }

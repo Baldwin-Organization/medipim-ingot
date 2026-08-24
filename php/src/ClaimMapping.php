@@ -124,6 +124,7 @@ final class ClaimMapping
                     'valid_from' => $period->from,
                     'valid_to' => $period->to,
                     'recorded_at' => $period->from,
+                    'by' => $period->by,
                 ];
 
                 // Grouping tracks the same periods. Dating it at the end of the fold left a window
@@ -137,6 +138,7 @@ final class ClaimMapping
                         'valid_from' => $period->from,
                         'valid_to' => $period->to,
                         'recorded_at' => $period->from,
+                        'by' => $period->by,
                     ];
                 }
             }
@@ -157,6 +159,7 @@ final class ClaimMapping
                         'value' => self::attributeValue($ev->data->field, $ev->data->value),
                         'valid_from' => $ev->validFrom,
                         'recorded_at' => $ev->recordedAt,
+                        'by' => $ev->by,
                     ];
                 }
             }
@@ -186,6 +189,7 @@ final class ClaimMapping
                         'member' => Stringify::value($ev->data->value),
                         'valid_from' => $ev->validFrom,
                         'recorded_at' => $ev->recordedAt,
+                        'by' => $ev->by,
                     ];
                 }
             }
@@ -217,7 +221,7 @@ final class ClaimMapping
             $ids = array_keys($ref['ids']);
             sort($ids, SORT_STRING);
             foreach ($ids as $id) {
-                [$vf, $at] = $ref['last'][$id];
+                [$vf, $at, $by] = $ref['last'][$id];
 
                 // The lane entity exists whether or not it currently reaches a product; an asset
                 // with no live edge is orphaned, not deleted.
@@ -229,6 +233,7 @@ final class ClaimMapping
                     'entity' => $lane,
                     'valid_from' => $vf ?? $at,
                     'recorded_at' => $at,
+                    'by' => $by,
                 ];
 
                 // Media events are entity-scoped (source: nil in real dumps), so one edge per
@@ -243,6 +248,7 @@ final class ClaimMapping
                         'to' => (string) $code,
                         'valid_from' => $vf ?? $at,
                         'recorded_at' => $at,
+                        'by' => $by,
                     ];
                 }
             }
@@ -256,7 +262,7 @@ final class ClaimMapping
      * id, so only surviving references remain.
      *
      * @param list<Envelope> $envelopes
-     * @return array<string, array{ids: array<string,true>, last: array<string, array{0: mixed, 1: mixed}>, entity: mixed, source: string, collection: string}>
+     * @return array<string, array{ids: array<string,true>, last: array<string, array{0: mixed, 1: mixed, 2: mixed}>, entity: mixed, source: string, collection: string}>
      */
     private static function laneRefs(array $envelopes): array
     {
@@ -287,7 +293,7 @@ final class ClaimMapping
                 } else {
                     $acc[$key]['ids'][$id] = true;
                 }
-                $acc[$key]['last'][$id] = [$ev->validFrom, $ev->recordedAt];
+                $acc[$key]['last'][$id] = [$ev->validFrom, $ev->recordedAt, $ev->by];
             }
         }
 
@@ -325,6 +331,7 @@ final class ClaimMapping
                     $periods[$key] ?? [],
                     self::engineCodes($raw[$key], $canon),
                     $ev->recordedAt,
+                    $ev->by,
                 );
             }
         }
@@ -336,10 +343,10 @@ final class ClaimMapping
      * @param list<Period> $periods chronological; the last one is still open
      * @return list<Period>
      */
-    private static function appendPeriod(array $periods, CodeSet $codes, int $at): array
+    private static function appendPeriod(array $periods, CodeSet $codes, int $at, mixed $by = null): array
     {
         if ($periods === []) {
-            return [new Period($at, null, $codes)];
+            return [new Period($at, null, $codes, $by)];
         }
 
         $current = $periods[count($periods) - 1];
@@ -352,13 +359,13 @@ final class ClaimMapping
         // Same UTC day: replace rather than leave an interval that can never apply — every reader
         // works at day granularity, and the live wire rejects a same-day interval anyway.
         if ($current->openedSameUtcDayAs($at)) {
-            $periods[count($periods) - 1] = $current->withCodes($codes);
+            $periods[count($periods) - 1] = $current->withCodes($codes, $by);
 
             return $periods;
         }
 
         $periods[count($periods) - 1] = $current->closedAt($at);
-        $periods[] = new Period($at, null, $codes);
+        $periods[] = new Period($at, null, $codes, $by);
 
         return $periods;
     }
